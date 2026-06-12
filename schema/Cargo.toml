@@ -1,0 +1,34 @@
+[package]
+name = "stormlight_mod_abi"
+description = "Shared descriptor + manifest ABI — pure serializable data agreed on by both the engine and every mod."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+postcard = { workspace = true }
+# Manifest parsing (toml) only on the host side.
+toml = { workspace = true, optional = true }
+
+[dev-dependencies]
+bolero = { workspace = true }
+
+[features]
+default = []
+std = ["serde/std", "postcard/use-std"]
+manifest-parse = ["std", "dep:toml"]
+
+[[test]]
+name = "property"
+path = "tests/property/main.rs"
+[[test]]
+name = "fuzz"
+path = "tests/fuzz/main.rs"
+[[test]]
+name = "integration"
+path = "tests/integration/main.rs"

@@ -1,0 +1,33 @@
+[package]
+name = "stormlight_mod_sdk"
+description = "Guest PDK every mod is authored against — re-exports the ABI, adds host bindings + registration helpers."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# Mods depend on THIS, not on schema directly.
+stormlight_mod_abi = { path = "../schema" }
+serde = { workspace = true }
+postcard = { workspace = true }
+
+[dev-dependencies]
+bolero = { workspace = true }
+
+[features]
+default = []
+std = ["stormlight_mod_abi/std", "serde/std", "postcard/use-std"]
+
+[[test]]
+name = "property"
+path = "tests/property/main.rs"
+[[test]]
+name = "fuzz"
+path = "tests/fuzz/main.rs"
+[[test]]
+name = "integration"
+path = "tests/integration/main.rs"

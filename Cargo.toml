@@ -1,0 +1,23 @@
+# `sdk` repo — the mod-author-facing SDK. Public. Two crates:
+#   schema — the shared descriptor + manifest ABI (also used by the engine).
+#   pdk    — the guest PDK mods are written against (re-exports schema).
+# No engine code, no assets.
+[workspace]
+resolver = "2"
+members = ["schema", "pdk"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://gitlab.com/stormlight/sdk"
+
+[workspace.dependencies]
+# no_std + alloc so guest wasm mods can depend on these; `std` is a feature.
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+postcard = { version = "1", default-features = false, features = ["alloc"] }
+toml = "0.8"
+bolero = "0.13"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"

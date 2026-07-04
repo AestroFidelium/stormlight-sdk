@@ -16,6 +16,7 @@ pub mod conditions;
 pub mod descriptors;
 pub mod ids;
 pub mod impacts;
+pub mod interner;
 pub mod manifest;
 pub mod math;
 pub mod missiles;

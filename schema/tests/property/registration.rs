@@ -21,11 +21,12 @@ use stormlight_mod_abi::common::NumOp;
 use stormlight_mod_abi::conditions::Condition;
 use stormlight_mod_abi::descriptors::{Curve, Names, Registration};
 use stormlight_mod_abi::ids::{
-    AbilityId, BuffId, ParamId, StatId, TagClassId, TagId, TalentId,
+    AbilityId, BuffId, ParamId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::talents::{AbilitySelector, ParamPatch, TalentDescriptor};
+use stormlight_mod_abi::units::UnitDescriptor;
 
 extern crate alloc;
 use alloc::string::String;
@@ -154,6 +155,15 @@ impl Gen<'_> {
         let points = (0..self.count(5)).map(|_| [self.f32(), self.f32()]).collect();
         Curve { points }
     }
+    fn unit(&mut self) -> UnitDescriptor {
+        let stats = (0..self.count(3)).map(|_| (StatId(self.next()), self.value())).collect();
+        UnitDescriptor {
+            id: UnitId(u32::from(self.next())),
+            health: self.value(),
+            stats,
+            tags: self.tags(),
+        }
+    }
     fn names(&mut self) -> Names {
         Names {
             stats: self.strings(),
@@ -170,6 +180,7 @@ impl Gen<'_> {
             abilities: self.strings(),
             talents: self.strings(),
             handlers: self.strings(),
+            units: self.strings(),
         }
     }
     fn registration(&mut self) -> Registration {
@@ -187,6 +198,7 @@ impl Gen<'_> {
                 .map(|_| (TagId(self.next()), TagClassId(self.next())))
                 .collect(),
             curves: (0..self.count(3)).map(|_| self.curve()).collect(),
+            units: (0..self.count(3)).map(|_| self.unit()).collect(),
         }
     }
 }

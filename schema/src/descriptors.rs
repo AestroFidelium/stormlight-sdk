@@ -27,6 +27,7 @@ use crate::behaviors::BuffSpec;
 use crate::ids::{TagClassId, TagId};
 use crate::manifest::Version;
 use crate::talents::TalentDescriptor;
+use crate::units::UnitDescriptor;
 
 /// The `raw index -> stable name` table for every interned id family a mod may
 /// reference. Each `Vec` is dense (`0..len`) and mirrors one `Interner`'s output
@@ -50,6 +51,7 @@ pub struct Names {
     pub abilities: Vec<String>,
     pub talents: Vec<String>,
     pub handlers: Vec<String>,
+    pub units: Vec<String>,
 }
 
 /// A piecewise lookup curve referenced by `Value::Curve` (e.g. a level-scaling
@@ -83,4 +85,6 @@ pub struct Registration {
     pub tag_classes: Vec<(TagId, TagClassId)>,
     /// Lookup curves, indexed by local `CurveId`.
     pub curves: Vec<Curve>,
+    /// Spawnable unit definitions, indexed by local `UnitId`.
+    pub units: Vec<UnitDescriptor>,
 }

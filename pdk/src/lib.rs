@@ -16,3 +16,17 @@ pub mod client;
 pub mod context;
 pub mod macros;
 pub mod types;
+
+/// wasm guest runtime glue: a global allocator + panic handler so mods compile
+/// to `wasm32-unknown-unknown` cdylibs without per-mod boilerplate. Present only
+/// on the wasm target; host builds (tests) use std's.
+#[cfg(target_arch = "wasm32")]
+mod wasm_runtime {
+    #[global_allocator]
+    static ALLOC: dlmalloc::GlobalDlmalloc = dlmalloc::GlobalDlmalloc;
+
+    #[panic_handler]
+    fn panic(_: &core::panic::PanicInfo) -> ! {
+        core::arch::wasm32::unreachable()
+    }
+}

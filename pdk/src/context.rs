@@ -17,11 +17,12 @@ use stormlight_mod_abi::behaviors::BuffSpec;
 use stormlight_mod_abi::descriptors::{Curve, Names, Registration};
 use stormlight_mod_abi::ids::{
     AbilityId, BuffId, CurveId, DamageTypeId, DimId, EventId, Handle, HandlerId, ParamId,
-    ResourceId, StackId, StatId, TagClassId, TagId, TalentId,
+    ResourceId, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
 use stormlight_mod_abi::talents::TalentDescriptor;
+use stormlight_mod_abi::units::UnitDescriptor;
 
 /// Accumulates a mod's registrations and finalizes them into a [`Registration`].
 #[derive(Default)]
@@ -40,12 +41,14 @@ pub struct ModContext {
     ability_names: Interner<AbilityId>,
     talent_names: Interner<TalentId>,
     handlers: Interner<HandlerId>,
+    unit_names: Interner<UnitId>,
 
     abilities: Vec<AbilityDescriptor>,
     talents: Vec<TalentDescriptor>,
     buffs: Vec<BuffSpec>,
     tag_classes: Vec<(TagId, TagClassId)>,
     curves: Vec<Curve>,
+    units: Vec<UnitDescriptor>,
 }
 
 /// Collect an interner's contents as a dense `raw index -> name` table.
@@ -153,6 +156,14 @@ impl ModContext {
         self.curves.push(curve);
         id
     }
+    /// Define a spawnable unit under `name`; its `id` is set to the minted handle.
+    pub fn unit(&mut self, name: &str, mut desc: UnitDescriptor) -> UnitId {
+        let id = self.unit_names.intern(name);
+        debug_assert_eq!(id.raw() as usize, self.units.len(), "unit name reused");
+        desc.id = id;
+        self.units.push(desc);
+        id
+    }
 
     /// The ABI version this context targets (always the SDK's [`ABI_VERSION`]).
     #[must_use]
@@ -181,12 +192,14 @@ impl ModContext {
                 abilities: table(&self.ability_names),
                 talents: table(&self.talent_names),
                 handlers: table(&self.handlers),
+                units: table(&self.unit_names),
             },
             abilities: self.abilities,
             talents: self.talents,
             buffs: self.buffs,
             tag_classes: self.tag_classes,
             curves: self.curves,
+            units: self.units,
         }
     }
 }

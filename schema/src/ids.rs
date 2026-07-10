@@ -80,6 +80,8 @@ id_handles! {
     TalentId(u32),
     /// A `Custom` escape-hatch handler exported by a wasm mod.
     HandlerId(u32),
+    /// A spawnable unit definition (a hero, creep, structure — mod-defined).
+    UnitId(u32),
 }
 
 /// A generic ability slot index. Not name-interned — slots are a small fixed

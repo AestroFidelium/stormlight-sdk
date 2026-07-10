@@ -11,7 +11,25 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
-use crate::ids::{TagClassId, TagId};
+use serde::{Deserialize, Serialize};
+
+use crate::ids::{StatId, TagClassId, TagId, UnitId};
+use crate::math::Value;
+
+/// A spawnable unit — the generic template the engine instantiates into an
+/// entity. Purely declarative: base health, base stat values (e.g. movement
+/// speed), and the tags it starts with. Which units exist and their numbers are
+/// mod content; the engine only knows how to spawn this generic shape.
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct UnitDescriptor {
+    pub id: UnitId,
+    /// Base maximum health, as a `Value` expression (usually a constant).
+    pub health: Value,
+    /// Base stat values applied at spawn (movement speed, mitigation inputs, …).
+    pub stats: Vec<(StatId, Value)>,
+    /// Tags the unit spawns carrying.
+    pub tags: Vec<TagId>,
+}
 
 /// Well-known capability classes the engine's generic systems consult. These ids
 /// are engine-reserved; mod-defined classes (if any) are interned above them.

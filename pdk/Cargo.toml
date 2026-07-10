@@ -6,14 +6,25 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[lints]
-workspace = true
+# The guest binding layer must export `mod_register` (`#[unsafe(no_mangle)]`)
+# and use the wasm memory bridge, which the workspace-wide `unsafe_code =
+# "forbid"` cannot express. Relax to `deny` here only; every unsafe use carries
+# an explicit `#[allow(unsafe_code)]` at the FFI shim so it stays auditable.
+# Engine + schema crates keep `forbid`.
+[lints.rust]
+unsafe_code = "deny"
 
 [dependencies]
 # Mods depend on THIS, not on schema directly.
 stormlight_mod_abi = { path = "../schema" }
 serde = { workspace = true }
 postcard = { workspace = true }
+
+# wasm guest runtime: `wasm32-unknown-unknown` has no allocator, and a no_std
+# cdylib needs a panic handler. The pdk supplies both so mods stay boilerplate
+# free. wasm-only so host test builds keep std's allocator/handler.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+dlmalloc = { version = "0.2", features = ["global"] }
 
 [dev-dependencies]
 bolero = { workspace = true }

@@ -9,4 +9,5 @@ mod interner;
 mod manifest;
 mod math;
 mod modifiers;
+mod registration;
 mod tags;

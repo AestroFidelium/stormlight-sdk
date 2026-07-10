@@ -25,7 +25,7 @@ pub const ABI_VERSION: Version = Version::new(0, 1, 0);
 /// Kept as three integers with a string wire form so it is portable to guest
 /// wasm without a semver-crate dependency, mirroring the ABI's dependency-free
 /// stance elsewhere (e.g. `Point3 = [f32; 3]`).
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 pub struct Version {
     pub major: u32,
     pub minor: u32,

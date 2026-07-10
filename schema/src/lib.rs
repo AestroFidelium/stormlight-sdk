@@ -11,6 +11,7 @@ extern crate alloc;
 pub mod abilities;
 pub mod accumulator;
 pub mod behaviors;
+pub mod bridge;
 pub mod common;
 pub mod conditions;
 pub mod descriptors;

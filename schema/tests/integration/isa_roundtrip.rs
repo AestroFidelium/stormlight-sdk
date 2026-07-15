@@ -144,7 +144,7 @@ impl Gen<'_> {
             affiliation,
             require_tags: (0..self.next() % 3).map(|_| TagId(self.next())).collect(),
             exclude_tags: (0..self.next() % 3).map(|_| TagId(self.next())).collect(),
-            include_dead: self.next() % 2 == 0,
+            include_dead: self.next().is_multiple_of(2),
         }
     }
     fn body(&mut self, depth: u8) -> BodyDescriptor {
@@ -152,12 +152,12 @@ impl Gen<'_> {
             0 => BodyKind::Missile {
                 speed: self.value(1),
                 range: self.value(1),
-                homing: self.next() % 2 == 0,
+                homing: self.next().is_multiple_of(2),
                 pierce: self.value(1),
             },
             1 => BodyKind::Unit {
                 health: self.value(1),
-                duration: (self.next() % 2 == 0).then(|| self.value(1)),
+                duration: self.next().is_multiple_of(2).then(|| self.value(1)),
             },
             _ => BodyKind::Zone { radius: self.value(1), duration: self.value(1), tick: self.value(1) },
         };
@@ -169,12 +169,12 @@ impl Gen<'_> {
             collision: CollisionSpec {
                 filter: self.filter(),
                 pierce: self.value(1),
-                through_walls: self.next() % 2 == 0,
+                through_walls: self.next().is_multiple_of(2),
             },
             flags: BodyFlags {
-                reflectable: self.next() % 2 == 0,
-                cross_dimension: self.next() % 2 == 0,
-                live_values: self.next() % 2 == 0,
+                reflectable: self.next().is_multiple_of(2),
+                cross_dimension: self.next().is_multiple_of(2),
+                live_values: self.next().is_multiple_of(2),
             },
         }
     }
@@ -190,7 +190,7 @@ impl Gen<'_> {
                 shape: self.shape(),
                 filter: self.filter(),
                 max_targets: self.value(1),
-                exclude_primary: self.next() % 2 == 0,
+                exclude_primary: self.next().is_multiple_of(2),
                 inner: self.impacts(depth - 1),
             },
             1 => Impact::If {
@@ -204,12 +204,12 @@ impl Gen<'_> {
                 amount: self.value(2),
                 dtype: DamageTypeId(self.next()),
                 target: self.target(),
-                flags: DamageFlags { can_crit: self.next() % 2 == 0, lifesteal: self.next() % 2 == 0 },
+                flags: DamageFlags { can_crit: self.next().is_multiple_of(2), lifesteal: self.next().is_multiple_of(2) },
             },
             5 => Impact::Heal {
                 amount: self.value(2),
                 target: self.target(),
-                flags: HealFlags { can_overheal: self.next() % 2 == 0 },
+                flags: HealFlags { can_overheal: self.next().is_multiple_of(2) },
             },
             6 => Impact::AdjustPool {
                 pool: self.pool(),
@@ -220,19 +220,19 @@ impl Gen<'_> {
             7 => Impact::ApplyModifiers {
                 buff: BuffId(self.next()),
                 stacks: self.value(1),
-                duration_override: (self.next() % 2 == 0).then(|| self.value(1)),
+                duration_override: self.next().is_multiple_of(2).then(|| self.value(1)),
                 target: self.target(),
             },
             8 => Impact::RemoveModifiers { sel: self.selector(), target: self.target() },
             9 => Impact::Dash {
                 dir: self.direction(),
                 dist: self.value(1),
-                speed: (self.next() % 2 == 0).then(|| self.value(1)),
+                speed: self.next().is_multiple_of(2).then(|| self.value(1)),
                 on_collision: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
                 target: self.target(),
             },
             10 => Impact::Knockback { dir: self.direction(), force: self.value(1), target: self.target() },
-            11 => Impact::Teleport { dest: self.teleport(), target: self.target(), record: self.next() % 2 == 0 },
+            11 => Impact::Teleport { dest: self.teleport(), target: self.target(), record: self.next().is_multiple_of(2) },
             12 => Impact::Spawn {
                 body: self.body(if depth == 0 { 0 } else { depth - 1 }),
                 at: self.anchor(),
@@ -243,7 +243,7 @@ impl Gen<'_> {
                 slot: Slot(self.next() as u8),
                 target: self.abilitytarget(),
                 value_scale: self.value(1),
-                cost: if self.next() % 2 == 0 { CostMode::Normal } else { CostMode::Free },
+                cost: if self.next().is_multiple_of(2) { CostMode::Normal } else { CostMode::Free },
             },
             14 => Impact::Interrupt { target: self.target() },
             15 => Impact::ResolvePending { filter: self.pending() },
@@ -267,7 +267,7 @@ impl Gen<'_> {
         }
     }
     fn loopkind(&mut self) -> LoopKind {
-        if self.next() % 2 == 0 {
+        if self.next().is_multiple_of(2) {
             LoopKind::Times { count: self.value(1), gap: self.value(1) }
         } else {
             LoopKind::Interval { period: self.value(1), ticks: self.value(1) }
@@ -291,7 +291,7 @@ impl Gen<'_> {
         }
     }
     fn selector(&mut self) -> BuffSelector {
-        if self.next() % 2 == 0 {
+        if self.next().is_multiple_of(2) {
             BuffSelector::Id(BuffId(self.next()))
         } else {
             BuffSelector::Class(TagClassId(self.next()))
@@ -329,7 +329,7 @@ impl Gen<'_> {
         }
     }
     fn pending(&mut self) -> PendingFilter {
-        if self.next() % 2 == 0 {
+        if self.next().is_multiple_of(2) {
             PendingFilter::FromCaster
         } else {
             PendingFilter::OriginTag(TagId(self.next()))

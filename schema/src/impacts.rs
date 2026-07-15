@@ -124,6 +124,11 @@ pub struct HealFlags {
 /// A single ISA instruction: `Impact = Structure<Leaf>`. The first four variants
 /// are the control combinators expanded by the resolution walker; the rest are
 /// leaves, each with exactly one observer in `server/src/systems/impacts/`.
+// The ISA is deliberately granular (one variant per structural verb, never
+// collapsed into a mode-field), so some variants carry a `BodyDescriptor` while
+// others are unit-like. That size spread is intended vocabulary shape, not an
+// oversight — the tree is heap-allocated (`Vec<Impact>`) at every nesting point.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum Impact {
     // --- combinators (expanded by the walker, never by an observer) ---

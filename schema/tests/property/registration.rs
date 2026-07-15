@@ -135,11 +135,11 @@ impl Gen<'_> {
                 2 => Reapply::Independent,
                 _ => Reapply::Ignore,
             },
-            scope: if self.next() % 2 == 0 { StackScope::PerSource } else { StackScope::Global },
+            scope: if self.next().is_multiple_of(2) { StackScope::PerSource } else { StackScope::Global },
         };
         BuffSpec {
             id: BuffId(self.next()),
-            duration: (self.next() % 2 == 0).then(|| self.value()),
+            duration: self.next().is_multiple_of(2).then(|| self.value()),
             stacking,
             max_stacks: self.next(),
             modifiers: self.modifiers(),
@@ -148,7 +148,7 @@ impl Gen<'_> {
             on_apply: Vec::new(),
             on_expire: Vec::new(),
             on_remove: Vec::new(),
-            drop_on_death: self.next() % 2 == 0,
+            drop_on_death: self.next().is_multiple_of(2),
         }
     }
     fn curve(&mut self) -> Curve {

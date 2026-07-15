@@ -21,12 +21,12 @@ use stormlight_mod_abi::common::NumOp;
 use stormlight_mod_abi::conditions::Condition;
 use stormlight_mod_abi::descriptors::{Curve, Names, Registration};
 use stormlight_mod_abi::ids::{
-    AbilityId, BuffId, ParamId, StatId, TagClassId, TagId, TalentId, UnitId,
+    AbilityId, BuffId, ParamId, ResourceId, Slot, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::talents::{AbilitySelector, ParamPatch, TalentDescriptor};
-use stormlight_mod_abi::units::UnitDescriptor;
+use stormlight_mod_abi::units::{ResourcePool, UnitDescriptor};
 
 extern crate alloc;
 use alloc::string::String;
@@ -157,11 +157,25 @@ impl Gen<'_> {
     }
     fn unit(&mut self) -> UnitDescriptor {
         let stats = (0..self.count(3)).map(|_| (StatId(self.next()), self.value())).collect();
+        let abilities = (0..self.count(3))
+            .map(|_| (Slot(self.next() as u8), AbilityId(u32::from(self.next()))))
+            .collect();
+        let resources = (0..self.count(3))
+            .map(|_| ResourcePool {
+                id: ResourceId(self.next()),
+                max: self.value(),
+                regen: self.value(),
+            })
+            .collect();
+        let talents = (0..self.count(3)).map(|_| TalentId(u32::from(self.next()))).collect();
         UnitDescriptor {
             id: UnitId(u32::from(self.next())),
             health: self.value(),
             stats,
             tags: self.tags(),
+            abilities,
+            resources,
+            talents,
         }
     }
     fn names(&mut self) -> Names {

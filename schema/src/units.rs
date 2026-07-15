@@ -13,13 +13,28 @@ use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{StatId, TagClassId, TagId, UnitId};
+use crate::ids::{AbilityId, ResourceId, Slot, StatId, TagClassId, TagId, TalentId, UnitId};
 use crate::math::Value;
+
+/// One resource pool a unit carries — a bounded numeric reserve (energy,
+/// mana-like, a fury meter, …) that ability costs draw from and that refills over
+/// time. Generic: the engine only knows "a pool with a ceiling that regenerates";
+/// what the pool *means* is mod convention.
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct ResourcePool {
+    pub id: ResourceId,
+    /// Ceiling of the pool, as a `Value` (the wallet is seeded full at spawn).
+    pub max: Value,
+    /// Passive regeneration per second, as a `Value` (may be zero).
+    pub regen: Value,
+}
 
 /// A spawnable unit — the generic template the engine instantiates into an
 /// entity. Purely declarative: base health, base stat values (e.g. movement
-/// speed), and the tags it starts with. Which units exist and their numbers are
-/// mod content; the engine only knows how to spawn this generic shape.
+/// speed), the tags it starts with, and its **loadout** (what it can *do*):
+/// ability slots, resource pools, and default talent picks. Which units exist
+/// and their numbers are mod content; the engine only knows how to spawn this
+/// generic shape.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct UnitDescriptor {
     pub id: UnitId,
@@ -29,6 +44,14 @@ pub struct UnitDescriptor {
     pub stats: Vec<(StatId, Value)>,
     /// Tags the unit spawns carrying.
     pub tags: Vec<TagId>,
+    /// Ability slots: which ability each slot binds to. Slots are pure mod
+    /// convention (see [`Slot`]); the engine casts whatever id a slot resolves to.
+    pub abilities: Vec<(Slot, AbilityId)>,
+    /// Resource pools the unit spawns with, seeding the cast wallet.
+    pub resources: Vec<ResourcePool>,
+    /// Talents the unit spawns with already selected (selection stays generic —
+    /// a talent targets abilities by slot/tag, never by identity).
+    pub talents: Vec<TalentId>,
 }
 
 /// Well-known capability classes the engine's generic systems consult. These ids

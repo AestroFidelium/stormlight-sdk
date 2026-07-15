@@ -21,6 +21,7 @@ pub mod interner;
 pub mod manifest;
 pub mod math;
 pub mod missiles;
+pub mod remap;
 pub mod talents;
 pub mod triggers;
 pub mod units;

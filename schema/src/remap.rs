@@ -30,7 +30,7 @@ use crate::math::{Value, Var};
 use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
 use crate::triggers::{EventFilter, EventKind, Reaction};
-use crate::units::UnitDescriptor;
+use crate::units::{ResourcePool, UnitDescriptor};
 
 /// Translates one interned handle to another, one method per id family. A total
 /// map (identity, or a complete local→global table) never errors; a map missing a
@@ -533,6 +533,15 @@ impl RemapIds for TalentDescriptor {
     }
 }
 
+impl RemapIds for ResourcePool {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        self.id = m.resource(self.id)?;
+        self.max.remap_ids(m)?;
+        self.regen.remap_ids(m)?;
+        Ok(())
+    }
+}
+
 impl RemapIds for UnitDescriptor {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         self.id = m.unit(self.id)?;
@@ -542,6 +551,15 @@ impl RemapIds for UnitDescriptor {
             v.remap_ids(m)?;
         }
         remap_tags(&mut self.tags, m)?;
+        // Loadout handles: slots pass through (pure convention); the bound ability,
+        // each pool's resource id, and each default talent are rewritten.
+        for (_slot, ability) in self.abilities.iter_mut() {
+            *ability = m.ability(*ability)?;
+        }
+        self.resources.remap_ids(m)?;
+        for talent in self.talents.iter_mut() {
+            *talent = m.talent(*talent)?;
+        }
         Ok(())
     }
 }

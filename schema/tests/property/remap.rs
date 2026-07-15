@@ -37,7 +37,7 @@ use stormlight_mod_abi::talents::{
     AbilityHook, AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor,
 };
 use stormlight_mod_abi::triggers::{EventFilter, EventKind, Reaction};
-use stormlight_mod_abi::units::UnitDescriptor;
+use stormlight_mod_abi::units::{ResourcePool, UnitDescriptor};
 
 /// A map that returns every id unchanged and never fails, while counting how many
 /// ids the walk visited — so we know whether a given tree carried any handles.
@@ -523,6 +523,17 @@ impl Gen<'_> {
             health: self.value(1),
             stats: (0..self.next() % 3).map(|_| (StatId(self.next()), self.value(1))).collect(),
             tags: (0..self.next() % 3).map(|_| TagId(self.next())).collect(),
+            abilities: (0..self.next() % 3)
+                .map(|_| (self.slot(), AbilityId(u32::from(self.next()))))
+                .collect(),
+            resources: (0..self.next() % 3)
+                .map(|_| ResourcePool {
+                    id: ResourceId(self.next()),
+                    max: self.value(1),
+                    regen: self.value(1),
+                })
+                .collect(),
+            talents: (0..self.next() % 3).map(|_| TalentId(u32::from(self.next()))).collect(),
         }
     }
     fn registration(&mut self) -> Registration {

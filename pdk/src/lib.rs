@@ -15,6 +15,7 @@ pub mod bindings;
 pub mod client;
 pub mod context;
 pub mod macros;
+pub mod runtime;
 pub mod types;
 
 /// wasm guest runtime glue: a global allocator + panic handler so mods compile

@@ -31,6 +31,7 @@ use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
 use crate::triggers::{EventFilter, EventKind, Reaction};
 use crate::units::{ResourcePool, UnitDescriptor};
+use crate::visuals::{ClientRegistration, VisualDescriptor};
 
 /// Translates one interned handle to another, one method per id family. A total
 /// map (identity, or a complete local→global table) never errors; a map missing a
@@ -561,6 +562,22 @@ impl RemapIds for UnitDescriptor {
             *talent = m.talent(*talent)?;
         }
         Ok(())
+    }
+}
+
+impl RemapIds for VisualDescriptor {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // Only the unit key is an interned handle; `model` carries asset strings
+        // and numeric geometry/color, never an id.
+        self.unit = m.unit(self.unit)?;
+        Ok(())
+    }
+}
+
+impl RemapIds for ClientRegistration {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // `abi` and `names` (the string tables) carry no interned handle.
+        self.visuals.remap_ids(m)
     }
 }
 

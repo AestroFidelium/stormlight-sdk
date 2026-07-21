@@ -26,3 +26,4 @@ pub mod runtime;
 pub mod talents;
 pub mod triggers;
 pub mod units;
+pub mod visuals;

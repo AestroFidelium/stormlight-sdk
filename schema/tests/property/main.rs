@@ -13,3 +13,4 @@ mod registration;
 mod remap;
 mod runtime;
 mod tags;
+mod visuals;

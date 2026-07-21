@@ -13,6 +13,7 @@
 use alloc::vec::Vec;
 
 use stormlight_mod_abi::descriptors::Registration;
+use stormlight_mod_abi::runtime::GuestEffects;
 
 use crate::types::pack_ptr_len;
 
@@ -43,5 +44,48 @@ pub fn emit_bytes(bytes: Vec<u8>) -> u64 {
     // Hand ownership to the host; it reads `len` bytes at `ptr` then drops us.
     core::mem::forget(boxed);
     pack_ptr_len(ptr, len)
+}
+
+/// Serialize a runtime entry point's [`GuestEffects`] and emit them as the packed
+/// `(ptr, len)` the export returns. The counterpart of [`emit`] for the *runtime*
+/// ABI (handlers / tick / trigger) rather than registration.
+#[must_use]
+pub fn emit_effects(effects: &GuestEffects) -> u64 {
+    emit_bytes(postcard::to_allocvec(effects).expect("GuestEffects always serializes"))
+}
+
+/// Reserve `len` writable bytes in linear memory and return their pointer. The
+/// host calls this through the `mod_alloc` export to **push** a context blob in
+/// before calling an entry point. Wasm-only: the returned value is a valid
+/// linear-memory offset only inside a guest.
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn alloc(len: u32) -> u32 {
+    let buf = alloc::vec![0u8; len as usize].into_boxed_slice();
+    let ptr = buf.as_ptr() as usize as u32;
+    // Leak it: the host writes here, then the entry point reads it via `input`.
+    // A fresh store per invocation reclaims the whole allocation afterwards.
+    core::mem::forget(buf);
+    ptr
+}
+
+/// View the `len` bytes the host wrote at `ptr` (a region we handed it from
+/// [`alloc`]). Wasm-only.
+#[cfg(target_arch = "wasm32")]
+#[allow(unsafe_code)]
+#[must_use]
+pub fn input(ptr: u32, len: u32) -> &'static [u8] {
+    // SAFETY: the host wrote exactly `len` bytes at `ptr`, which `alloc` reserved
+    // and leaked; the region outlives this (single) invocation.
+    unsafe { core::slice::from_raw_parts(ptr as *const u8, len as usize) }
+}
+
+/// Decode a postcard context the host pushed at `(ptr, len)`. Malformed bytes
+/// yield `None` so an entry point can degrade to "no effects" rather than trap —
+/// total over bad input. Wasm-only.
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn decode_input<T: serde::de::DeserializeOwned>(ptr: u32, len: u32) -> Option<T> {
+    postcard::from_bytes(input(ptr, len)).ok()
 }
 

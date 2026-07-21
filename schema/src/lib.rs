@@ -22,6 +22,7 @@ pub mod manifest;
 pub mod math;
 pub mod missiles;
 pub mod remap;
+pub mod runtime;
 pub mod talents;
 pub mod triggers;
 pub mod units;

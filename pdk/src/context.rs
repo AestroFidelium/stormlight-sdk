@@ -9,6 +9,7 @@
 //! [`Names`] tables (the interners' contents) alongside the accumulated
 //! descriptors, keeping `descriptor[i].id == Handle(i)` by construction.
 
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
@@ -21,8 +22,18 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
+use stormlight_mod_abi::runtime::{GuestEffects, TickContext, TriggerContext};
 use stormlight_mod_abi::talents::TalentDescriptor;
 use stormlight_mod_abi::units::UnitDescriptor;
+
+use crate::runtime::HandlerCall;
+
+/// A `Custom`-handler closure: a pure function of its invoking [`HandlerCall`].
+type HandlerFn = Box<dyn Fn(&HandlerCall) -> GuestEffects>;
+/// The per-tick closure: a pure function of the [`TickContext`].
+type TickFn = Box<dyn Fn(&TickContext) -> GuestEffects>;
+/// A trigger closure: a pure function of the [`TriggerContext`].
+type TriggerFn = Box<dyn Fn(&TriggerContext) -> GuestEffects>;
 
 /// Accumulates a mod's registrations and finalizes them into a [`Registration`].
 #[derive(Default)]
@@ -49,6 +60,14 @@ pub struct ModContext {
     tag_classes: Vec<(TagId, TagClassId)>,
     curves: Vec<Curve>,
     units: Vec<UnitDescriptor>,
+
+    // --- Runtime dispatch tables (guest code, not serialized) ---
+    // These hold the author's entry-point closures. They are *not* part of the
+    // emitted [`Registration`]; the guest reconstructs them by re-running the
+    // builder on every invocation, keeping a guest stateless across host calls.
+    handler_fns: Vec<Option<HandlerFn>>,
+    tick_fn: Option<TickFn>,
+    trigger_fns: Vec<(EventId, TriggerFn)>,
 }
 
 /// Collect an interner's contents as a dense `raw index -> name` table.
@@ -111,6 +130,70 @@ impl ModContext {
     /// Intern a `Custom` handler name.
     pub fn handler(&mut self, name: &str) -> HandlerId {
         self.handlers.intern(name)
+    }
+
+    // --- Runtime entry points: register the *code* a guest runs after load. ---
+
+    /// Register a `Custom`-impact handler under `name`, returning the [`HandlerId`]
+    /// to embed in `Impact::Custom { handler, .. }`. Interning the name and storing
+    /// the closure in one call keeps the id and the code in lock-step. `f` must be
+    /// a pure function of its [`HandlerCall`] (the stateless-guest contract).
+    pub fn on_handler<F>(&mut self, name: &str, f: F) -> HandlerId
+    where
+        F: Fn(&HandlerCall) -> GuestEffects + 'static,
+    {
+        let id = self.handlers.intern(name);
+        let idx = id.raw() as usize;
+        if idx >= self.handler_fns.len() {
+            self.handler_fns.resize_with(idx + 1, || None);
+        }
+        self.handler_fns[idx] = Some(Box::new(f));
+        id
+    }
+
+    /// Register the per-tick entry point (the `mod_tick` export). At most one; a
+    /// second call replaces the first.
+    pub fn on_tick<F>(&mut self, f: F)
+    where
+        F: Fn(&TickContext) -> GuestEffects + 'static,
+    {
+        self.tick_fn = Some(Box::new(f));
+    }
+
+    /// Register a trigger handler for a mod-defined `event` (the `mod_trigger`
+    /// export). The event is the same [`EventId`] an `Impact::Emit` raises.
+    pub fn on_trigger<F>(&mut self, event: EventId, f: F)
+    where
+        F: Fn(&TriggerContext) -> GuestEffects + 'static,
+    {
+        self.trigger_fns.push((event, Box::new(f)));
+    }
+
+    /// Dispatch a `Custom` handler by its (local) [`HandlerId`]. An id with no
+    /// registered closure yields [`GuestEffects::none`] — total, never a panic, so
+    /// a stale descriptor cannot crash the guest.
+    #[must_use]
+    pub fn run_handler(&self, id: HandlerId, call: &HandlerCall) -> GuestEffects {
+        self.handler_fns
+            .get(id.raw() as usize)
+            .and_then(Option::as_ref)
+            .map_or_else(GuestEffects::none, |f| f(call))
+    }
+
+    /// Dispatch the per-tick entry. No `on_tick` registered ⇒ no effects.
+    #[must_use]
+    pub fn run_tick(&self, ctx: &TickContext) -> GuestEffects {
+        self.tick_fn.as_ref().map_or_else(GuestEffects::none, |f| f(ctx))
+    }
+
+    /// Dispatch the trigger entry for `ctx.event`. No matching trigger ⇒ no
+    /// effects. First match wins (registration order).
+    #[must_use]
+    pub fn run_trigger(&self, ctx: &TriggerContext) -> GuestEffects {
+        self.trigger_fns
+            .iter()
+            .find(|(event, _)| *event == ctx.event)
+            .map_or_else(GuestEffects::none, |(_, f)| f(ctx))
     }
 
     /// Register `tag` into capability `class`, interning both names. The pair is

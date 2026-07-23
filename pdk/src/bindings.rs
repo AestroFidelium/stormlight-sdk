@@ -14,6 +14,7 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::descriptors::Registration;
 use stormlight_mod_abi::runtime::GuestEffects;
+use stormlight_mod_abi::visuals::ClientRegistration;
 
 use crate::types::pack_ptr_len;
 
@@ -44,6 +45,21 @@ pub fn emit_bytes(bytes: Vec<u8>) -> u64 {
     // Hand ownership to the host; it reads `len` bytes at `ptr` then drops us.
     core::mem::forget(boxed);
     pack_ptr_len(ptr, len)
+}
+
+/// Serialize a [`ClientRegistration`] to the bytes the client host will decode —
+/// the cosmetic counterpart of [`to_bytes`]. Split out so the encoding is testable
+/// host-side without a raw pointer.
+#[must_use]
+pub fn to_bytes_client(reg: &ClientRegistration) -> Vec<u8> {
+    postcard::to_allocvec(reg).expect("a ClientRegistration always serializes")
+}
+
+/// Serialize `reg`, leak the buffer into linear memory, and return the packed
+/// `(ptr, len)` a cosmetic guest's `mod_register` hands back to the client host.
+#[must_use]
+pub fn emit_client(reg: &ClientRegistration) -> u64 {
+    emit_bytes(to_bytes_client(reg))
 }
 
 /// Serialize a runtime entry point's [`GuestEffects`] and emit them as the packed

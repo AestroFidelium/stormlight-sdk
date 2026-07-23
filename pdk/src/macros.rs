@@ -107,3 +107,52 @@ macro_rules! register_mod {
         }
     };
 }
+
+/// Generate a **cosmetic** (`*_client`) mod's registration builder and its one
+/// wasm entry point (`mod_register`).
+///
+/// The counterpart of [`register_mod!`] for a `kind = "client"` package: it takes
+/// a builder `fn(&mut ClientContext)`, runs it to accumulate the mod's declared
+/// visuals, and emits `mod_register` returning the packed `(ptr, len)` of the
+/// postcard-encoded [`ClientRegistration`](stormlight_mod_abi::visuals::ClientRegistration)
+/// the client host decodes. A cosmetic guest has no runtime entry points — it is
+/// pure, one-shot registration — so no `mod_alloc`/`mod_handle`/… are emitted.
+///
+/// ```ignore
+/// use stormlight_mod_sdk::client::ClientContext;
+/// use stormlight_mod_sdk::abi::visuals::{EffectRole, PrimitiveShape, VisualModel};
+/// register_client_mod!(|ctx: &mut ClientContext| {
+///     ctx.unit_visual("skirmisher", VisualModel::Model { asset: "mod://…".into(), scale: 1.0 });
+///     ctx.effect_visual("bolt", EffectRole::Projectile,
+///         VisualModel::Primitive { shape: PrimitiveShape::Sphere, color: [1.0, 0.9, 0.3, 1.0] });
+/// });
+/// ```
+#[macro_export]
+macro_rules! register_client_mod {
+    ($build:expr) => {
+        /// Run the author's builder over a fresh
+        /// [`ClientContext`](stormlight_mod_sdk::client::ClientContext), returning
+        /// it intact for finalization.
+        pub fn __stormlight_client_build() -> $crate::client::ClientContext {
+            let mut ctx = $crate::client::ClientContext::new();
+            let build: fn(&mut $crate::client::ClientContext) = $build;
+            build(&mut ctx);
+            ctx
+        }
+
+        /// Build this cosmetic mod's registration for the client host to decode.
+        pub fn __stormlight_client_registration()
+        -> $crate::abi::visuals::ClientRegistration {
+            __stormlight_client_build().finish()
+        }
+
+        /// The wasm entry point the client host calls once at load. Returns the
+        /// packed `(ptr, len)` of the postcard-encoded [`ClientRegistration`].
+        #[cfg(target_arch = "wasm32")]
+        #[allow(unsafe_code)]
+        #[unsafe(no_mangle)]
+        pub extern "C" fn mod_register() -> u64 {
+            $crate::bindings::emit_client(&__stormlight_client_registration())
+        }
+    };
+}

@@ -70,8 +70,9 @@ pub struct ModContext {
     trigger_fns: Vec<(EventId, TriggerFn)>,
 }
 
-/// Collect an interner's contents as a dense `raw index -> name` table.
-fn table<H: Handle>(interner: &Interner<H>) -> Vec<String> {
+/// Collect an interner's contents as a dense `raw index -> name` table. Shared
+/// with the client (cosmetic) context ([`crate::client`]).
+pub(crate) fn table<H: Handle>(interner: &Interner<H>) -> Vec<String> {
     (0..interner.len() as u32)
         .map(|raw| {
             interner

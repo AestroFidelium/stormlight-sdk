@@ -5,4 +5,5 @@
 //! Keep invariants directional/structural, never magnitude-only.
 
 mod bridge;
+mod client_context;
 mod context;

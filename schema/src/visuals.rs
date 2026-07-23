@@ -20,7 +20,7 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 use crate::descriptors::Names;
-use crate::ids::UnitId;
+use crate::ids::{AbilityId, UnitId};
 use crate::manifest::Version;
 
 /// A procedural primitive the client can draw with no asset. The graceful
@@ -57,14 +57,43 @@ pub struct VisualDescriptor {
     pub model: VisualModel,
 }
 
+/// Which piece of ability feedback an [`EffectVisualDescriptor`] dresses. Generic:
+/// the engine knows "a flying missile", "a one-shot burst where a shot lands", or
+/// "an in-progress cast/channel indicator" — never what ability or hero it is for.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
+pub enum EffectRole {
+    /// The body drawn for a locally-simulated projectile the ability launches.
+    Projectile,
+    /// The transient burst played where an ability's shot authoritatively lands.
+    Impact,
+    /// The indicator shown on the caster while a timed cast / channel is running.
+    CastIndicator,
+}
+
+/// The cosmetic descriptor a client mod attaches to an *ability's feedback*: how
+/// the client draws that ability's projectile, impact, or cast indicator. The
+/// parallel to [`VisualDescriptor`] (which dresses a *unit*), keyed by the
+/// ability's interned handle (local at authoring, global after adoption) plus the
+/// [`EffectRole`] it fills, so one ability can declare a visual per role.
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct EffectVisualDescriptor {
+    /// The ability whose feedback this visual is for.
+    pub ability: AbilityId,
+    /// Which piece of that ability's feedback it dresses.
+    pub role: EffectRole,
+    /// How to draw it.
+    pub model: VisualModel,
+}
+
 /// Everything a *client* (cosmetic) mod registers — the client-side parallel to
 /// [`crate::descriptors::Registration`]. Emitted once at `mod_register` on the
 /// client's wasm runtime and decoded by the client host.
 ///
-/// `visuals` are indexed by the mod's *local* handle raw index; the [`Names`]
-/// `units` table gives each referenced unit handle a stable name the host maps to
-/// the gameplay mod's global unit. Embeds the [`crate::manifest::ABI_VERSION`] it
-/// was built against so the host can reject a major mismatch at decode.
+/// `visuals` are indexed by the mod's *local* unit handle; `effects` key on a
+/// local ability handle plus a role. The [`Names`] `units`/`abilities` tables
+/// give each referenced handle a stable name the host maps to the gameplay mod's
+/// global id. Embeds the [`crate::manifest::ABI_VERSION`] it was built against so
+/// the host can reject a major mismatch at decode.
 #[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
 pub struct ClientRegistration {
     /// The ABI the mod was built against; the host rejects a major mismatch.
@@ -73,4 +102,7 @@ pub struct ClientRegistration {
     pub names: Names,
     /// The visuals this cosmetic mod declares, one per unit it dresses.
     pub visuals: Vec<VisualDescriptor>,
+    /// The ability-feedback visuals this cosmetic mod declares (projectile /
+    /// impact / cast indicator), keyed by ability + role.
+    pub effects: Vec<EffectVisualDescriptor>,
 }

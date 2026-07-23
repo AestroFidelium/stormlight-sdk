@@ -21,18 +21,22 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::visuals::{
-    ClientRegistration, PrimitiveShape, VisualDescriptor, VisualModel,
+    ClientRegistration, EffectRole, EffectVisualDescriptor, PrimitiveShape, VisualDescriptor,
+    VisualModel,
 };
 
 extern crate alloc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-/// An identity map that counts how many unit handles the walk touched, so a test
-/// knows whether a bundle carried any. Every family returns its id unchanged.
+/// An identity map that counts how many unit / ability handles the walk touched,
+/// so a test knows whether a bundle carried any. Every family returns its id
+/// unchanged. Units are keyed by [`VisualDescriptor`]; abilities by
+/// [`EffectVisualDescriptor`].
 #[derive(Default)]
 struct Counting {
     units: Cell<u32>,
+    abilities: Cell<u32>,
 }
 
 impl IdMap for Counting {
@@ -47,7 +51,10 @@ impl IdMap for Counting {
     fn buff(&self, id: BuffId) -> Result<BuffId, ()> { Ok(id) }
     fn curve(&self, id: CurveId) -> Result<CurveId, ()> { Ok(id) }
     fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> { Ok(id) }
-    fn ability(&self, id: AbilityId) -> Result<AbilityId, ()> { Ok(id) }
+    fn ability(&self, id: AbilityId) -> Result<AbilityId, ()> {
+        self.abilities.set(self.abilities.get() + 1);
+        Ok(id)
+    }
     fn talent(&self, id: TalentId) -> Result<TalentId, ()> { Ok(id) }
     fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { Ok(id) }
     fn unit(&self, id: UnitId) -> Result<UnitId, ()> {
@@ -76,6 +83,29 @@ impl IdMap for FailUnit {
     fn talent(&self, id: TalentId) -> Result<TalentId, ()> { Ok(id) }
     fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { Ok(id) }
     fn unit(&self, _: UnitId) -> Result<UnitId, ()> { Err(()) }
+}
+
+/// A map that fails on any ability handle — models a cosmetic mod attaching an
+/// effect visual to an ability the gameplay side never defined. The walk must
+/// surface the error, never panic.
+struct FailAbility;
+
+impl IdMap for FailAbility {
+    type Error = ();
+    fn stat(&self, id: StatId) -> Result<StatId, ()> { Ok(id) }
+    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> { Ok(id) }
+    fn stack(&self, id: StackId) -> Result<StackId, ()> { Ok(id) }
+    fn tag(&self, id: TagId) -> Result<TagId, ()> { Ok(id) }
+    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> { Ok(id) }
+    fn param(&self, id: ParamId) -> Result<ParamId, ()> { Ok(id) }
+    fn event(&self, id: EventId) -> Result<EventId, ()> { Ok(id) }
+    fn buff(&self, id: BuffId) -> Result<BuffId, ()> { Ok(id) }
+    fn curve(&self, id: CurveId) -> Result<CurveId, ()> { Ok(id) }
+    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> { Ok(id) }
+    fn ability(&self, _: AbilityId) -> Result<AbilityId, ()> { Err(()) }
+    fn talent(&self, id: TalentId) -> Result<TalentId, ()> { Ok(id) }
+    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { Ok(id) }
+    fn unit(&self, id: UnitId) -> Result<UnitId, ()> { Ok(id) }
 }
 
 const IDENT: &[u8] = b"abcdefghijklmnopqrstuvwxyz_0123456789/";
@@ -128,9 +158,24 @@ impl Gen<'_> {
     fn visual(&mut self) -> VisualDescriptor {
         VisualDescriptor { unit: UnitId(u32::from(self.next())), model: self.model() }
     }
+    fn role(&mut self) -> EffectRole {
+        match self.next() % 3 {
+            0 => EffectRole::Projectile,
+            1 => EffectRole::Impact,
+            _ => EffectRole::CastIndicator,
+        }
+    }
+    fn effect(&mut self) -> EffectVisualDescriptor {
+        EffectVisualDescriptor {
+            ability: AbilityId(u32::from(self.next())),
+            role: self.role(),
+            model: self.model(),
+        }
+    }
     fn names(&mut self) -> Names {
-        // Only `units` is meaningful to a cosmetic bundle; the rest stay empty.
-        Names { units: self.strings(), ..Names::default() }
+        // A cosmetic bundle names the units it dresses and the abilities its
+        // effect visuals key on; the rest stay empty.
+        Names { units: self.strings(), abilities: self.strings(), ..Names::default() }
     }
     fn client_registration(&mut self) -> ClientRegistration {
         ClientRegistration {
@@ -141,6 +186,7 @@ impl Gen<'_> {
             ),
             names: self.names(),
             visuals: (0..self.count(4)).map(|_| self.visual()).collect(),
+            effects: (0..self.count(4)).map(|_| self.effect()).collect(),
         }
     }
 }
@@ -192,6 +238,25 @@ fn a_failing_unit_map_errors_without_panicking() {
             result.is_err(),
             had_units,
             "error propagation disagrees with visual presence",
+        );
+    });
+}
+
+#[test]
+fn a_failing_ability_map_errors_exactly_when_effect_visuals_are_present() {
+    check!().with_type::<Scenario>().for_each(|s| {
+        let counter = Counting::default();
+        let mut probe = build(s);
+        probe.remap_ids(&counter).expect("total map succeeds");
+        // Effect visuals are the only place a cosmetic bundle names an ability.
+        let had_effects = counter.abilities.get() > 0;
+
+        let mut reg = build(s);
+        let result = reg.remap_ids(&FailAbility);
+        assert_eq!(
+            result.is_err(),
+            had_effects,
+            "ability-error propagation disagrees with effect-visual presence",
         );
     });
 }

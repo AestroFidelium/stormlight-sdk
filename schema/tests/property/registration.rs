@@ -21,9 +21,11 @@ use stormlight_mod_abi::common::NumOp;
 use stormlight_mod_abi::conditions::Condition;
 use stormlight_mod_abi::descriptors::{Curve, Names, Registration};
 use stormlight_mod_abi::ids::{
-    AbilityId, BuffId, ParamId, ResourceId, Slot, StatId, TagClassId, TagId, TalentId, UnitId,
+    AbilityId, BuffId, NavMeshId, ParamId, ResourceId, Slot, StatId, TagClassId, TagId, TalentId,
+    UnitId,
 };
 use stormlight_mod_abi::manifest::Version;
+use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::talents::{AbilitySelector, ParamPatch, TalentDescriptor};
 use stormlight_mod_abi::units::{ResourcePool, UnitDescriptor};
@@ -155,6 +157,18 @@ impl Gen<'_> {
         let points = (0..self.count(5)).map(|_| [self.f32(), self.f32()]).collect();
         Curve { points }
     }
+    /// A small walkable region with one hole — geometry is leaf data, so the
+    /// generator only has to exercise the shape, not any handle structure.
+    fn navmesh(&mut self) -> NavMeshDescriptor {
+        NavMeshDescriptor {
+            id: NavMeshId(u32::from(self.next())),
+            outline: (0..self.count(5) + 3).map(|_| [self.f32(), self.f32()]).collect(),
+            obstacles: (0..self.count(2))
+                .map(|_| (0..self.count(3) + 3).map(|_| [self.f32(), self.f32()]).collect())
+                .collect(),
+            agent_radius: self.f32().abs(),
+        }
+    }
     fn unit(&mut self) -> UnitDescriptor {
         let stats = (0..self.count(3)).map(|_| (StatId(self.next()), self.value())).collect();
         let abilities = (0..self.count(3))
@@ -195,6 +209,7 @@ impl Gen<'_> {
             talents: self.strings(),
             handlers: self.strings(),
             units: self.strings(),
+            navmeshes: self.strings(),
         }
     }
     fn registration(&mut self) -> Registration {
@@ -213,6 +228,7 @@ impl Gen<'_> {
                 .collect(),
             curves: (0..self.count(3)).map(|_| self.curve()).collect(),
             units: (0..self.count(3)).map(|_| self.unit()).collect(),
+            navmeshes: (0..self.count(2)).map(|_| self.navmesh()).collect(),
         }
     }
 }

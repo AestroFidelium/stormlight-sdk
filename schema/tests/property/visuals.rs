@@ -16,7 +16,7 @@ use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::descriptors::Names;
 use stormlight_mod_abi::ids::{
     AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, ParamId, ResourceId, StackId,
-    StatId, TagClassId, TagId, TalentId, UnitId,
+    StatId, TagClassId, TagId, NavMeshId, TalentId, UnitId,
 };
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
@@ -61,6 +61,7 @@ impl IdMap for Counting {
         self.units.set(self.units.get() + 1);
         Ok(id)
     }
+    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> { Ok(id) }
 }
 
 /// A map that fails on any unit handle — models a cosmetic mod naming a unit the
@@ -83,6 +84,7 @@ impl IdMap for FailUnit {
     fn talent(&self, id: TalentId) -> Result<TalentId, ()> { Ok(id) }
     fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { Ok(id) }
     fn unit(&self, _: UnitId) -> Result<UnitId, ()> { Err(()) }
+    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> { Ok(id) }
 }
 
 /// A map that fails on any ability handle — models a cosmetic mod attaching an
@@ -106,6 +108,7 @@ impl IdMap for FailAbility {
     fn talent(&self, id: TalentId) -> Result<TalentId, ()> { Ok(id) }
     fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { Ok(id) }
     fn unit(&self, id: UnitId) -> Result<UnitId, ()> { Ok(id) }
+    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> { Ok(id) }
 }
 
 const IDENT: &[u8] = b"abcdefghijklmnopqrstuvwxyz_0123456789/";

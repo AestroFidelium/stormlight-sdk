@@ -82,6 +82,8 @@ id_handles! {
     HandlerId(u32),
     /// A spawnable unit definition (a hero, creep, structure — mod-defined).
     UnitId(u32),
+    /// A navigation mesh — one walkable region of a map (mod-supplied geometry).
+    NavMeshId(u32),
 }
 
 /// A generic ability slot index. Not name-interned — slots are a small fixed

@@ -17,13 +17,14 @@ use stormlight_mod_abi::abilities::AbilityDescriptor;
 use stormlight_mod_abi::behaviors::BuffSpec;
 use stormlight_mod_abi::descriptors::{Curve, Names, Registration};
 use stormlight_mod_abi::ids::{
-    AbilityId, BuffId, CurveId, DamageTypeId, DimId, EventId, Handle, HandlerId, ParamId,
-    ResourceId, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
+    AbilityId, BuffId, CurveId, DamageTypeId, DimId, EventId, Handle, HandlerId, NavMeshId,
+    ParamId, ResourceId, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
 use stormlight_mod_abi::runtime::{GuestEffects, TickContext, TriggerContext};
 use stormlight_mod_abi::talents::TalentDescriptor;
+use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::units::UnitDescriptor;
 
 use crate::runtime::HandlerCall;
@@ -53,6 +54,7 @@ pub struct ModContext {
     talent_names: Interner<TalentId>,
     handlers: Interner<HandlerId>,
     unit_names: Interner<UnitId>,
+    navmesh_names: Interner<NavMeshId>,
 
     abilities: Vec<AbilityDescriptor>,
     talents: Vec<TalentDescriptor>,
@@ -60,6 +62,7 @@ pub struct ModContext {
     tag_classes: Vec<(TagId, TagClassId)>,
     curves: Vec<Curve>,
     units: Vec<UnitDescriptor>,
+    navmeshes: Vec<NavMeshDescriptor>,
 
     // --- Runtime dispatch tables (guest code, not serialized) ---
     // These hold the author's entry-point closures. They are *not* part of the
@@ -249,6 +252,17 @@ impl ModContext {
         id
     }
 
+    /// Define a navigation mesh under `name`; its `id` is set to the minted
+    /// handle. Map geometry is content like anything else: the engine bakes
+    /// whatever walkable region a mod declares here and knows nothing about it.
+    pub fn navmesh(&mut self, name: &str, mut desc: NavMeshDescriptor) -> NavMeshId {
+        let id = self.navmesh_names.intern(name);
+        debug_assert_eq!(id.raw() as usize, self.navmeshes.len(), "navmesh name reused");
+        desc.id = id;
+        self.navmeshes.push(desc);
+        id
+    }
+
     /// The ABI version this context targets (always the SDK's [`ABI_VERSION`]).
     #[must_use]
     pub fn abi(&self) -> Version {
@@ -277,6 +291,7 @@ impl ModContext {
                 talents: table(&self.talent_names),
                 handlers: table(&self.handlers),
                 units: table(&self.unit_names),
+                navmeshes: table(&self.navmesh_names),
             },
             abilities: self.abilities,
             talents: self.talents,
@@ -284,6 +299,7 @@ impl ModContext {
             tag_classes: self.tag_classes,
             curves: self.curves,
             units: self.units,
+            navmeshes: self.navmeshes,
         }
     }
 }

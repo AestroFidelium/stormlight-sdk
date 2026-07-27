@@ -21,6 +21,7 @@ pub mod interner;
 pub mod manifest;
 pub mod math;
 pub mod missiles;
+pub mod navmesh;
 pub mod remap;
 pub mod runtime;
 pub mod talents;

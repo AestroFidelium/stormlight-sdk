@@ -23,7 +23,7 @@ use stormlight_mod_abi::conditions::{CmpOp, Condition};
 use stormlight_mod_abi::descriptors::{Curve, Names, Registration};
 use stormlight_mod_abi::ids::{
     AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, ParamId, ResourceId, Slot,
-    StackId, StatId, TagClassId, TagId, TalentId, UnitId,
+    StackId, StatId, TagClassId, TagId, NavMeshId, TalentId, UnitId,
 };
 use stormlight_mod_abi::impacts::{
     AbilityTarget, BuffSelector, CostMode, DamageFlags, HealFlags, Impact, LoopKind, PendingFilter,
@@ -32,6 +32,7 @@ use stormlight_mod_abi::impacts::{
 use stormlight_mod_abi::manifest::ABI_VERSION;
 use stormlight_mod_abi::math::{BinOp, Value, Var, Who};
 use stormlight_mod_abi::missiles::{BodyDescriptor, BodyFlags, BodyKind, CollisionSpec};
+use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::talents::{
     AbilityHook, AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor,
@@ -69,6 +70,7 @@ impl IdMap for Counting {
     fn talent(&self, id: TalentId) -> Result<TalentId, ()> { self.bump(id) }
     fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { self.bump(id) }
     fn unit(&self, id: UnitId) -> Result<UnitId, ()> { self.bump(id) }
+    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> { self.bump(id) }
 }
 
 /// A map that fails on the very first id it is asked to translate — models a
@@ -91,6 +93,7 @@ impl IdMap for FailAll {
     fn talent(&self, _: TalentId) -> Result<TalentId, ()> { Err(()) }
     fn handler(&self, _: HandlerId) -> Result<HandlerId, ()> { Err(()) }
     fn unit(&self, _: UnitId) -> Result<UnitId, ()> { Err(()) }
+    fn navmesh(&self, _: NavMeshId) -> Result<NavMeshId, ()> { Err(()) }
 }
 
 /// Interprets a flat seed stream into a bounded `Registration` covering every
@@ -517,6 +520,16 @@ impl Gen<'_> {
             drop_on_death: self.next().is_multiple_of(2),
         }
     }
+    fn navmesh(&mut self) -> NavMeshDescriptor {
+        NavMeshDescriptor {
+            id: NavMeshId(u32::from(self.next())),
+            outline: (0..self.next() % 4 + 3).map(|_| [self.f32(), self.f32()]).collect(),
+            obstacles: (0..self.next() % 2)
+                .map(|_| (0..self.next() % 3 + 3).map(|_| [self.f32(), self.f32()]).collect())
+                .collect(),
+            agent_radius: self.f32().abs(),
+        }
+    }
     fn unit(&mut self) -> UnitDescriptor {
         UnitDescriptor {
             id: UnitId(u32::from(self.next())),
@@ -548,6 +561,7 @@ impl Gen<'_> {
                 .map(|_| Curve { points: (0..self.next() % 3).map(|_| [self.f32(), self.f32()]).collect() })
                 .collect(),
             units: (0..self.next() % 3).map(|_| self.unit()).collect(),
+            navmeshes: (0..self.next() % 2).map(|_| self.navmesh()).collect(),
         }
     }
 }

@@ -9,6 +9,7 @@ mod interner;
 mod manifest;
 mod math;
 mod modifiers;
+mod navmesh;
 mod registration;
 mod remap;
 mod runtime;

@@ -26,6 +26,7 @@ use crate::abilities::AbilityDescriptor;
 use crate::behaviors::BuffSpec;
 use crate::ids::{TagClassId, TagId};
 use crate::manifest::Version;
+use crate::navmesh::NavMeshDescriptor;
 use crate::talents::TalentDescriptor;
 use crate::units::UnitDescriptor;
 
@@ -52,6 +53,7 @@ pub struct Names {
     pub talents: Vec<String>,
     pub handlers: Vec<String>,
     pub units: Vec<String>,
+    pub navmeshes: Vec<String>,
 }
 
 /// A piecewise lookup curve referenced by `Value::Curve` (e.g. a level-scaling
@@ -87,4 +89,6 @@ pub struct Registration {
     pub curves: Vec<Curve>,
     /// Spawnable unit definitions, indexed by local `UnitId`.
     pub units: Vec<UnitDescriptor>,
+    /// Navigation meshes (map geometry), indexed by local `NavMeshId`.
+    pub navmeshes: Vec<NavMeshDescriptor>,
 }

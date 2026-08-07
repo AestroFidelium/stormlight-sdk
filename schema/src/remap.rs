@@ -176,7 +176,8 @@ impl RemapIds for TargetShape {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
             TargetShape::SelfOnly | TargetShape::AllAllies | TargetShape::AllEnemies => {}
-            TargetShape::Circle { radius } => radius.remap_ids(m)?,
+            // The origin is relational (or a literal point) — it carries no id.
+            TargetShape::Circle { at: _, radius } => radius.remap_ids(m)?,
             TargetShape::Cone { radius, angle } => {
                 radius.remap_ids(m)?;
                 angle.remap_ids(m)?;

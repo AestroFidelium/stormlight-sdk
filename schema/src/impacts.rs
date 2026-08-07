@@ -20,10 +20,17 @@ use crate::math::Value;
 use crate::missiles::BodyDescriptor;
 
 /// The geometric target set a `Retarget` resolves; params live inside the shape.
+///
+/// A geometric shape needs an **origin** as well as a size, and it is never a
+/// world axis: like every other position in the ISA it is named relationally, by
+/// the actor it hangs off (or an explicit point). `Circle { at: Caster }` is the
+/// classic "blast around me"; `at: ResolvedTarget` is "blast around what this
+/// landed on" — the form a spawned body's `on_spawn`/`on_expire` wants, since
+/// those resolve against the body's own point rather than its owner.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum TargetShape {
     SelfOnly,
-    Circle { radius: Value },
+    Circle { at: ImpactTarget, radius: Value },
     Cone { radius: Value, angle: Value },
     Chain { jumps: Value, range: Value },
     Line { length: Value, width: Value },

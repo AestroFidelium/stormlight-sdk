@@ -67,9 +67,15 @@ pub mod capability {
     pub const INVULNERABLE: TagClassId = TagClassId(4);
     pub const UNKILLABLE: TagClassId = TagClassId(5);
     pub const HIDDEN: TagClassId = TagClassId(6);
+    /// A unit a **player drives**. Unlike the classes above — which gate what may
+    /// happen *to* a unit mid-match — this one answers a setup question: which of
+    /// the mod's units does the match hand a connecting player? Declared the same
+    /// way (a mod registers one of its tags into the class and puts that tag on the
+    /// unit), so the engine selects a hero without ever naming one.
+    pub const PLAYABLE: TagClassId = TagClassId(7);
 
     /// All well-known classes, in id order.
-    pub const WELL_KNOWN: [TagClassId; 7] = [
+    pub const WELL_KNOWN: [TagClassId; 8] = [
         BLOCKS_MOVE,
         BLOCKS_CAST,
         BLOCKS_ATTACK,
@@ -77,6 +83,7 @@ pub mod capability {
         INVULNERABLE,
         UNKILLABLE,
         HIDDEN,
+        PLAYABLE,
     ];
 }
 

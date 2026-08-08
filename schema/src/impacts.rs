@@ -56,6 +56,12 @@ pub enum PoolRef {
     Stacks(StackId),
     Cooldown(Slot),
     Charges(Slot),
+    /// Accumulated experience (stormlight/server#62). Granting XP is an adjust of
+    /// a bounded numeric reserve, not a new structural verb, so it is a pool ref
+    /// rather than a leaf of its own (§3 governance). That is also what lets a mod
+    /// pay XP out from *any* effect — a reaction to an arbitrary event, an
+    /// ability, a buff expiring — without the engine enumerating the occasions.
+    Xp,
 }
 
 /// Selects buffs to remove — by exact id or by capability tag-class (a cleanse).

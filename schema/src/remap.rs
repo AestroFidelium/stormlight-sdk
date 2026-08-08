@@ -28,6 +28,7 @@ use crate::impacts::{
 };
 use crate::math::{Value, Var};
 use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
+use crate::progression::{LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpSource};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
 use crate::triggers::{EventFilter, EventKind, Reaction};
 use crate::units::{ResourcePool, UnitDescriptor};
@@ -214,8 +215,9 @@ impl RemapIds for LoopKind {
 impl RemapIds for PoolRef {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
-            // `Shield` has no id; `Cooldown`/`Charges` key on a non-interned `Slot`.
-            PoolRef::Shield | PoolRef::Cooldown(_) | PoolRef::Charges(_) => {}
+            // `Shield`/`Xp` have no id; `Cooldown`/`Charges` key on a
+            // non-interned `Slot`.
+            PoolRef::Shield | PoolRef::Xp | PoolRef::Cooldown(_) | PoolRef::Charges(_) => {}
             PoolRef::Resource(id) => *id = m.resource(*id)?,
             PoolRef::Stacks(id) => *id = m.stack(*id)?,
         }
@@ -536,6 +538,48 @@ impl RemapIds for TalentDescriptor {
     }
 }
 
+impl RemapIds for LevelGrants {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // `unlock_tier` is a tier index within the unit's own talent tree, not an
+        // interned handle — rewriting it would move a talent to another tier.
+        remap_tags(&mut self.tags, m)?;
+        for (_slot, ability) in self.abilities.iter_mut() {
+            *ability = m.ability(*ability)?;
+        }
+        Ok(())
+    }
+}
+
+impl RemapIds for XpBounty {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        self.amount.remap_ids(m)
+    }
+}
+
+impl RemapIds for XpSource {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // The trigger carries a cadence, never a handle.
+        self.amount.remap_ids(m)
+    }
+}
+
+impl RemapIds for ProgressionSpec {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // A threshold table is plain numbers; a threshold *curve* is a handle into
+        // the mod's own curve space and must travel with it.
+        match &mut self.thresholds {
+            XpCurve::Table(_) => {}
+            XpCurve::Curve(id) => *id = m.curve(*id)?,
+        }
+        for (_level, grants) in self.grants.iter_mut() {
+            grants.remap_ids(m)?;
+        }
+        self.sources.remap_ids(m)?;
+        self.bounty.remap_ids(m)?;
+        Ok(())
+    }
+}
+
 impl RemapIds for ResourcePool {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         self.id = m.resource(self.id)?;
@@ -565,6 +609,7 @@ impl RemapIds for UnitDescriptor {
         }
         // `respawn` is deliberately not walked: a delay and three policy flags
         // hold no interned handle, so there is nothing here to rewrite.
+        self.progression.remap_ids(m)?;
         Ok(())
     }
 }

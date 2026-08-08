@@ -12,6 +12,7 @@ mod math;
 mod modifiers;
 mod navmesh;
 mod placement;
+mod progression;
 mod registration;
 mod remap;
 mod respawn;

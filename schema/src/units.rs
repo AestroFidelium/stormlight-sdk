@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ids::{AbilityId, ResourceId, Slot, StatId, TagClassId, TagId, TalentId, UnitId};
 use crate::math::Value;
+use crate::progression::ProgressionSpec;
 use crate::respawn::RespawnSpec;
 
 /// One resource pool a unit carries — a bounded numeric reserve (energy,
@@ -57,6 +58,11 @@ pub struct UnitDescriptor {
     /// down once killed — the right answer for a one-shot objective, and the
     /// wrong one for anything a player drives. See [`RespawnSpec`].
     pub respawn: Option<RespawnSpec>,
+    /// The unit's place in the XP economy: how it levels, how it earns, and what
+    /// killing it is worth. `None` is a unit that never levels and yields nothing
+    /// — the honest default for anything that is not a participant. See
+    /// [`ProgressionSpec`].
+    pub progression: Option<ProgressionSpec>,
 }
 
 /// Well-known capability classes the engine's generic systems consult. These ids

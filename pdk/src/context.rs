@@ -22,6 +22,7 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
+use stormlight_mod_abi::params;
 use stormlight_mod_abi::runtime::{GuestEffects, TickContext, TriggerContext};
 use stormlight_mod_abi::talents::TalentDescriptor;
 use stormlight_mod_abi::navmesh::NavMeshDescriptor;
@@ -118,6 +119,28 @@ impl ModContext {
     /// Intern an ability/descriptor parameter name.
     pub fn param(&mut self, name: &str) -> ParamId {
         self.params.intern(name)
+    }
+
+    // The engine-reserved params (see [`stormlight_mod_abi::params`]) have their
+    // own accessors purely as a spelling guard: they are ordinary interned names,
+    // but a typo in one is invisible — the mod gets a private parameter the engine
+    // never reads, and the ability silently loses its cooldown or its range.
+
+    /// Intern the reserved `cooldown` param — seconds before the slot recovers.
+    pub fn cooldown_param(&mut self) -> ParamId {
+        self.param(params::COOLDOWN)
+    }
+    /// Intern the reserved `range` param — how far from the caster an aim may be.
+    pub fn range_param(&mut self) -> ParamId {
+        self.param(params::RANGE)
+    }
+    /// Intern the reserved `radius` param — the size of an aimed ground area.
+    pub fn radius_param(&mut self) -> ParamId {
+        self.param(params::RADIUS)
+    }
+    /// Intern the reserved `spread` param — the half-angle of an aimed cone.
+    pub fn spread_param(&mut self) -> ParamId {
+        self.param(params::SPREAD)
     }
     /// Intern a custom-event name.
     pub fn event(&mut self, name: &str) -> EventId {

@@ -42,6 +42,28 @@ pub struct TargetFilter {
     pub include_dead: bool,
 }
 
+impl TargetFilter {
+    /// A filter that narrows on allegiance alone: no tag requirements, and the
+    /// dead excluded. The common shape by far — most abilities care only about
+    /// which side a unit is on — so it exists to keep a descriptor from spelling
+    /// out three empty fields every time it declares one.
+    #[must_use]
+    pub fn of(affiliation: Affiliation) -> Self {
+        Self {
+            affiliation,
+            require_tags: Vec::new(),
+            exclude_tags: Vec::new(),
+            include_dead: false,
+        }
+    }
+
+    /// A filter that keeps any living unit, whatever its allegiance.
+    #[must_use]
+    pub fn any() -> Self {
+        Self::of(Affiliation::All)
+    }
+}
+
 /// Whom a leaf acts on, relative to the resolution context. Defaults to the
 /// current target after any `Retarget` expansion.
 #[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]

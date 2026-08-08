@@ -33,6 +33,7 @@ use stormlight_mod_abi::manifest::ABI_VERSION;
 use stormlight_mod_abi::math::{BinOp, Value, Var, Who};
 use stormlight_mod_abi::missiles::{BodyDescriptor, BodyFlags, BodyKind, CollisionSpec};
 use stormlight_mod_abi::navmesh::NavMeshDescriptor;
+use stormlight_mod_abi::placement::UnitPlacement;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::talents::{
     AbilityHook, AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor,
@@ -528,6 +529,15 @@ impl Gen<'_> {
                 .map(|_| (0..self.next() % 3 + 3).map(|_| [self.f32(), self.f32()]).collect())
                 .collect(),
             agent_radius: self.f32().abs(),
+            placements: (0..self.next() % 3)
+                .map(|_| UnitPlacement {
+                    unit: UnitId(u32::from(self.next())),
+                    team: u32::from(self.next() % 4),
+                    at: [self.f32(), self.f32()],
+                    facing: self.f32(),
+                    respawn: self.next().is_multiple_of(2).then(|| self.f32().abs()),
+                })
+                .collect(),
         }
     }
     fn unit(&mut self) -> UnitDescriptor {

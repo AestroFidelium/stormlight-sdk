@@ -23,6 +23,7 @@ pub mod math;
 pub mod missiles;
 pub mod navmesh;
 pub mod params;
+pub mod placement;
 pub mod remap;
 pub mod runtime;
 pub mod talents;

@@ -11,6 +11,7 @@ mod manifest;
 mod math;
 mod modifiers;
 mod navmesh;
+mod placement;
 mod registration;
 mod remap;
 mod runtime;

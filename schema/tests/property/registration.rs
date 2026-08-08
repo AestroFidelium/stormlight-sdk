@@ -201,6 +201,7 @@ impl Gen<'_> {
             abilities,
             resources,
             talents,
+        respawn: None,
         }
     }
     fn names(&mut self) -> Names {

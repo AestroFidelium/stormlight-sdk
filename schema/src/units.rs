@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ids::{AbilityId, ResourceId, Slot, StatId, TagClassId, TagId, TalentId, UnitId};
 use crate::math::Value;
+use crate::respawn::RespawnSpec;
 
 /// One resource pool a unit carries — a bounded numeric reserve (energy,
 /// mana-like, a fury meter, …) that ability costs draw from and that refills over
@@ -52,6 +53,10 @@ pub struct UnitDescriptor {
     /// Talents the unit spawns with already selected (selection stays generic —
     /// a talent targets abilities by slot/tag, never by identity).
     pub talents: Vec<TalentId>,
+    /// How the unit comes back from a death, if it does. `None` means it stays
+    /// down once killed — the right answer for a one-shot objective, and the
+    /// wrong one for anything a player drives. See [`RespawnSpec`].
+    pub respawn: Option<RespawnSpec>,
 }
 
 /// Well-known capability classes the engine's generic systems consult. These ids

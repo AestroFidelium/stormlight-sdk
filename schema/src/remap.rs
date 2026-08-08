@@ -563,6 +563,8 @@ impl RemapIds for UnitDescriptor {
         for talent in self.talents.iter_mut() {
             *talent = m.talent(*talent)?;
         }
+        // `respawn` is deliberately not walked: a delay and three policy flags
+        // hold no interned handle, so there is nothing here to rewrite.
         Ok(())
     }
 }

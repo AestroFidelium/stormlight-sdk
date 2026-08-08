@@ -557,6 +557,7 @@ impl Gen<'_> {
                 })
                 .collect(),
             talents: (0..self.next() % 3).map(|_| TalentId(u32::from(self.next()))).collect(),
+        respawn: None,
         }
     }
     fn registration(&mut self) -> Registration {

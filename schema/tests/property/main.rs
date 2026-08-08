@@ -14,6 +14,7 @@ mod navmesh;
 mod placement;
 mod registration;
 mod remap;
+mod respawn;
 mod runtime;
 mod tags;
 mod visuals;

@@ -25,6 +25,7 @@ pub mod navmesh;
 pub mod params;
 pub mod placement;
 pub mod remap;
+pub mod respawn;
 pub mod runtime;
 pub mod talents;
 pub mod triggers;

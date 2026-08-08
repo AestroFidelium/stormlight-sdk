@@ -24,6 +24,7 @@ pub mod missiles;
 pub mod navmesh;
 pub mod params;
 pub mod placement;
+pub mod progression;
 pub mod remap;
 pub mod respawn;
 pub mod runtime;

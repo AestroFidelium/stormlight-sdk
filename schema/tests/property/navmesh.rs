@@ -71,6 +71,7 @@ fn descriptor(s: &Scenario) -> NavMeshDescriptor {
         outline: s.outline.iter().map(|(x, z)| [f32::from(*x), f32::from(*z)]).collect(),
         obstacles: vec![s.hole.iter().map(|(x, z)| [f32::from(*x), f32::from(*z)]).collect()],
         agent_radius: f32::from(s.radius) / 64.0,
+        placements: Vec::new(),
     }
 }
 

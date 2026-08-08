@@ -26,6 +26,7 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::navmesh::NavMeshDescriptor;
+use stormlight_mod_abi::placement::UnitPlacement;
 use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::talents::{AbilitySelector, ParamPatch, TalentDescriptor};
 use stormlight_mod_abi::units::{ResourcePool, UnitDescriptor};
@@ -157,8 +158,9 @@ impl Gen<'_> {
         let points = (0..self.count(5)).map(|_| [self.f32(), self.f32()]).collect();
         Curve { points }
     }
-    /// A small walkable region with one hole — geometry is leaf data, so the
-    /// generator only has to exercise the shape, not any handle structure.
+    /// A small walkable region with one hole and whatever it stands up. Geometry
+    /// is leaf data, so the generator only has to exercise the shape; the
+    /// placements carry the one handle a map descriptor holds beyond its own id.
     fn navmesh(&mut self) -> NavMeshDescriptor {
         NavMeshDescriptor {
             id: NavMeshId(u32::from(self.next())),
@@ -167,6 +169,15 @@ impl Gen<'_> {
                 .map(|_| (0..self.count(3) + 3).map(|_| [self.f32(), self.f32()]).collect())
                 .collect(),
             agent_radius: self.f32().abs(),
+            placements: (0..self.count(3))
+                .map(|_| UnitPlacement {
+                    unit: UnitId(u32::from(self.next())),
+                    team: u32::from(self.next() % 4),
+                    at: [self.f32(), self.f32()],
+                    facing: self.f32(),
+                    respawn: self.next().is_multiple_of(2).then(|| self.f32().abs()),
+                })
+                .collect(),
         }
     }
     fn unit(&mut self) -> UnitDescriptor {
@@ -190,6 +201,7 @@ impl Gen<'_> {
             abilities,
             resources,
             talents,
+        respawn: None,
         }
     }
     fn names(&mut self) -> Names {

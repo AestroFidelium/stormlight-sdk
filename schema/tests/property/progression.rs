@@ -110,7 +110,6 @@ struct Scenario {
     table: Vec<u16>,
     by_table: bool,
     grant_level: u8,
-    unlock_tier: Option<u8>,
     tag: u16,
     slot: u8,
     ability: u32,
@@ -156,7 +155,6 @@ fn spec(s: &Scenario) -> ProgressionSpec {
         grants: vec![(
             s.grant_level,
             LevelGrants {
-                unlock_tier: s.unlock_tier,
                 tags: vec![TagId(s.tag)],
                 abilities: vec![(Slot(s.slot), AbilityId(s.ability))],
             },
@@ -191,6 +189,7 @@ fn unit(id: UnitId, progression: Option<ProgressionSpec>) -> UnitDescriptor {
         abilities: Vec::new(),
         resources: Vec::new(),
         talents: Vec::new(),
+        talent_tree: None,
         respawn: None,
         progression,
     }

@@ -18,4 +18,5 @@ mod remap;
 mod respawn;
 mod runtime;
 mod tags;
+mod talent_tree;
 mod visuals;

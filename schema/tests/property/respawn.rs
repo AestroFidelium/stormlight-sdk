@@ -116,6 +116,7 @@ fn unit(id: UnitId, respawn: Option<RespawnSpec>) -> UnitDescriptor {
         abilities: Vec::new(),
         resources: Vec::new(),
         talents: Vec::new(),
+        talent_tree: None,
         respawn,
         progression: None,
     }

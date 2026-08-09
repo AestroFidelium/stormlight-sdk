@@ -17,6 +17,7 @@ use crate::ids::{AbilityId, ResourceId, Slot, StatId, TagClassId, TagId, TalentI
 use crate::math::Value;
 use crate::progression::ProgressionSpec;
 use crate::respawn::RespawnSpec;
+use crate::talent_tree::TalentTree;
 
 /// One resource pool a unit carries — a bounded numeric reserve (energy,
 /// mana-like, a fury meter, …) that ability costs draw from and that refills over
@@ -54,6 +55,10 @@ pub struct UnitDescriptor {
     /// Talents the unit spawns with already selected (selection stays generic —
     /// a talent targets abilities by slot/tag, never by identity).
     pub talents: Vec<TalentId>,
+    /// The tiers a player may *choose* talents from as this unit levels, and
+    /// whether a choice can be taken back. `None` is a unit whose talents are
+    /// whatever it spawned with — nothing to pick. See [`TalentTree`].
+    pub talent_tree: Option<TalentTree>,
     /// How the unit comes back from a death, if it does. `None` means it stays
     /// down once killed — the right answer for a one-shot objective, and the
     /// wrong one for anything a player drives. See [`RespawnSpec`].

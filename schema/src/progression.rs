@@ -29,8 +29,15 @@
 //! second place for them to disagree.
 //!
 //! What is left is exactly what a `Value` cannot express: [`LevelGrants`], the
-//! structural things a level hands over — a talent tier becoming choosable, a tag,
-//! an ability appearing in a slot.
+//! structural things a level hands over — a tag, an ability appearing in a slot.
+//!
+//! # Talent tiers are not granted here either
+//!
+//! A tier becoming choosable is *also* a function of the level, so it is declared
+//! where the tier is — [`TalentTree`](crate::talent_tree::TalentTree), on the unit —
+//! and asked of the current level whenever it matters, rather than handed over once
+//! on the way up. A grant here could only be a latch, and a latch survives the
+//! rewind that took the level away again.
 
 use alloc::vec::Vec;
 
@@ -60,10 +67,6 @@ pub enum XpCurve {
 /// (see the module docs).
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub struct LevelGrants {
-    /// A talent tier that becomes choosable at this level. The engine records the
-    /// highest tier unlocked; what a tier *contains* is the talent selection
-    /// feature's business.
-    pub unlock_tier: Option<u8>,
     /// Tags the unit carries from this level on.
     pub tags: Vec<TagId>,
     /// Abilities that appear in a slot at this level. Bound like a talent's grant:

@@ -29,6 +29,7 @@ use crate::impacts::{
 use crate::math::{Value, Var};
 use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
 use crate::progression::{LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpSource};
+use crate::talent_tree::{TalentTier, TalentTree};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
 use crate::triggers::{EventFilter, EventKind, Reaction};
 use crate::units::{ResourcePool, UnitDescriptor};
@@ -524,6 +525,25 @@ impl RemapIds for GrantAbility {
     }
 }
 
+impl RemapIds for TalentTier {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // `level` is the level that opens the tier, not a handle; only the options
+        // it offers are ids into the mod's own talent space.
+        for option in self.options.iter_mut() {
+            *option = m.talent(*option)?;
+        }
+        Ok(())
+    }
+}
+
+impl RemapIds for TalentTree {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // `repick` is a policy flag, and a tier's *index* is its position in this
+        // vector — rewriting either would move a whole tier's worth of choices.
+        self.tiers.remap_ids(m)
+    }
+}
+
 impl RemapIds for TalentDescriptor {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         self.id = m.talent(self.id)?;
@@ -540,8 +560,6 @@ impl RemapIds for TalentDescriptor {
 
 impl RemapIds for LevelGrants {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
-        // `unlock_tier` is a tier index within the unit's own talent tree, not an
-        // interned handle — rewriting it would move a talent to another tier.
         remap_tags(&mut self.tags, m)?;
         for (_slot, ability) in self.abilities.iter_mut() {
             *ability = m.ability(*ability)?;
@@ -607,6 +625,7 @@ impl RemapIds for UnitDescriptor {
         for talent in self.talents.iter_mut() {
             *talent = m.talent(*talent)?;
         }
+        self.talent_tree.remap_ids(m)?;
         // `respawn` is deliberately not walked: a delay and three policy flags
         // hold no interned handle, so there is nothing here to rewrite.
         self.progression.remap_ids(m)?;

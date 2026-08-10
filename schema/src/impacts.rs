@@ -251,7 +251,10 @@ impl Impact {
     pub fn is_combinator(&self) -> bool {
         matches!(
             self,
-            Impact::Retarget { .. } | Impact::If { .. } | Impact::Loop { .. } | Impact::Delay { .. }
+            Impact::Retarget { .. }
+                | Impact::If { .. }
+                | Impact::Loop { .. }
+                | Impact::Delay { .. }
         )
     }
 }

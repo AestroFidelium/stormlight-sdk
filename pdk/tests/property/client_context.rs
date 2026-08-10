@@ -68,7 +68,8 @@ fn finish_makes_every_declared_visual_reachable_by_name() {
         }
         // Every effect's handle resolves to its declared ability name.
         for e in &reg.effects {
-            let name = reg.names.abilities.get(e.ability.0 as usize).expect("ability handle in table");
+            let name =
+                reg.names.abilities.get(e.ability.0 as usize).expect("ability handle in table");
             assert!(name.starts_with('a'), "unexpected ability name `{name}`");
         }
     });

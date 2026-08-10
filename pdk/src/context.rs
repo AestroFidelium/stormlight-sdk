@@ -22,10 +22,10 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
+use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::params;
 use stormlight_mod_abi::runtime::{GuestEffects, TickContext, TriggerContext};
 use stormlight_mod_abi::talents::TalentDescriptor;
-use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::units::UnitDescriptor;
 
 use crate::runtime::HandlerCall;
@@ -79,10 +79,7 @@ pub struct ModContext {
 pub(crate) fn table<H: Handle>(interner: &Interner<H>) -> Vec<String> {
     (0..interner.len() as u32)
         .map(|raw| {
-            interner
-                .resolve(H::from_raw(raw))
-                .expect("dense interner has no gaps")
-                .to_string()
+            interner.resolve(H::from_raw(raw)).expect("dense interner has no gaps").to_string()
         })
         .collect()
 }

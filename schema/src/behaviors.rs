@@ -70,8 +70,10 @@ pub fn aggregate_stat(base: f32, mods: &[ResolvedModifier]) -> f32 {
                 // priority and a larger value (a deterministic tie-break).
                 let take = match ovr {
                     None => true,
-                    Some(cur) => (m.priority, m.value.total_cmp(&cur.value))
-                        > (cur.priority, core::cmp::Ordering::Equal),
+                    Some(cur) => {
+                        (m.priority, m.value.total_cmp(&cur.value))
+                            > (cur.priority, core::cmp::Ordering::Equal)
+                    }
                 };
                 if take {
                     ovr = Some(*m);

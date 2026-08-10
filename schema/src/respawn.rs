@@ -65,10 +65,6 @@ impl RespawnSpec {
     /// carrying what it carried. The starting point a mod adjusts from.
     #[must_use]
     pub fn after(secs: f32) -> Self {
-        Self {
-            after: secs,
-            clear_cooldowns: false,
-            refill_resources: false,
-        }
+        Self { after: secs, clear_cooldowns: false, refill_resources: false }
     }
 }

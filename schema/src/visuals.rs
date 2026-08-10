@@ -40,8 +40,16 @@ pub enum PrimitiveShape {
 pub enum VisualModel {
     /// A procedural primitive tinted `color` (linear RGBA, `0.0..=1.0`). No asset.
     Primitive { shape: PrimitiveShape, color: [f32; 4] },
-    /// A 3D model/scene loaded from a `mod://` asset, uniformly scaled.
-    Model { asset: String, scale: f32 },
+    /// A 3D model/scene loaded from a `mod://` asset, uniformly scaled, and turned
+    /// about `+Y` by `yaw_offset` radians within the unit it dresses.
+    ///
+    /// The engine faces a unit along its travel direction with **`-Z` forward**
+    /// (Bevy's and glTF's own convention), so art authored that way needs no offset
+    /// at all — `0.0` is the ordinary case. `yaw_offset` is the escape hatch for art
+    /// that faces some other axis: rather than the engine guessing, or the author
+    /// re-exporting the asset, the mod states which way its own model looks. A
+    /// quarter turn is `FRAC_PI_2`.
+    Model { asset: String, scale: f32, yaw_offset: f32 },
     /// A flat, billboarded sprite from a `mod://` asset, sized in world units.
     Sprite { asset: String, size: [f32; 2] },
 }

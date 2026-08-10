@@ -15,8 +15,8 @@ use core::cell::Cell;
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::descriptors::Names;
 use stormlight_mod_abi::ids::{
-    AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, ParamId, ResourceId, StackId,
-    StatId, TagClassId, TagId, NavMeshId, TalentId, UnitId,
+    AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId, ResourceId,
+    StackId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
@@ -41,27 +41,53 @@ struct Counting {
 
 impl IdMap for Counting {
     type Error = ();
-    fn stat(&self, id: StatId) -> Result<StatId, ()> { Ok(id) }
-    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> { Ok(id) }
-    fn stack(&self, id: StackId) -> Result<StackId, ()> { Ok(id) }
-    fn tag(&self, id: TagId) -> Result<TagId, ()> { Ok(id) }
-    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> { Ok(id) }
-    fn param(&self, id: ParamId) -> Result<ParamId, ()> { Ok(id) }
-    fn event(&self, id: EventId) -> Result<EventId, ()> { Ok(id) }
-    fn buff(&self, id: BuffId) -> Result<BuffId, ()> { Ok(id) }
-    fn curve(&self, id: CurveId) -> Result<CurveId, ()> { Ok(id) }
-    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> { Ok(id) }
+    fn stat(&self, id: StatId) -> Result<StatId, ()> {
+        Ok(id)
+    }
+    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> {
+        Ok(id)
+    }
+    fn stack(&self, id: StackId) -> Result<StackId, ()> {
+        Ok(id)
+    }
+    fn tag(&self, id: TagId) -> Result<TagId, ()> {
+        Ok(id)
+    }
+    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> {
+        Ok(id)
+    }
+    fn param(&self, id: ParamId) -> Result<ParamId, ()> {
+        Ok(id)
+    }
+    fn event(&self, id: EventId) -> Result<EventId, ()> {
+        Ok(id)
+    }
+    fn buff(&self, id: BuffId) -> Result<BuffId, ()> {
+        Ok(id)
+    }
+    fn curve(&self, id: CurveId) -> Result<CurveId, ()> {
+        Ok(id)
+    }
+    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> {
+        Ok(id)
+    }
     fn ability(&self, id: AbilityId) -> Result<AbilityId, ()> {
         self.abilities.set(self.abilities.get() + 1);
         Ok(id)
     }
-    fn talent(&self, id: TalentId) -> Result<TalentId, ()> { Ok(id) }
-    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { Ok(id) }
+    fn talent(&self, id: TalentId) -> Result<TalentId, ()> {
+        Ok(id)
+    }
+    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> {
+        Ok(id)
+    }
     fn unit(&self, id: UnitId) -> Result<UnitId, ()> {
         self.units.set(self.units.get() + 1);
         Ok(id)
     }
-    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> { Ok(id) }
+    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> {
+        Ok(id)
+    }
 }
 
 /// A map that fails on any unit handle — models a cosmetic mod naming a unit the
@@ -70,21 +96,51 @@ struct FailUnit;
 
 impl IdMap for FailUnit {
     type Error = ();
-    fn stat(&self, id: StatId) -> Result<StatId, ()> { Ok(id) }
-    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> { Ok(id) }
-    fn stack(&self, id: StackId) -> Result<StackId, ()> { Ok(id) }
-    fn tag(&self, id: TagId) -> Result<TagId, ()> { Ok(id) }
-    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> { Ok(id) }
-    fn param(&self, id: ParamId) -> Result<ParamId, ()> { Ok(id) }
-    fn event(&self, id: EventId) -> Result<EventId, ()> { Ok(id) }
-    fn buff(&self, id: BuffId) -> Result<BuffId, ()> { Ok(id) }
-    fn curve(&self, id: CurveId) -> Result<CurveId, ()> { Ok(id) }
-    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> { Ok(id) }
-    fn ability(&self, id: AbilityId) -> Result<AbilityId, ()> { Ok(id) }
-    fn talent(&self, id: TalentId) -> Result<TalentId, ()> { Ok(id) }
-    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { Ok(id) }
-    fn unit(&self, _: UnitId) -> Result<UnitId, ()> { Err(()) }
-    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> { Ok(id) }
+    fn stat(&self, id: StatId) -> Result<StatId, ()> {
+        Ok(id)
+    }
+    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> {
+        Ok(id)
+    }
+    fn stack(&self, id: StackId) -> Result<StackId, ()> {
+        Ok(id)
+    }
+    fn tag(&self, id: TagId) -> Result<TagId, ()> {
+        Ok(id)
+    }
+    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> {
+        Ok(id)
+    }
+    fn param(&self, id: ParamId) -> Result<ParamId, ()> {
+        Ok(id)
+    }
+    fn event(&self, id: EventId) -> Result<EventId, ()> {
+        Ok(id)
+    }
+    fn buff(&self, id: BuffId) -> Result<BuffId, ()> {
+        Ok(id)
+    }
+    fn curve(&self, id: CurveId) -> Result<CurveId, ()> {
+        Ok(id)
+    }
+    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> {
+        Ok(id)
+    }
+    fn ability(&self, id: AbilityId) -> Result<AbilityId, ()> {
+        Ok(id)
+    }
+    fn talent(&self, id: TalentId) -> Result<TalentId, ()> {
+        Ok(id)
+    }
+    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> {
+        Ok(id)
+    }
+    fn unit(&self, _: UnitId) -> Result<UnitId, ()> {
+        Err(())
+    }
+    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> {
+        Ok(id)
+    }
 }
 
 /// A map that fails on any ability handle — models a cosmetic mod attaching an
@@ -94,21 +150,51 @@ struct FailAbility;
 
 impl IdMap for FailAbility {
     type Error = ();
-    fn stat(&self, id: StatId) -> Result<StatId, ()> { Ok(id) }
-    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> { Ok(id) }
-    fn stack(&self, id: StackId) -> Result<StackId, ()> { Ok(id) }
-    fn tag(&self, id: TagId) -> Result<TagId, ()> { Ok(id) }
-    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> { Ok(id) }
-    fn param(&self, id: ParamId) -> Result<ParamId, ()> { Ok(id) }
-    fn event(&self, id: EventId) -> Result<EventId, ()> { Ok(id) }
-    fn buff(&self, id: BuffId) -> Result<BuffId, ()> { Ok(id) }
-    fn curve(&self, id: CurveId) -> Result<CurveId, ()> { Ok(id) }
-    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> { Ok(id) }
-    fn ability(&self, _: AbilityId) -> Result<AbilityId, ()> { Err(()) }
-    fn talent(&self, id: TalentId) -> Result<TalentId, ()> { Ok(id) }
-    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { Ok(id) }
-    fn unit(&self, id: UnitId) -> Result<UnitId, ()> { Ok(id) }
-    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> { Ok(id) }
+    fn stat(&self, id: StatId) -> Result<StatId, ()> {
+        Ok(id)
+    }
+    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> {
+        Ok(id)
+    }
+    fn stack(&self, id: StackId) -> Result<StackId, ()> {
+        Ok(id)
+    }
+    fn tag(&self, id: TagId) -> Result<TagId, ()> {
+        Ok(id)
+    }
+    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> {
+        Ok(id)
+    }
+    fn param(&self, id: ParamId) -> Result<ParamId, ()> {
+        Ok(id)
+    }
+    fn event(&self, id: EventId) -> Result<EventId, ()> {
+        Ok(id)
+    }
+    fn buff(&self, id: BuffId) -> Result<BuffId, ()> {
+        Ok(id)
+    }
+    fn curve(&self, id: CurveId) -> Result<CurveId, ()> {
+        Ok(id)
+    }
+    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> {
+        Ok(id)
+    }
+    fn ability(&self, _: AbilityId) -> Result<AbilityId, ()> {
+        Err(())
+    }
+    fn talent(&self, id: TalentId) -> Result<TalentId, ()> {
+        Ok(id)
+    }
+    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> {
+        Ok(id)
+    }
+    fn unit(&self, id: UnitId) -> Result<UnitId, ()> {
+        Ok(id)
+    }
+    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> {
+        Ok(id)
+    }
 }
 
 const IDENT: &[u8] = b"abcdefghijklmnopqrstuvwxyz_0123456789/";
@@ -154,7 +240,11 @@ impl Gen<'_> {
                 },
                 color: [self.f32(), self.f32(), self.f32(), self.f32()],
             },
-            1 => VisualModel::Model { asset: self.string(), scale: self.f32() },
+            1 => VisualModel::Model {
+                asset: self.string(),
+                scale: self.f32(),
+                yaw_offset: self.f32(),
+            },
             _ => VisualModel::Sprite { asset: self.string(), size: [self.f32(), self.f32()] },
         }
     }
@@ -237,11 +327,7 @@ fn a_failing_unit_map_errors_without_panicking() {
 
         let mut reg = build(s);
         let result = reg.remap_ids(&FailUnit);
-        assert_eq!(
-            result.is_err(),
-            had_units,
-            "error propagation disagrees with visual presence",
-        );
+        assert_eq!(result.is_err(), had_units, "error propagation disagrees with visual presence",);
     });
 }
 

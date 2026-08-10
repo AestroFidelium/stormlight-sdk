@@ -122,7 +122,8 @@ macro_rules! register_mod {
 /// use stormlight_mod_sdk::client::ClientContext;
 /// use stormlight_mod_sdk::abi::visuals::{EffectRole, PrimitiveShape, VisualModel};
 /// register_client_mod!(|ctx: &mut ClientContext| {
-///     ctx.unit_visual("skirmisher", VisualModel::Model { asset: "mod://…".into(), scale: 1.0 });
+///     ctx.unit_visual("skirmisher",
+///         VisualModel::Model { asset: "mod://…".into(), scale: 1.0, yaw_offset: 0.0 });
 ///     ctx.effect_visual("bolt", EffectRole::Projectile,
 ///         VisualModel::Primitive { shape: PrimitiveShape::Sphere, color: [1.0, 0.9, 0.3, 1.0] });
 /// });
@@ -141,8 +142,7 @@ macro_rules! register_client_mod {
         }
 
         /// Build this cosmetic mod's registration for the client host to decode.
-        pub fn __stormlight_client_registration()
-        -> $crate::abi::visuals::ClientRegistration {
+        pub fn __stormlight_client_registration() -> $crate::abi::visuals::ClientRegistration {
             __stormlight_client_build().finish()
         }
 

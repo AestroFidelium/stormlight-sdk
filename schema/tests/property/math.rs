@@ -26,9 +26,9 @@ struct MockCtx {
 impl MockCtx {
     fn from_seeds(scale: u16, base: u16, rand: u16) -> Self {
         Self {
-            scale: frac(scale) * 4.0,        // [0, 4]
-            base: frac(base) * 100.0 + 1.0,  // [1, 101], nonzero for ratios
-            rand: frac(rand),                // [0, 1]
+            scale: frac(scale) * 4.0,       // [0, 4]
+            base: frac(base) * 100.0 + 1.0, // [1, 101], nonzero for ratios
+            rand: frac(rand),               // [0, 1]
         }
     }
     /// A deterministic finite value that varies a little per id/who so distinct
@@ -216,11 +216,7 @@ fn div_by_zero_is_defined() {
     let ctx = MockCtx::from_seeds(0, 0, 0);
     check!().with_type::<u16>().for_each(|&seed| {
         let num = frac(seed) * 100.0;
-        let v = Value::Bin(
-            BinOp::Div,
-            Box::new(Value::Const(num)),
-            Box::new(Value::Const(0.0)),
-        );
+        let v = Value::Bin(BinOp::Div, Box::new(Value::Const(num)), Box::new(Value::Const(0.0)));
         // Defined, not NaN/inf: division by zero yields 0.
         assert_eq!(v.eval(&ctx), 0.0);
     });
@@ -230,11 +226,8 @@ fn div_by_zero_is_defined() {
 fn clamp_result_lands_between_its_bounds() {
     let ctx = MockCtx::from_seeds(0, 0, 0);
     check!().with_type::<(u16, u16, u16)>().for_each(|&(vs, los, his)| {
-        let (v, lo, hi) = (
-            frac(vs) * 200.0 - 100.0,
-            frac(los) * 200.0 - 100.0,
-            frac(his) * 200.0 - 100.0,
-        );
+        let (v, lo, hi) =
+            (frac(vs) * 200.0 - 100.0, frac(los) * 200.0 - 100.0, frac(his) * 200.0 - 100.0);
         let out = Value::Clamp {
             v: Box::new(Value::Const(v)),
             lo: Box::new(Value::Const(lo)),
@@ -252,9 +245,8 @@ fn min_max_are_ordered() {
     let ctx = MockCtx::from_seeds(0, 0, 0);
     check!().with_type::<(u16, u16)>().for_each(|&(a, b)| {
         let (x, y) = (frac(a) * 200.0 - 100.0, frac(b) * 200.0 - 100.0);
-        let mk = |op| {
-            Value::Bin(op, Box::new(Value::Const(x)), Box::new(Value::Const(y))).eval(&ctx)
-        };
+        let mk =
+            |op| Value::Bin(op, Box::new(Value::Const(x)), Box::new(Value::Const(y))).eval(&ctx);
         let lo = mk(BinOp::Min);
         let hi = mk(BinOp::Max);
         assert!(lo <= x && lo <= y, "min {lo} exceeded an operand");

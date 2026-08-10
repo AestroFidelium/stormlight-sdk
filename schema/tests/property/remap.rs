@@ -16,14 +16,14 @@ use core::cell::Cell;
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::abilities::{AbilityDescriptor, CastSpec, Cost, Params, Targeting};
-use stormlight_mod_abi::behaviors::{ModOp, Modifier, Reapply, StackScope, Stacking};
 use stormlight_mod_abi::behaviors::BuffSpec;
+use stormlight_mod_abi::behaviors::{ModOp, Modifier, Reapply, StackScope, Stacking};
 use stormlight_mod_abi::common::{Affiliation, Direction, ImpactTarget, NumOp, TargetFilter};
 use stormlight_mod_abi::conditions::{CmpOp, Condition};
 use stormlight_mod_abi::descriptors::{Curve, Names, Registration};
 use stormlight_mod_abi::ids::{
-    AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, ParamId, ResourceId, Slot,
-    StackId, StatId, TagClassId, TagId, NavMeshId, TalentId, UnitId,
+    AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId, ResourceId,
+    Slot, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use stormlight_mod_abi::impacts::{
     AbilityTarget, BuffSelector, CostMode, DamageFlags, HealFlags, Impact, LoopKind, PendingFilter,
@@ -57,21 +57,51 @@ impl Counting {
 
 impl IdMap for Counting {
     type Error = ();
-    fn stat(&self, id: StatId) -> Result<StatId, ()> { self.bump(id) }
-    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> { self.bump(id) }
-    fn stack(&self, id: StackId) -> Result<StackId, ()> { self.bump(id) }
-    fn tag(&self, id: TagId) -> Result<TagId, ()> { self.bump(id) }
-    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> { self.bump(id) }
-    fn param(&self, id: ParamId) -> Result<ParamId, ()> { self.bump(id) }
-    fn event(&self, id: EventId) -> Result<EventId, ()> { self.bump(id) }
-    fn buff(&self, id: BuffId) -> Result<BuffId, ()> { self.bump(id) }
-    fn curve(&self, id: CurveId) -> Result<CurveId, ()> { self.bump(id) }
-    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> { self.bump(id) }
-    fn ability(&self, id: AbilityId) -> Result<AbilityId, ()> { self.bump(id) }
-    fn talent(&self, id: TalentId) -> Result<TalentId, ()> { self.bump(id) }
-    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> { self.bump(id) }
-    fn unit(&self, id: UnitId) -> Result<UnitId, ()> { self.bump(id) }
-    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> { self.bump(id) }
+    fn stat(&self, id: StatId) -> Result<StatId, ()> {
+        self.bump(id)
+    }
+    fn resource(&self, id: ResourceId) -> Result<ResourceId, ()> {
+        self.bump(id)
+    }
+    fn stack(&self, id: StackId) -> Result<StackId, ()> {
+        self.bump(id)
+    }
+    fn tag(&self, id: TagId) -> Result<TagId, ()> {
+        self.bump(id)
+    }
+    fn tag_class(&self, id: TagClassId) -> Result<TagClassId, ()> {
+        self.bump(id)
+    }
+    fn param(&self, id: ParamId) -> Result<ParamId, ()> {
+        self.bump(id)
+    }
+    fn event(&self, id: EventId) -> Result<EventId, ()> {
+        self.bump(id)
+    }
+    fn buff(&self, id: BuffId) -> Result<BuffId, ()> {
+        self.bump(id)
+    }
+    fn curve(&self, id: CurveId) -> Result<CurveId, ()> {
+        self.bump(id)
+    }
+    fn damage_type(&self, id: DamageTypeId) -> Result<DamageTypeId, ()> {
+        self.bump(id)
+    }
+    fn ability(&self, id: AbilityId) -> Result<AbilityId, ()> {
+        self.bump(id)
+    }
+    fn talent(&self, id: TalentId) -> Result<TalentId, ()> {
+        self.bump(id)
+    }
+    fn handler(&self, id: HandlerId) -> Result<HandlerId, ()> {
+        self.bump(id)
+    }
+    fn unit(&self, id: UnitId) -> Result<UnitId, ()> {
+        self.bump(id)
+    }
+    fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> {
+        self.bump(id)
+    }
 }
 
 /// A map that fails on the very first id it is asked to translate — models a
@@ -80,21 +110,51 @@ struct FailAll;
 
 impl IdMap for FailAll {
     type Error = ();
-    fn stat(&self, _: StatId) -> Result<StatId, ()> { Err(()) }
-    fn resource(&self, _: ResourceId) -> Result<ResourceId, ()> { Err(()) }
-    fn stack(&self, _: StackId) -> Result<StackId, ()> { Err(()) }
-    fn tag(&self, _: TagId) -> Result<TagId, ()> { Err(()) }
-    fn tag_class(&self, _: TagClassId) -> Result<TagClassId, ()> { Err(()) }
-    fn param(&self, _: ParamId) -> Result<ParamId, ()> { Err(()) }
-    fn event(&self, _: EventId) -> Result<EventId, ()> { Err(()) }
-    fn buff(&self, _: BuffId) -> Result<BuffId, ()> { Err(()) }
-    fn curve(&self, _: CurveId) -> Result<CurveId, ()> { Err(()) }
-    fn damage_type(&self, _: DamageTypeId) -> Result<DamageTypeId, ()> { Err(()) }
-    fn ability(&self, _: AbilityId) -> Result<AbilityId, ()> { Err(()) }
-    fn talent(&self, _: TalentId) -> Result<TalentId, ()> { Err(()) }
-    fn handler(&self, _: HandlerId) -> Result<HandlerId, ()> { Err(()) }
-    fn unit(&self, _: UnitId) -> Result<UnitId, ()> { Err(()) }
-    fn navmesh(&self, _: NavMeshId) -> Result<NavMeshId, ()> { Err(()) }
+    fn stat(&self, _: StatId) -> Result<StatId, ()> {
+        Err(())
+    }
+    fn resource(&self, _: ResourceId) -> Result<ResourceId, ()> {
+        Err(())
+    }
+    fn stack(&self, _: StackId) -> Result<StackId, ()> {
+        Err(())
+    }
+    fn tag(&self, _: TagId) -> Result<TagId, ()> {
+        Err(())
+    }
+    fn tag_class(&self, _: TagClassId) -> Result<TagClassId, ()> {
+        Err(())
+    }
+    fn param(&self, _: ParamId) -> Result<ParamId, ()> {
+        Err(())
+    }
+    fn event(&self, _: EventId) -> Result<EventId, ()> {
+        Err(())
+    }
+    fn buff(&self, _: BuffId) -> Result<BuffId, ()> {
+        Err(())
+    }
+    fn curve(&self, _: CurveId) -> Result<CurveId, ()> {
+        Err(())
+    }
+    fn damage_type(&self, _: DamageTypeId) -> Result<DamageTypeId, ()> {
+        Err(())
+    }
+    fn ability(&self, _: AbilityId) -> Result<AbilityId, ()> {
+        Err(())
+    }
+    fn talent(&self, _: TalentId) -> Result<TalentId, ()> {
+        Err(())
+    }
+    fn handler(&self, _: HandlerId) -> Result<HandlerId, ()> {
+        Err(())
+    }
+    fn unit(&self, _: UnitId) -> Result<UnitId, ()> {
+        Err(())
+    }
+    fn navmesh(&self, _: NavMeshId) -> Result<NavMeshId, ()> {
+        Err(())
+    }
 }
 
 /// Interprets a flat seed stream into a bounded `Registration` covering every
@@ -165,7 +225,11 @@ impl Gen<'_> {
         match self.next() % 6 {
             0 => Value::Const(self.f32()),
             1 => Value::Read(self.var()),
-            2 => Value::Bin(self.binop(), Box::new(self.value(depth - 1)), Box::new(self.value(depth - 1))),
+            2 => Value::Bin(
+                self.binop(),
+                Box::new(self.value(depth - 1)),
+                Box::new(self.value(depth - 1)),
+            ),
             3 => Value::Clamp {
                 v: Box::new(self.value(depth - 1)),
                 lo: Box::new(self.value(depth - 1)),
@@ -244,7 +308,11 @@ impl Gen<'_> {
                 health: self.value(1),
                 duration: self.next().is_multiple_of(2).then(|| self.value(1)),
             },
-            _ => BodyKind::Zone { radius: self.value(1), duration: self.value(1), tick: self.value(1) },
+            _ => BodyKind::Zone {
+                radius: self.value(1),
+                duration: self.value(1),
+                tick: self.value(1),
+            },
         };
         BodyDescriptor {
             kind,
@@ -276,21 +344,33 @@ impl Gen<'_> {
                 exclude_primary: self.next().is_multiple_of(2),
                 inner: self.impacts(depth - 1),
             },
-            1 => Impact::If { cond: self.cond(2), then: self.impacts(depth - 1), els: self.impacts(depth - 1) },
+            1 => Impact::If {
+                cond: self.cond(2),
+                then: self.impacts(depth - 1),
+                els: self.impacts(depth - 1),
+            },
             2 => Impact::Loop { kind: self.loopkind(), inner: self.impacts(depth - 1) },
             3 => Impact::Delay { secs: self.value(1), inner: self.impacts(depth - 1) },
             4 => Impact::Damage {
                 amount: self.value(2),
                 dtype: DamageTypeId(self.next()),
                 target: self.target(),
-                flags: DamageFlags { can_crit: self.next().is_multiple_of(2), lifesteal: self.next().is_multiple_of(2) },
+                flags: DamageFlags {
+                    can_crit: self.next().is_multiple_of(2),
+                    lifesteal: self.next().is_multiple_of(2),
+                },
             },
             5 => Impact::Heal {
                 amount: self.value(2),
                 target: self.target(),
                 flags: HealFlags { can_overheal: self.next().is_multiple_of(2) },
             },
-            6 => Impact::AdjustPool { pool: self.pool(), op: self.numop(), amount: self.value(2), target: self.target() },
+            6 => Impact::AdjustPool {
+                pool: self.pool(),
+                op: self.numop(),
+                amount: self.value(2),
+                target: self.target(),
+            },
             7 => Impact::ApplyModifiers {
                 buff: BuffId(self.next()),
                 stacks: self.value(1),
@@ -305,8 +385,16 @@ impl Gen<'_> {
                 on_collision: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
                 target: self.target(),
             },
-            10 => Impact::Knockback { dir: self.direction(), force: self.value(1), target: self.target() },
-            11 => Impact::Teleport { dest: self.teleport(), target: self.target(), record: self.next().is_multiple_of(2) },
+            10 => Impact::Knockback {
+                dir: self.direction(),
+                force: self.value(1),
+                target: self.target(),
+            },
+            11 => Impact::Teleport {
+                dest: self.teleport(),
+                target: self.target(),
+                record: self.next().is_multiple_of(2),
+            },
             12 => Impact::Spawn {
                 body: self.body(if depth == 0 { 0 } else { depth - 1 }),
                 at: self.anchor(),
@@ -321,7 +409,11 @@ impl Gen<'_> {
             },
             14 => Impact::Interrupt { target: self.target() },
             15 => Impact::ResolvePending { filter: self.pending() },
-            16 => Impact::Emit { event: EventId(self.next()), target: self.target(), payload: self.value(1) },
+            16 => Impact::Emit {
+                event: EventId(self.next()),
+                target: self.target(),
+                payload: self.value(1),
+            },
             _ => Impact::Custom {
                 handler: HandlerId(u32::from(self.next())),
                 params: (0..self.next() % 4).map(|_| self.next() as u8).collect(),
@@ -365,7 +457,11 @@ impl Gen<'_> {
         }
     }
     fn selector(&mut self) -> BuffSelector {
-        if self.next().is_multiple_of(2) { BuffSelector::Id(BuffId(self.next())) } else { BuffSelector::Class(TagClassId(self.next())) }
+        if self.next().is_multiple_of(2) {
+            BuffSelector::Id(BuffId(self.next()))
+        } else {
+            BuffSelector::Class(TagClassId(self.next()))
+        }
     }
     fn teleport(&mut self) -> TeleportDest {
         match self.next() % 4 {
@@ -399,7 +495,11 @@ impl Gen<'_> {
         }
     }
     fn pending(&mut self) -> PendingFilter {
-        if self.next().is_multiple_of(2) { PendingFilter::FromCaster } else { PendingFilter::OriginTag(TagId(self.next())) }
+        if self.next().is_multiple_of(2) {
+            PendingFilter::FromCaster
+        } else {
+            PendingFilter::OriginTag(TagId(self.next()))
+        }
     }
     fn modifier(&mut self) -> Modifier {
         let op = match self.next() % 4 {
@@ -458,7 +558,9 @@ impl Gen<'_> {
             .collect();
         AbilityDescriptor {
             id: AbilityId(u32::from(self.next())),
-            params: Params((0..self.next() % 3).map(|_| (ParamId(self.next()), self.value(1))).collect()),
+            params: Params(
+                (0..self.next() % 3).map(|_| (ParamId(self.next()), self.value(1))).collect(),
+            ),
             targeting,
             cast,
             cost,
@@ -485,14 +587,21 @@ impl Gen<'_> {
             id: TalentId(u32::from(self.next())),
             selector,
             patches: (0..self.next() % 3)
-                .map(|_| ParamPatch { param: ParamId(self.next()), op: self.numop(), value: self.value(1) })
+                .map(|_| ParamPatch {
+                    param: ParamId(self.next()),
+                    op: self.numop(),
+                    value: self.value(1),
+                })
                 .collect(),
             riders: (0..self.next() % 2)
                 .map(|_| Rider { hook: hook(self.next()), effects: self.impacts(2) })
                 .collect(),
             add_reactions: (0..self.next() % 2).map(|_| self.reaction()).collect(),
             grants: (0..self.next() % 2)
-                .map(|_| GrantAbility { slot: self.slot(), ability: AbilityId(u32::from(self.next())) })
+                .map(|_| GrantAbility {
+                    slot: self.slot(),
+                    ability: AbilityId(u32::from(self.next())),
+                })
                 .collect(),
             modifiers: (0..self.next() % 3).map(|_| self.modifier()).collect(),
             tags: (0..self.next() % 3).map(|_| TagId(self.next())).collect(),
@@ -509,7 +618,11 @@ impl Gen<'_> {
                     2 => Reapply::Independent,
                     _ => Reapply::Ignore,
                 },
-                scope: if self.next().is_multiple_of(2) { StackScope::PerSource } else { StackScope::Global },
+                scope: if self.next().is_multiple_of(2) {
+                    StackScope::PerSource
+                } else {
+                    StackScope::Global
+                },
             },
             max_stacks: self.next(),
             modifiers: (0..self.next() % 3).map(|_| self.modifier()).collect(),
@@ -569,9 +682,13 @@ impl Gen<'_> {
             abilities: (0..self.next() % 3).map(|_| self.ability()).collect(),
             talents: (0..self.next() % 3).map(|_| self.talent()).collect(),
             buffs: (0..self.next() % 3).map(|_| self.buff()).collect(),
-            tag_classes: (0..self.next() % 3).map(|_| (TagId(self.next()), TagClassId(self.next()))).collect(),
+            tag_classes: (0..self.next() % 3)
+                .map(|_| (TagId(self.next()), TagClassId(self.next())))
+                .collect(),
             curves: (0..self.next() % 2)
-                .map(|_| Curve { points: (0..self.next() % 3).map(|_| [self.f32(), self.f32()]).collect() })
+                .map(|_| Curve {
+                    points: (0..self.next() % 3).map(|_| [self.f32(), self.f32()]).collect(),
+                })
                 .collect(),
             units: (0..self.next() % 3).map(|_| self.unit()).collect(),
             navmeshes: (0..self.next() % 2).map(|_| self.navmesh()).collect(),

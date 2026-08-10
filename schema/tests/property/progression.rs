@@ -70,13 +70,7 @@ impl IdMap for ShiftReferenced {
         navmesh(NavMeshId),
     );
 
-    shift_families!(
-        stat(StatId),
-        tag(TagId),
-        curve(CurveId),
-        ability(AbilityId),
-        unit(UnitId),
-    );
+    shift_families!(stat(StatId), tag(TagId), curve(CurveId), ability(AbilityId), unit(UnitId),);
 }
 
 /// How a generated number is chosen: ordinary declarations plus the ways a mod can
@@ -202,7 +196,10 @@ fn a_progression_declaration_survives_the_wire_round_trip_intact() {
         let bytes = postcard::to_allocvec(&declared).expect("a spec should encode");
         let back: ProgressionSpec = postcard::from_bytes(&bytes).expect("a spec should decode");
 
-        assert_eq!(back.max_level, declared.max_level, "the level ceiling changed crossing the ABI");
+        assert_eq!(
+            back.max_level, declared.max_level,
+            "the level ceiling changed crossing the ABI"
+        );
         assert_eq!(back.grants, declared.grants, "a level's grants changed crossing the ABI");
         assert_eq!(
             back.bounty.as_ref().map(|b| b.share),
@@ -240,12 +237,20 @@ fn the_remap_walk_rewrites_every_handle_a_declaration_carries() {
 
         // The threshold curve is a handle into the mod's own curve space.
         if let XpCurve::Curve(id) = after.thresholds {
-            assert_eq!(id, CurveId(s.curve.wrapping_add(1)), "the threshold curve handle was not remapped");
+            assert_eq!(
+                id,
+                CurveId(s.curve.wrapping_add(1)),
+                "the threshold curve handle was not remapped"
+            );
         }
         // A grant's tags and granted abilities are handles too.
         let (level, grants) = &after.grants[0];
         assert_eq!(*level, s.grant_level, "a grant's level index was rewritten as if a handle");
-        assert_eq!(grants.tags, vec![TagId(s.tag.wrapping_add(1))], "a granted tag was not remapped");
+        assert_eq!(
+            grants.tags,
+            vec![TagId(s.tag.wrapping_add(1))],
+            "a granted tag was not remapped"
+        );
         assert_eq!(
             grants.abilities,
             vec![(Slot(s.slot), AbilityId(s.ability.wrapping_add(1)))],

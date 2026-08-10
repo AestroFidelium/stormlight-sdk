@@ -6,7 +6,9 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::conditions::{CmpOp, Condition, ConditionCtx};
-use stormlight_mod_abi::ids::{BuffId, CurveId, ResourceId, Slot, StackId, StatId, TagId, TalentId};
+use stormlight_mod_abi::ids::{
+    BuffId, CurveId, ResourceId, Slot, StackId, StatId, TagId, TalentId,
+};
 use stormlight_mod_abi::math::{Value, ValueCtx, Who};
 
 /// Minimal ctx: numeric reads are constant (conditions here compare literals),

@@ -214,8 +214,7 @@ impl Manifest {
 /// nothing panics.
 #[cfg(feature = "manifest-parse")]
 pub fn parse_manifest(src: &str) -> Result<Manifest, ManifestError> {
-    let manifest: Manifest =
-        toml::from_str(src).map_err(|e| ManifestError::Toml(e.to_string()))?;
+    let manifest: Manifest = toml::from_str(src).map_err(|e| ManifestError::Toml(e.to_string()))?;
     manifest.validate()?;
     Ok(manifest)
 }

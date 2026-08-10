@@ -33,11 +33,9 @@ fn leaf(op: u16, n: u16, params: &[u8]) -> Impact {
             target,
             flags: DamageFlags::default(),
         },
-        1 => Impact::Heal {
-            amount: Value::Const(f32::from(n)),
-            target,
-            flags: HealFlags::default(),
-        },
+        1 => {
+            Impact::Heal { amount: Value::Const(f32::from(n)), target, flags: HealFlags::default() }
+        }
         2 => Impact::Emit { event: EventId(n), target, payload: Value::Const(f32::from(n)) },
         _ => Impact::Custom { handler: HandlerId(u32::from(n)), params: params.to_vec(), target },
     }
@@ -46,9 +44,8 @@ fn leaf(op: u16, n: u16, params: &[u8]) -> Impact {
 #[test]
 fn guest_effects_survive_a_round_trip() {
     check!().with_type::<(Vec<(u16, u16)>, Vec<u8>)>().for_each(|(ops, params)| {
-        let effects = GuestEffects {
-            effects: ops.iter().map(|&(op, n)| leaf(op, n, params)).collect(),
-        };
+        let effects =
+            GuestEffects { effects: ops.iter().map(|&(op, n)| leaf(op, n, params)).collect() };
         let bytes = postcard::to_allocvec(&effects).expect("GuestEffects serializes");
         let back: GuestEffects = postcard::from_bytes(&bytes).expect("GuestEffects decodes");
         assert_eq!(effects, back, "round-trip must be identity");
@@ -59,8 +56,7 @@ fn guest_effects_survive_a_round_trip() {
 fn tick_and_trigger_contexts_survive_a_round_trip() {
     check!().with_type::<(u64, u16)>().for_each(|&(tick, ev)| {
         let tc = TickContext { tick };
-        let back: TickContext =
-            postcard::from_bytes(&postcard::to_allocvec(&tc).unwrap()).unwrap();
+        let back: TickContext = postcard::from_bytes(&postcard::to_allocvec(&tc).unwrap()).unwrap();
         assert_eq!(tc, back);
 
         let tg = TriggerContext { event: EventId(ev), payload: Value::Const(f32::from(ev)) };

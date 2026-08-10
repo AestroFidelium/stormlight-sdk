@@ -57,7 +57,12 @@ impl ClientContext {
     /// Declare a piece of the ability named `ability`'s feedback in `role` (the
     /// projectile body, the impact burst, or the cast indicator), returning the
     /// ability's interned handle. One ability can declare a visual per role.
-    pub fn effect_visual(&mut self, ability: &str, role: EffectRole, model: VisualModel) -> AbilityId {
+    pub fn effect_visual(
+        &mut self,
+        ability: &str,
+        role: EffectRole,
+        model: VisualModel,
+    ) -> AbilityId {
         let id = self.ability_names.intern(ability);
         self.effects.push(EffectVisualDescriptor { ability: id, role, model });
         id

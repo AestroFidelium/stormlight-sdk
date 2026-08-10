@@ -229,8 +229,15 @@ fn the_remap_walk_rewrites_every_option_a_tree_carries() {
         carrier.remap_ids(&ShiftTalents).expect("an infallible map cannot fail");
 
         let after = carrier.talent_tree.expect("a remapped unit lost its talent tree");
-        assert_eq!(after.repick, declared.repick, "the re-pick policy was rewritten as if a handle");
-        assert_eq!(after.tiers.len(), declared.tiers.len(), "the remap walk changed the tier count");
+        assert_eq!(
+            after.repick, declared.repick,
+            "the re-pick policy was rewritten as if a handle"
+        );
+        assert_eq!(
+            after.tiers.len(),
+            declared.tiers.len(),
+            "the remap walk changed the tier count"
+        );
 
         for (i, (before, now)) in declared.tiers.iter().zip(after.tiers.iter()).enumerate() {
             assert_eq!(
@@ -266,11 +273,7 @@ fn every_accessor_is_total_over_whatever_a_mod_declares() {
         // representable window are simply not reachable — and must not be reported
         // as reachable either.
         let reachable = tree.tiers.len().min(MAX_TIERS);
-        assert_eq!(
-            tree.len(),
-            reachable,
-            "the tree reported tiers no `u8` index can name",
-        );
+        assert_eq!(tree.len(), reachable, "the tree reported tiers no `u8` index can name",);
         assert_eq!(tree.is_empty(), reachable == 0, "an empty tree disagreed with its own length");
 
         // Every probe answers rather than panicking, and the answers agree with

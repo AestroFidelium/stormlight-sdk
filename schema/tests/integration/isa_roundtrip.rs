@@ -56,7 +56,11 @@ impl Gen<'_> {
         match self.next() % 7 {
             0 => Value::Const(self.f32()),
             1 => Value::Read(self.var()),
-            2 => Value::Bin(self.binop(), Box::new(self.value(depth - 1)), Box::new(self.value(depth - 1))),
+            2 => Value::Bin(
+                self.binop(),
+                Box::new(self.value(depth - 1)),
+                Box::new(self.value(depth - 1)),
+            ),
             3 => Value::Clamp {
                 v: Box::new(self.value(depth - 1)),
                 lo: Box::new(self.value(depth - 1)),
@@ -159,7 +163,11 @@ impl Gen<'_> {
                 health: self.value(1),
                 duration: self.next().is_multiple_of(2).then(|| self.value(1)),
             },
-            _ => BodyKind::Zone { radius: self.value(1), duration: self.value(1), tick: self.value(1) },
+            _ => BodyKind::Zone {
+                radius: self.value(1),
+                duration: self.value(1),
+                tick: self.value(1),
+            },
         };
         BodyDescriptor {
             kind,
@@ -204,7 +212,10 @@ impl Gen<'_> {
                 amount: self.value(2),
                 dtype: DamageTypeId(self.next()),
                 target: self.target(),
-                flags: DamageFlags { can_crit: self.next().is_multiple_of(2), lifesteal: self.next().is_multiple_of(2) },
+                flags: DamageFlags {
+                    can_crit: self.next().is_multiple_of(2),
+                    lifesteal: self.next().is_multiple_of(2),
+                },
             },
             5 => Impact::Heal {
                 amount: self.value(2),
@@ -231,8 +242,16 @@ impl Gen<'_> {
                 on_collision: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
                 target: self.target(),
             },
-            10 => Impact::Knockback { dir: self.direction(), force: self.value(1), target: self.target() },
-            11 => Impact::Teleport { dest: self.teleport(), target: self.target(), record: self.next().is_multiple_of(2) },
+            10 => Impact::Knockback {
+                dir: self.direction(),
+                force: self.value(1),
+                target: self.target(),
+            },
+            11 => Impact::Teleport {
+                dest: self.teleport(),
+                target: self.target(),
+                record: self.next().is_multiple_of(2),
+            },
             12 => Impact::Spawn {
                 body: self.body(if depth == 0 { 0 } else { depth - 1 }),
                 at: self.anchor(),
@@ -247,7 +266,11 @@ impl Gen<'_> {
             },
             14 => Impact::Interrupt { target: self.target() },
             15 => Impact::ResolvePending { filter: self.pending() },
-            16 => Impact::Emit { event: EventId(self.next()), target: self.target(), payload: self.value(1) },
+            16 => Impact::Emit {
+                event: EventId(self.next()),
+                target: self.target(),
+                payload: self.value(1),
+            },
             _ => Impact::Custom {
                 handler: HandlerId(u32::from(self.next())),
                 params: (0..self.next() % 4).map(|_| self.next() as u8).collect(),
@@ -394,7 +417,11 @@ fn combinator_partition_is_total() {
             target: ImpactTarget::default(),
             flags: DamageFlags::default(),
         },
-        Impact::Emit { event: EventId(0), target: ImpactTarget::default(), payload: Value::Const(0.0) },
+        Impact::Emit {
+            event: EventId(0),
+            target: ImpactTarget::default(),
+            payload: Value::Const(0.0),
+        },
     ];
     for l in &leaves {
         assert!(!l.is_combinator(), "{l:?} should be a leaf");

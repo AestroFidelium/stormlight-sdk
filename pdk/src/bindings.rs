@@ -104,4 +104,3 @@ pub fn input(ptr: u32, len: u32) -> &'static [u8] {
 pub fn decode_input<T: serde::de::DeserializeOwned>(ptr: u32, len: u32) -> Option<T> {
     postcard::from_bytes(input(ptr, len)).ok()
 }
-

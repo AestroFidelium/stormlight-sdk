@@ -25,9 +25,9 @@ use stormlight_mod_abi::ids::{
     UnitId,
 };
 use stormlight_mod_abi::manifest::Version;
+use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::placement::UnitPlacement;
-use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::talents::{AbilitySelector, ParamPatch, TalentDescriptor};
 use stormlight_mod_abi::units::{ResourcePool, UnitDescriptor};
 
@@ -100,9 +100,7 @@ impl Gen<'_> {
         (0..n).map(|_| TagId(self.next())).collect()
     }
     fn ability(&mut self) -> AbilityDescriptor {
-        let params = (0..self.count(3))
-            .map(|_| (ParamId(self.next()), self.value()))
-            .collect();
+        let params = (0..self.count(3)).map(|_| (ParamId(self.next()), self.value())).collect();
         AbilityDescriptor {
             id: AbilityId(u32::from(self.next())),
             params: Params(params),
@@ -117,7 +115,11 @@ impl Gen<'_> {
     }
     fn talent(&mut self) -> TalentDescriptor {
         let patches = (0..self.count(3))
-            .map(|_| ParamPatch { param: ParamId(self.next()), op: self.numop(), value: self.value() })
+            .map(|_| ParamPatch {
+                param: ParamId(self.next()),
+                op: self.numop(),
+                value: self.value(),
+            })
             .collect();
         TalentDescriptor {
             id: TalentId(u32::from(self.next())),
@@ -138,7 +140,11 @@ impl Gen<'_> {
                 2 => Reapply::Independent,
                 _ => Reapply::Ignore,
             },
-            scope: if self.next().is_multiple_of(2) { StackScope::PerSource } else { StackScope::Global },
+            scope: if self.next().is_multiple_of(2) {
+                StackScope::PerSource
+            } else {
+                StackScope::Global
+            },
         };
         BuffSpec {
             id: BuffId(self.next()),

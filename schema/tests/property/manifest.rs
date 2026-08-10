@@ -145,10 +145,7 @@ fn an_empty_or_non_wasm_entry_is_rejected() {
 
         let mut empty = m.clone();
         empty.entry.clear();
-        assert!(
-            matches!(empty.validate(), Err(ManifestError::EmptyEntry)),
-            "empty entry accepted"
-        );
+        assert!(matches!(empty.validate(), Err(ManifestError::EmptyEntry)), "empty entry accepted");
 
         let mut wrong = m.clone();
         wrong.entry = alloc::string::String::from("mod.txt");

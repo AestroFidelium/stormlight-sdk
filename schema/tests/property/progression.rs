@@ -68,6 +68,7 @@ impl IdMap for ShiftReferenced {
         talent(TalentId),
         handler(HandlerId),
         navmesh(NavMeshId),
+        anim_state(AnimStateId),
     );
 
     shift_families!(stat(StatId), tag(TagId), curve(CurveId), ability(AbilityId), unit(UnitId),);

@@ -84,6 +84,9 @@ id_handles! {
     UnitId(u32),
     /// A navigation mesh — one walkable region of a map (mod-supplied geometry).
     NavMeshId(u32),
+    /// A mod-defined animation state, beyond the generic vocabulary the engine
+    /// drives itself (see [`crate::animation::AnimState`]).
+    AnimStateId(u16),
 }
 
 /// A generic ability slot index. Not name-interned — slots are a small fixed

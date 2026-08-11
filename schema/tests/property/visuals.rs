@@ -15,8 +15,8 @@ use core::cell::Cell;
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::descriptors::Names;
 use stormlight_mod_abi::ids::{
-    AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId, ResourceId,
-    StackId, StatId, TagClassId, TagId, TalentId, UnitId,
+    AbilityId, AnimStateId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId,
+    ResourceId, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
@@ -88,6 +88,9 @@ impl IdMap for Counting {
     fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> {
         Ok(id)
     }
+    fn anim_state(&self, id: AnimStateId) -> Result<AnimStateId, ()> {
+        Ok(id)
+    }
 }
 
 /// A map that fails on any unit handle — models a cosmetic mod naming a unit the
@@ -139,6 +142,9 @@ impl IdMap for FailUnit {
         Err(())
     }
     fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> {
+        Ok(id)
+    }
+    fn anim_state(&self, id: AnimStateId) -> Result<AnimStateId, ()> {
         Ok(id)
     }
 }
@@ -193,6 +199,9 @@ impl IdMap for FailAbility {
         Ok(id)
     }
     fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> {
+        Ok(id)
+    }
+    fn anim_state(&self, id: AnimStateId) -> Result<AnimStateId, ()> {
         Ok(id)
     }
 }
@@ -280,6 +289,9 @@ impl Gen<'_> {
             names: self.names(),
             visuals: (0..self.count(4)).map(|_| self.visual()).collect(),
             effects: (0..self.count(4)).map(|_| self.effect()).collect(),
+            // Animations have their own bundle-level invariants (see
+            // `animation.rs`); this file stays about visuals.
+            animations: Vec::new(),
         }
     }
 }

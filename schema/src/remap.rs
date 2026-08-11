@@ -20,8 +20,8 @@ use crate::common::TargetFilter;
 use crate::conditions::Condition;
 use crate::descriptors::Registration;
 use crate::ids::{
-    AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId, ResourceId,
-    StackId, StatId, TagClassId, TagId, TalentId, UnitId,
+    AbilityId, AnimStateId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId,
+    ResourceId, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use crate::impacts::{
     BuffSelector, Impact, LoopKind, PendingFilter, PoolRef, SpawnPattern, TargetShape, TeleportDest,
@@ -57,6 +57,7 @@ pub trait IdMap {
     fn handler(&self, id: HandlerId) -> Result<HandlerId, Self::Error>;
     fn unit(&self, id: UnitId) -> Result<UnitId, Self::Error>;
     fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, Self::Error>;
+    fn anim_state(&self, id: AnimStateId) -> Result<AnimStateId, Self::Error>;
 }
 
 /// In-place translation of every interned handle inside `self` through `m`.
@@ -655,7 +656,8 @@ impl RemapIds for ClientRegistration {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         // `abi` and `names` (the string tables) carry no interned handle.
         self.visuals.remap_ids(m)?;
-        self.effects.remap_ids(m)
+        self.effects.remap_ids(m)?;
+        self.animations.remap_ids(m)
     }
 }
 

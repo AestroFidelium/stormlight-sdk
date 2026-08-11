@@ -60,6 +60,7 @@ impl IdMap for ShiftUnit {
         talent(TalentId),
         handler(HandlerId),
         navmesh(NavMeshId),
+        anim_state(AnimStateId),
     );
 
     fn unit(&self, id: UnitId) -> Result<UnitId, ()> {

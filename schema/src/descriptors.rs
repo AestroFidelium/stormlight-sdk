@@ -54,6 +54,7 @@ pub struct Names {
     pub handlers: Vec<String>,
     pub units: Vec<String>,
     pub navmeshes: Vec<String>,
+    pub anim_states: Vec<String>,
 }
 
 /// A piecewise lookup curve referenced by `Value::Curve` (e.g. a level-scaling

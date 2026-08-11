@@ -19,6 +19,7 @@ use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
 
+use crate::animation::AnimationDescriptor;
 use crate::descriptors::Names;
 use crate::ids::{AbilityId, UnitId};
 use crate::manifest::Version;
@@ -97,11 +98,13 @@ pub struct EffectVisualDescriptor {
 /// [`crate::descriptors::Registration`]. Emitted once at `mod_register` on the
 /// client's wasm runtime and decoded by the client host.
 ///
-/// `visuals` are indexed by the mod's *local* unit handle; `effects` key on a
-/// local ability handle plus a role. The [`Names`] `units`/`abilities` tables
-/// give each referenced handle a stable name the host maps to the gameplay mod's
-/// global id. Embeds the [`crate::manifest::ABI_VERSION`] it was built against so
-/// the host can reject a major mismatch at decode.
+/// `visuals` and `animations` are indexed by the mod's *local* unit handle;
+/// `effects` key on a local ability handle plus a role. The [`Names`]
+/// `units`/`abilities` tables give each referenced handle a stable name the host
+/// maps to the gameplay mod's global id, and `anim_states` names the mod-defined
+/// animation states its animations declare. Embeds the
+/// [`crate::manifest::ABI_VERSION`] it was built against so the host can reject a
+/// major mismatch at decode.
 #[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
 pub struct ClientRegistration {
     /// The ABI the mod was built against; the host rejects a major mismatch.
@@ -113,4 +116,8 @@ pub struct ClientRegistration {
     /// The ability-feedback visuals this cosmetic mod declares (projectile /
     /// impact / cast indicator), keyed by ability + role.
     pub effects: Vec<EffectVisualDescriptor>,
+    /// The animations this cosmetic mod declares, one per unit it animates
+    /// (stormlight/server#72). Independent of `visuals`: a mod may dress a unit
+    /// without animating it, or animate a unit whose model another mod supplied.
+    pub animations: Vec<AnimationDescriptor>,
 }

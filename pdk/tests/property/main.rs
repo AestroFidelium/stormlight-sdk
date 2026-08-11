@@ -6,5 +6,6 @@
 
 mod aim_params;
 mod bridge;
+mod client_animation;
 mod client_context;
 mod context;

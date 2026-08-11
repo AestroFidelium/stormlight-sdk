@@ -312,6 +312,9 @@ impl ModContext {
                 handlers: table(&self.handlers),
                 units: table(&self.unit_names),
                 navmeshes: table(&self.navmesh_names),
+                // Animation states are declared by the cosmetic half
+                // (`ClientContext`); a gameplay bundle never names one.
+                anim_states: Vec::new(),
             },
             abilities: self.abilities,
             talents: self.talents,

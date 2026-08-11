@@ -230,6 +230,7 @@ impl Gen<'_> {
             handlers: self.strings(),
             units: self.strings(),
             navmeshes: self.strings(),
+            anim_states: self.strings(),
         }
     }
     fn registration(&mut self) -> Registration {

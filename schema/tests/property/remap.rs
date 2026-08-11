@@ -22,8 +22,8 @@ use stormlight_mod_abi::common::{Affiliation, Direction, ImpactTarget, NumOp, Ta
 use stormlight_mod_abi::conditions::{CmpOp, Condition};
 use stormlight_mod_abi::descriptors::{Curve, Names, Registration};
 use stormlight_mod_abi::ids::{
-    AbilityId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId, ResourceId,
-    Slot, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
+    AbilityId, AnimStateId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId,
+    ResourceId, Slot, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
 use stormlight_mod_abi::impacts::{
     AbilityTarget, BuffSelector, CostMode, DamageFlags, HealFlags, Impact, LoopKind, PendingFilter,
@@ -102,6 +102,9 @@ impl IdMap for Counting {
     fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, ()> {
         self.bump(id)
     }
+    fn anim_state(&self, id: AnimStateId) -> Result<AnimStateId, ()> {
+        self.bump(id)
+    }
 }
 
 /// A map that fails on the very first id it is asked to translate — models a
@@ -153,6 +156,9 @@ impl IdMap for FailAll {
         Err(())
     }
     fn navmesh(&self, _: NavMeshId) -> Result<NavMeshId, ()> {
+        Err(())
+    }
+    fn anim_state(&self, _: AnimStateId) -> Result<AnimStateId, ()> {
         Err(())
     }
 }

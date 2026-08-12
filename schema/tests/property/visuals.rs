@@ -21,8 +21,8 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::visuals::{
-    ClientRegistration, EffectRole, EffectVisualDescriptor, PrimitiveShape, VisualDescriptor,
-    VisualModel,
+    ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, PrimitiveShape,
+    VisualDescriptor, VisualModel,
 };
 
 extern crate alloc;
@@ -274,6 +274,9 @@ impl Gen<'_> {
             model: self.model(),
         }
     }
+    fn named_effect(&mut self) -> NamedEffect {
+        NamedEffect { name: self.string(), model: self.model() }
+    }
     fn names(&mut self) -> Names {
         // A cosmetic bundle names the units it dresses and the abilities its
         // effect visuals key on; the rest stay empty.
@@ -292,6 +295,7 @@ impl Gen<'_> {
             // Animations have their own bundle-level invariants (see
             // `animation.rs`); this file stays about visuals.
             animations: Vec::new(),
+            named_effects: (0..self.count(4)).map(|_| self.named_effect()).collect(),
         }
     }
 }

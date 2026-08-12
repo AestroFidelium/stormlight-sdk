@@ -59,6 +59,7 @@ fn an_animation(states: &[AnimState], masked: bool) -> AnimationDescriptor {
                     blend_out: 0.2,
                     rate: RateBinding::MoveSpeed { reference_speed: 3.5 },
                     priority: i as i16,
+                    notifies: Vec::new(),
                 })
                 .collect(),
             transitions: vec![Transition {

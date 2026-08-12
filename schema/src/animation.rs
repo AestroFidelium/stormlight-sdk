@@ -43,6 +43,7 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::ids::{AnimStateId, UnitId};
+use crate::notify::{NotifyAction, NotifyAttach, NotifyPoint};
 use crate::remap::{IdMap, RemapIds};
 
 /// How many [`MaskGroup`]s one character may declare.
@@ -209,6 +210,10 @@ pub struct StateClip {
     /// wins. Ties are resolved by declaration order, so a mod that does not care
     /// can leave every priority at zero and still get a deterministic result.
     pub priority: i16,
+    /// Cosmetic notifies fired as playback crosses them (server#76) — the frame
+    /// the swing connects, not the frame the ability was cast. Empty for a clip
+    /// that needs none, which is most of them.
+    pub notifies: Vec<NotifyPoint>,
 }
 
 /// A per-pair override of the blend time between two of a layer's states — for
@@ -293,8 +298,17 @@ pub enum AnimationError {
     EmptyMaskGroup { group: u16 },
     /// A clip with an empty container path or an empty clip name.
     EmptyClipRef { layer: u16, state: u16 },
-    /// A non-finite weight, blend duration, or playback rate on a layer.
+    /// A non-finite weight, blend duration, playback rate or notify lifetime on a
+    /// layer.
     NonFinite { layer: u16 },
+    /// A notify placed where playback can never reach it: a fraction outside the
+    /// clip, or a negative / non-finite offset (server#76).
+    NotifyOutOfRange { layer: u16, state: u16, notify: u16 },
+    /// A notify that names no cosmetic effect at all.
+    EmptyNotifyKey { layer: u16, state: u16, notify: u16 },
+    /// A notify socket with no bone path, or with a blank segment in it — an
+    /// effect that could only ever be attached to nothing.
+    EmptyNotifySocket { layer: u16, state: u16, notify: u16 },
 }
 
 impl fmt::Display for AnimationError {
@@ -319,6 +333,15 @@ impl fmt::Display for AnimationError {
                 write!(f, "layer {layer} state {state} names an empty clip")
             }
             Self::NonFinite { layer } => write!(f, "layer {layer} carries a non-finite number"),
+            Self::NotifyOutOfRange { layer, state, notify } => {
+                write!(f, "layer {layer} state {state} notify {notify} sits outside the clip")
+            }
+            Self::EmptyNotifyKey { layer, state, notify } => {
+                write!(f, "layer {layer} state {state} notify {notify} names no effect")
+            }
+            Self::EmptyNotifySocket { layer, state, notify } => {
+                write!(f, "layer {layer} state {state} notify {notify} names no socket bone")
+            }
         }
     }
 }
@@ -369,6 +392,7 @@ impl AnimationDescriptor {
                 {
                     return Err(AnimationError::NonFinite { layer: index });
                 }
+                validate_notifies(index, s as u16, binding)?;
                 // Quadratic, over a handful of bindings — and allocation-free,
                 // which a set would not be on a `no_std` guest.
                 if layer.states[..s].iter().any(|other| other.state == binding.state) {
@@ -393,6 +417,38 @@ impl AnimationDescriptor {
     }
 }
 
+/// Everything decidable about one state binding's notify points before the art
+/// exists (server#76): that each sits somewhere playback can reach, names an
+/// effect, and — when it asks for a socket — names a bone.
+///
+/// Whether the clip is long enough for an absolute offset, and whether the
+/// skeleton has that bone, are not knowable here; both are reported by the runtime
+/// once the art has loaded.
+fn validate_notifies(layer: u16, state: u16, binding: &StateClip) -> Result<(), AnimationError> {
+    for (n, point) in binding.notifies.iter().enumerate() {
+        let notify = n as u16;
+        // The time first: a non-finite one is a broken *notify*, and saying so
+        // points at the notify rather than at the layer it happens to sit on.
+        if !point.at.is_reachable() {
+            return Err(AnimationError::NotifyOutOfRange { layer, state, notify });
+        }
+        if !point.action.is_finite() {
+            return Err(AnimationError::NonFinite { layer });
+        }
+        if let NotifyAction::Effect { key, attach, .. } = &point.action {
+            if key.is_empty() {
+                return Err(AnimationError::EmptyNotifyKey { layer, state, notify });
+            }
+            if let NotifyAttach::Socket { bone, .. } = attach
+                && (bone.is_empty() || bone.iter().any(String::is_empty))
+            {
+                return Err(AnimationError::EmptyNotifySocket { layer, state, notify });
+            }
+        }
+    }
+    Ok(())
+}
+
 impl RemapIds for AnimState {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         if let Self::Custom(id) = self {
@@ -405,8 +461,9 @@ impl RemapIds for AnimState {
 impl RemapIds for StateClip {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         // `clip`, the timings, the rate and the priority are asset strings and
-        // plain numbers — the state is the only handle here.
-        self.state.remap_ids(m)
+        // plain numbers; the state and a notify's event are the handles here.
+        self.state.remap_ids(m)?;
+        self.notifies.remap_ids(m)
     }
 }
 

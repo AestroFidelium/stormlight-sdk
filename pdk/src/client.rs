@@ -19,11 +19,12 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::animation::{AnimState, AnimationDescriptor};
 use stormlight_mod_abi::descriptors::Names;
-use stormlight_mod_abi::ids::{AbilityId, AnimStateId, UnitId};
+use stormlight_mod_abi::ids::{AbilityId, AnimStateId, EventId, UnitId};
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
 use stormlight_mod_abi::visuals::{
-    ClientRegistration, EffectRole, EffectVisualDescriptor, VisualDescriptor, VisualModel,
+    ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, VisualDescriptor,
+    VisualModel,
 };
 
 use crate::context::table;
@@ -37,10 +38,12 @@ pub struct ClientContext {
     unit_names: Interner<UnitId>,
     ability_names: Interner<AbilityId>,
     anim_state_names: Interner<AnimStateId>,
+    event_names: Interner<EventId>,
 
     visuals: Vec<VisualDescriptor>,
     effects: Vec<EffectVisualDescriptor>,
     animations: Vec<AnimationDescriptor>,
+    named_effects: Vec<NamedEffect>,
 }
 
 impl ClientContext {
@@ -95,6 +98,28 @@ impl ClientContext {
         id
     }
 
+    /// Declare a cosmetic effect under a name of this mod's own choosing, for an
+    /// animation notify to spawn (server#76) — a footstep puff, a weapon trail.
+    ///
+    /// Named rather than keyed by an ability, because these belong to no ability:
+    /// the name is resolved within this mod alone, the way a clip name is resolved
+    /// within its container. Re-declaring a name overrides the earlier model at
+    /// adoption (later wins).
+    pub fn notify_effect(&mut self, name: &str, model: VisualModel) {
+        self.named_effects.push(NamedEffect { name: name.into(), model });
+    }
+
+    /// Intern a mod-defined event by name, returning the handle a
+    /// [`NotifyAction::Trigger`](stormlight_mod_abi::notify::NotifyAction::Trigger)
+    /// names. Idempotent: one name, one handle.
+    ///
+    /// Nothing dispatches these yet — a cosmetic mod is registered but never
+    /// invoked at runtime — and the client reports each declared trigger as inert
+    /// rather than leaving an author waiting for a reaction that cannot come.
+    pub fn notify_event(&mut self, name: &str) -> EventId {
+        self.event_names.intern(name)
+    }
+
     /// The ABI version this context targets (always the SDK's [`ABI_VERSION`]).
     #[must_use]
     pub fn abi(&self) -> Version {
@@ -112,11 +137,13 @@ impl ClientContext {
                 units: table(&self.unit_names),
                 abilities: table(&self.ability_names),
                 anim_states: table(&self.anim_state_names),
+                events: table(&self.event_names),
                 ..Names::default()
             },
             visuals: self.visuals,
             effects: self.effects,
             animations: self.animations,
+            named_effects: self.named_effects,
         }
     }
 }

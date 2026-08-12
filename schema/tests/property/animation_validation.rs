@@ -85,6 +85,7 @@ fn a_state_clip(state: AnimState, n: usize) -> StateClip {
         blend_out: 0.2,
         rate: RateBinding::Fixed(1.0),
         priority: 0,
+        notifies: Vec::new(),
     }
 }
 

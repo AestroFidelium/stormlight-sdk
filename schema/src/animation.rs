@@ -25,6 +25,12 @@
 //! body") be reused by every layer that cares about it, and makes
 //! [`BoneMask::Only`] expressible as the complement of the declared groups.
 //!
+//! A group names bones by the same **name path** the exporter wrote, and the
+//! engine resolves it against the real skeleton when the art arrives. A bone the
+//! skeleton does not have costs every layer that masked against its group — a
+//! layer that cannot be masked as declared would otherwise drive the whole
+//! character, which is the failure nobody would trace back to a renamed bone.
+//!
 //! Pure, serializable data like the rest of the ABI. The [`crate::ids::UnitId`] it
 //! dresses and every mod-defined [`crate::ids::AnimStateId`] are authored in the
 //! mod's **local** id space and remapped to global at adoption (see
@@ -39,11 +45,15 @@ use serde::{Deserialize, Serialize};
 use crate::ids::{AnimStateId, UnitId};
 use crate::remap::{IdMap, RemapIds};
 
-/// How many [`MaskGroup`]s one character may declare. The runtime carries a
-/// layer's mask as a fixed 64-bit set, so group 64 has nowhere to live; a
-/// descriptor that declares more is rejected at load rather than silently losing
-/// its last groups.
-pub const MAX_MASK_GROUPS: usize = 64;
+/// How many [`MaskGroup`]s one character may declare.
+///
+/// The runtime carries a layer's mask as a fixed 64-bit set and **reserves the
+/// last bit for itself**: making [`BoneMask::Only`] mean *only* requires a group
+/// holding every bone the mod put in no group at all, and that complement has to
+/// be addressable like any other. So 63 are declarable and the 64th is the
+/// engine's; a descriptor that declares more is rejected at load rather than
+/// silently losing its last groups.
+pub const MAX_MASK_GROUPS: usize = 63;
 
 /// A bone, addressed by its name path from the animated root — the same way the
 /// renderer identifies an animation target, so a mod names bones exactly as its
@@ -134,6 +144,9 @@ impl BoneMask {
 }
 
 /// How a layer composites over the layers beneath it.
+///
+/// The two modes differ in whether the layer *takes the bones away* from what is
+/// underneath, which is the whole of the composition rule (see [`AnimLayer`]).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum BlendMode {
     /// Replaces the pose of the bones it drives.
@@ -213,7 +226,20 @@ pub struct Transition {
 
 /// One layer of a character's animation: a masked, weighted state machine.
 ///
-/// Layers are ordered — later layers composite over earlier ones.
+/// ## Composition order
+///
+/// Layers are ordered, and the order means exactly two things:
+///
+/// 1. **A later [`BlendMode::Override`] layer owns the bones it drives.** Every
+///    override layer declared before it is masked out of those bones, so an
+///    upper-body cast really does replace the upper body while the locomotion
+///    layer underneath keeps the legs — rather than the two being averaged.
+/// 2. **[`BlendMode::Additive`] layers ride on top of the whole override stack**,
+///    in declaration order among themselves. They take no bones away from
+///    anything, which is what lets a flinch ride whatever is already playing.
+///
+/// So a layer that drives a bone no later override layer claims is the one seen on
+/// that bone, plus whatever additive layers add to it.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AnimLayer {
     /// Author-facing name, for diagnostics.

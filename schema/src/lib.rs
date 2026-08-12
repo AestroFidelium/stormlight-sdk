@@ -23,6 +23,7 @@ pub mod manifest;
 pub mod math;
 pub mod missiles;
 pub mod navmesh;
+pub mod notify;
 pub mod params;
 pub mod placement;
 pub mod progression;

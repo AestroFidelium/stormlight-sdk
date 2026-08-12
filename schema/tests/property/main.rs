@@ -5,6 +5,7 @@
 //! Keep invariants directional/structural, never magnitude-only.
 
 mod aiming;
+mod anim_notify;
 mod animation;
 mod animation_validation;
 mod conditions;

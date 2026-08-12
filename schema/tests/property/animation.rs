@@ -25,8 +25,9 @@ use stormlight_mod_abi::animation::{
     RateBinding, StateClip, Transition,
 };
 use stormlight_mod_abi::descriptors::Names;
-use stormlight_mod_abi::ids::{AnimStateId, UnitId};
+use stormlight_mod_abi::ids::{AnimStateId, EventId, UnitId};
 use stormlight_mod_abi::manifest::Version;
+use stormlight_mod_abi::notify::{NotifyAction, NotifyAttach, NotifyPoint, NotifyTime};
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::visuals::ClientRegistration;
 
@@ -199,6 +200,30 @@ impl Gen<'_> {
             _ => RateBinding::CastDuration,
         }
     }
+    fn notify(&mut self) -> NotifyPoint {
+        let at = if self.bool() {
+            NotifyTime::Normalized(self.f32() / 4.0)
+        } else {
+            NotifyTime::Seconds(self.f32())
+        };
+        let action = if self.bool() {
+            NotifyAction::Trigger { event: EventId(self.next()) }
+        } else {
+            NotifyAction::Effect {
+                key: self.string(),
+                attach: if self.bool() {
+                    NotifyAttach::Root
+                } else {
+                    NotifyAttach::Socket {
+                        bone: self.strings(),
+                        offset: [self.f32(), self.f32(), self.f32()],
+                    }
+                },
+                lifetime: self.f32(),
+            }
+        };
+        NotifyPoint { at, action }
+    }
     fn state_clip(&mut self) -> StateClip {
         StateClip {
             state: self.state(),
@@ -208,6 +233,7 @@ impl Gen<'_> {
             blend_out: self.f32(),
             rate: self.rate(),
             priority: self.next() as i16,
+            notifies: (0..self.count(3)).map(|_| self.notify()).collect(),
         }
     }
     fn transition(&mut self) -> Transition {
@@ -256,6 +282,7 @@ impl Gen<'_> {
             names: Names { units: self.strings(), anim_states: self.strings(), ..Names::default() },
             visuals: Vec::new(),
             effects: Vec::new(),
+            named_effects: Vec::new(),
             animations: (0..self.count(3)).map(|_| self.animation()).collect(),
         }
     }

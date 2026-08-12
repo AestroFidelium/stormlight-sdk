@@ -94,6 +94,25 @@ pub struct EffectVisualDescriptor {
     pub model: VisualModel,
 }
 
+/// A cosmetic effect declared under a name of the mod's own choosing, for
+/// anything that spawns a visual without an ability behind it — today, an
+/// animation notify (server#76): a footstep puff, a weapon trail, a landing
+/// cloud.
+///
+/// Name-keyed rather than handle-keyed because the key never crosses the wire and
+/// never leaves the mod that declared it: it is resolved against that mod's own
+/// declarations, exactly like a [`ClipRef`](crate::animation::ClipRef) naming a
+/// clip inside a container. The host qualifies the name with the declaring
+/// package at adoption, so two mods may each have a `footstep`.
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct NamedEffect {
+    /// The mod's own name for it, as a notify's
+    /// [`key`](crate::notify::NotifyAction::Effect) spells it.
+    pub name: String,
+    /// How to draw it.
+    pub model: VisualModel,
+}
+
 /// Everything a *client* (cosmetic) mod registers — the client-side parallel to
 /// [`crate::descriptors::Registration`]. Emitted once at `mod_register` on the
 /// client's wasm runtime and decoded by the client host.
@@ -120,4 +139,8 @@ pub struct ClientRegistration {
     /// (stormlight/server#72). Independent of `visuals`: a mod may dress a unit
     /// without animating it, or animate a unit whose model another mod supplied.
     pub animations: Vec<AnimationDescriptor>,
+    /// The name-keyed cosmetic effects this mod declares (server#76), which its
+    /// animation notifies spawn by name. Keyed within this mod alone — the host
+    /// qualifies each name with the declaring package at adoption.
+    pub named_effects: Vec<NamedEffect>,
 }

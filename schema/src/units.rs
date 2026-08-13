@@ -68,6 +68,18 @@ pub struct UnitDescriptor {
     /// — the honest default for anything that is not a participant. See
     /// [`ProgressionSpec`].
     pub progression: Option<ProgressionSpec>,
+    /// How fast the unit pivots toward the direction it is travelling, in radians
+    /// per second. `None` takes the engine's default.
+    ///
+    /// A unit is turned toward where it actually went rather than snapped onto it,
+    /// so this is a feel knob with a real cost: too low and a hero lags behind the
+    /// player's clicks and visibly swings around after them. A heavy siege engine
+    /// that pivots slowly and a scout that spins on the spot are the same
+    /// declaration with different numbers.
+    ///
+    /// A `Value` like every other tunable, so a mod can scale it off a stat rather
+    /// than fixing it at authoring time.
+    pub turn_rate: Option<Value>,
 }
 
 /// Well-known capability classes the engine's generic systems consult. These ids

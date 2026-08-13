@@ -187,6 +187,7 @@ fn unit(id: UnitId, progression: Option<ProgressionSpec>) -> UnitDescriptor {
         talent_tree: None,
         respawn: None,
         progression,
+        turn_rate: None,
     }
 }
 

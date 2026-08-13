@@ -206,6 +206,37 @@ fn a_break_is_reported_at_the_widget_it_sits_on() {
 }
 
 #[test]
+fn a_per_unit_tree_needs_no_visibility_gate() {
+    check!().with_type::<u8>().for_each(|&seed| {
+        // `HoveredUnit` reads a subject that exists only while something is
+        // hovered, so it is refused without that gate. `EachUnit` is the opposite
+        // case: it is instanced *per* unit, so its subject is present under every
+        // visibility — and refusing a combination here would be refusing a
+        // nameplate set that a talent panel happens to gate.
+        let when = match seed % 3 {
+            0 => RootVisibility::Always,
+            1 => RootVisibility::WhileTalentPending,
+            _ => RootVisibility::WhileUnitHovered,
+        };
+        let mut root = a_root(2);
+        root.when = when;
+        root.subject = UiSubject::EachUnit;
+        assert_eq!(root.validate(), Ok(()), "a per-unit tree is valid under {when:?}");
+
+        // The hovered-unit rule is untouched by the new variant.
+        root.subject = UiSubject::HoveredUnit;
+        assert_eq!(
+            root.validate(),
+            if when == RootVisibility::WhileUnitHovered {
+                Ok(())
+            } else {
+                Err(UiError::SubjectNeverPresent)
+            },
+        );
+    });
+}
+
+#[test]
 fn a_bound_stat_does_not_affect_validity() {
     check!().with_type::<u16>().for_each(|&raw| {
         // Whether a bound handle *resolves* is adoption's business (the name

@@ -304,9 +304,10 @@ impl Gen<'_> {
         UiRoot {
             name: self.string(),
             when,
-            subject: match self.next() % 2 {
+            subject: match self.next() % 3 {
                 0 => UiSubject::LocalPlayer,
-                _ => UiSubject::HoveredUnit,
+                1 => UiSubject::HoveredUnit,
+                _ => UiSubject::EachUnit,
             },
             root: self.widget(4),
         }

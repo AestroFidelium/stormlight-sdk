@@ -27,6 +27,14 @@
 //! a pool a unit does not have). This is what lets the engine change how it
 //! stores vitals without breaking a single mod.
 //!
+//! ## One declaration, however many copies
+//!
+//! A tree is declared once. [`UiSubject::EachUnit`] is what turns that one
+//! declaration into a nameplate over every unit on screen: the client instances
+//! it per unit and reads each instance's bindings against the unit it hangs on.
+//! There is no repeater and no per-unit authoring — a mod that wants health over
+//! heads declares a bar exactly once.
+//!
 //! ## A tree, not a graph
 //!
 //! A widget owns its children by value, so a *cyclic* interface is unrepresentable
@@ -332,7 +340,9 @@ pub enum RootVisibility {
     WhileUnitHovered,
 }
 
-/// Whose state a tree's bindings read.
+/// Whose state a tree's bindings read — and, for the last variant, *where the
+/// tree sits*, because a tree that reads a unit in the world is drawn over that
+/// unit rather than in a corner.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub enum UiSubject {
     /// The unit this player drives.
@@ -341,6 +351,18 @@ pub enum UiSubject {
     /// The unit under the cursor. Only ever present under
     /// [`RootVisibility::WhileUnitHovered`], which [`UiRoot::validate`] enforces.
     HoveredUnit,
+    /// Every unit on screen, one instance of the tree each, anchored to the unit
+    /// it reads — the nameplate case (stormlight/server#67).
+    ///
+    /// This is the one subject that also decides placement. A screen-anchored
+    /// tree measures its [`Layout::anchor`] against the screen; a per-unit
+    /// instance measures it against the point its unit projects to, so the same
+    /// anchor-plus-offset vocabulary puts a bar above a head
+    /// ([`Anchor::BottomCenter`], a negative `y`) with nothing new to learn. An
+    /// instance whose unit is behind the camera or off screen is not drawn at
+    /// all — never clamped to the edge, which would fill the border with the
+    /// nameplates of things the player cannot see.
+    EachUnit,
 }
 
 /// One declared widget tree: what it is called, when it is shown, whose state it
@@ -352,7 +374,8 @@ pub struct UiRoot {
     pub name: String,
     /// When it is on screen.
     pub when: RootVisibility,
-    /// Whose state its bindings read.
+    /// Whose state its bindings read — and, for [`UiSubject::EachUnit`], that it
+    /// is instanced per unit and anchored to it rather than to the screen.
     pub subject: UiSubject,
     /// The tree.
     pub root: Widget,

@@ -132,9 +132,11 @@ impl ClientContext {
     /// shows it, whose state its bindings read, and the tree itself.
     ///
     /// The interface counterpart of [`unit_visual`](Self::unit_visual) — roots
-    /// accumulate in declaration order, and nothing here is keyed by a handle:
-    /// a HUD belongs to the *player*, not to a unit. Build the tree with the
-    /// constructors in [`crate::ui`].
+    /// accumulate in declaration order, and nothing here is keyed by a handle,
+    /// not even the per-unit case: a tree declared for
+    /// [`UiSubject::EachUnit`] is instanced over *every* unit on screen, so a
+    /// nameplate is authored once rather than per unit dressed. Build the tree
+    /// with the constructors in [`crate::ui`].
     pub fn ui(&mut self, name: &str, when: RootVisibility, subject: UiSubject, root: Widget) {
         self.ui.push(UiRoot { name: name.into(), when, subject, root });
     }

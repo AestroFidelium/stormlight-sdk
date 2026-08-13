@@ -20,6 +20,7 @@ mod registration;
 mod remap;
 mod respawn;
 mod runtime;
+mod stats;
 mod tags;
 mod talent_tree;
 mod ui;

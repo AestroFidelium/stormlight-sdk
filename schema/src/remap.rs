@@ -627,6 +627,8 @@ impl RemapIds for UnitDescriptor {
             *talent = m.talent(*talent)?;
         }
         self.talent_tree.remap_ids(m)?;
+        // A `Value` may read a stat, so it carries handles like any other.
+        self.turn_rate.remap_ids(m)?;
         // `respawn` is deliberately not walked: a delay and three policy flags
         // hold no interned handle, so there is nothing here to rewrite.
         self.progression.remap_ids(m)?;

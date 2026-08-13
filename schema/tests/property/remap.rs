@@ -679,6 +679,7 @@ impl Gen<'_> {
             talent_tree: None,
             respawn: None,
             progression: None,
+            turn_rate: None,
         }
     }
     fn registration(&mut self) -> Registration {

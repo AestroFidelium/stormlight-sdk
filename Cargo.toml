@@ -21,3 +21,12 @@ bolero = "0.13"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+
+# `cargo bolero test … -T <n>sec` builds under this profile. Same shape as the
+# engine repos': optimized so a campaign covers ground, non-incremental and
+# single-codegen-unit so the sanitizer instrumentation is stable.
+[profile.fuzz]
+inherits = "dev"
+opt-level = 3
+incremental = false
+codegen-units = 1

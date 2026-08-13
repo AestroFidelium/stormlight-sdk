@@ -33,5 +33,6 @@ pub mod runtime;
 pub mod talent_tree;
 pub mod talents;
 pub mod triggers;
+pub mod ui;
 pub mod units;
 pub mod visuals;

@@ -296,6 +296,9 @@ impl Gen<'_> {
             // `animation.rs`); this file stays about visuals.
             animations: Vec::new(),
             named_effects: (0..self.count(4)).map(|_| self.named_effect()).collect(),
+            // Widget trees have their own invariants (see `ui.rs`); this file
+            // stays about visuals.
+            ui: Vec::new(),
         }
     }
 }

@@ -17,6 +17,7 @@ pub mod context;
 pub mod macros;
 pub mod runtime;
 pub mod types;
+pub mod ui;
 
 /// wasm guest runtime glue: a global allocator + panic handler so mods compile
 /// to `wasm32-unknown-unknown` cdylibs without per-mod boilerplate. Present only

@@ -9,4 +9,5 @@ mod bridge;
 mod client_animation;
 mod client_context;
 mod client_notify;
+mod client_ui;
 mod context;

@@ -22,4 +22,6 @@ mod respawn;
 mod runtime;
 mod tags;
 mod talent_tree;
+mod ui;
+mod ui_validation;
 mod visuals;

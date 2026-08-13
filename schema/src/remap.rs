@@ -659,7 +659,8 @@ impl RemapIds for ClientRegistration {
         // `abi` and `names` (the string tables) carry no interned handle.
         self.visuals.remap_ids(m)?;
         self.effects.remap_ids(m)?;
-        self.animations.remap_ids(m)
+        self.animations.remap_ids(m)?;
+        self.ui.remap_ids(m)
     }
 }
 

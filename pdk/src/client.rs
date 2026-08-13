@@ -1,15 +1,16 @@
 //! `ClientContext` — the guest-side authoring context for a `*_client` (cosmetic)
 //! mod, the render-side counterpart to [`ModContext`](crate::context::ModContext).
 //!
-//! A cosmetic mod declares how content *looks* and how it *moves*: a
-//! [`VisualModel`] per unit, a per-ability feedback visual
-//! ([`EffectVisualDescriptor`], keyed by an [`EffectRole`]), and an
-//! [`AnimationDescriptor`] per unit. Like the gameplay context it names everything
-//! with stable strings that intern to dense handles;
-//! [`ClientContext::finish`] emits the [`Names`] tables (only `units`,
-//! `abilities` and `anim_states` are meaningful to a cosmetic bundle) alongside
-//! the accumulated declarations, so the host can map each handle to the gameplay
-//! mod's global id by **name** at adoption.
+//! A cosmetic mod declares how content *looks*, how it *moves*, and what the
+//! player *reads*: a [`VisualModel`] per unit, a per-ability feedback visual
+//! ([`EffectVisualDescriptor`], keyed by an [`EffectRole`]), an
+//! [`AnimationDescriptor`] per unit, and the widget trees of its interface
+//! ([`UiRoot`], server#66). Like the gameplay context it names everything with
+//! stable strings that intern to dense handles; [`ClientContext::finish`] emits
+//! the [`Names`] tables (a cosmetic bundle fills `units`, `abilities`,
+//! `anim_states`, `events`, and — for what its HUD binds to — `stats`,
+//! `resources` and `stacks`) alongside the accumulated declarations, so the host
+//! can map each handle to the gameplay mod's global id by **name** at adoption.
 //!
 //! Content-free host: the engine ships nothing here — it renders whatever asset a
 //! declared [`VisualModel`] names via a `mod://<id>/<path>` URL, falling back to a
@@ -19,9 +20,12 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::animation::{AnimState, AnimationDescriptor};
 use stormlight_mod_abi::descriptors::Names;
-use stormlight_mod_abi::ids::{AbilityId, AnimStateId, EventId, UnitId};
+use stormlight_mod_abi::ids::{
+    AbilityId, AnimStateId, EventId, ResourceId, StackId, StatId, UnitId,
+};
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
+use stormlight_mod_abi::ui::{RootVisibility, UiRoot, UiSubject, Widget};
 use stormlight_mod_abi::visuals::{
     ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, VisualDescriptor,
     VisualModel,
@@ -39,11 +43,15 @@ pub struct ClientContext {
     ability_names: Interner<AbilityId>,
     anim_state_names: Interner<AnimStateId>,
     event_names: Interner<EventId>,
+    stat_names: Interner<StatId>,
+    resource_names: Interner<ResourceId>,
+    stack_names: Interner<StackId>,
 
     visuals: Vec<VisualDescriptor>,
     effects: Vec<EffectVisualDescriptor>,
     animations: Vec<AnimationDescriptor>,
     named_effects: Vec<NamedEffect>,
+    ui: Vec<UiRoot>,
 }
 
 impl ClientContext {
@@ -120,6 +128,39 @@ impl ClientContext {
         self.event_names.intern(name)
     }
 
+    /// Declare a widget tree (server#66): what it is called, when the client
+    /// shows it, whose state its bindings read, and the tree itself.
+    ///
+    /// The interface counterpart of [`unit_visual`](Self::unit_visual) — roots
+    /// accumulate in declaration order, and nothing here is keyed by a handle:
+    /// a HUD belongs to the *player*, not to a unit. Build the tree with the
+    /// constructors in [`crate::ui`].
+    pub fn ui(&mut self, name: &str, when: RootVisibility, subject: UiSubject, root: Widget) {
+        self.ui.push(UiRoot { name: name.into(), when, subject, root });
+    }
+
+    /// Intern a unit stat by name, returning the handle a
+    /// [`ValueBinding::Stat`](stormlight_mod_abi::ui::ValueBinding::Stat) names.
+    /// The same name the gameplay mod interned, so adoption maps the two onto one
+    /// global handle. Idempotent: one name, one handle.
+    pub fn stat(&mut self, name: &str) -> StatId {
+        self.stat_names.intern(name)
+    }
+
+    /// Intern a resource pool by name, returning the handle a
+    /// [`PoolRef::Resource`](stormlight_mod_abi::impacts::PoolRef::Resource)
+    /// binding names. Idempotent: one name, one handle.
+    pub fn resource(&mut self, name: &str) -> ResourceId {
+        self.resource_names.intern(name)
+    }
+
+    /// Intern a stack counter by name, returning the handle a
+    /// [`PoolRef::Stacks`](stormlight_mod_abi::impacts::PoolRef::Stacks) binding
+    /// names. Idempotent: one name, one handle.
+    pub fn stack(&mut self, name: &str) -> StackId {
+        self.stack_names.intern(name)
+    }
+
     /// The ABI version this context targets (always the SDK's [`ABI_VERSION`]).
     #[must_use]
     pub fn abi(&self) -> Version {
@@ -138,12 +179,16 @@ impl ClientContext {
                 abilities: table(&self.ability_names),
                 anim_states: table(&self.anim_state_names),
                 events: table(&self.event_names),
+                stats: table(&self.stat_names),
+                resources: table(&self.resource_names),
+                stacks: table(&self.stack_names),
                 ..Names::default()
             },
             visuals: self.visuals,
             effects: self.effects,
             animations: self.animations,
             named_effects: self.named_effects,
+            ui: self.ui,
         }
     }
 }

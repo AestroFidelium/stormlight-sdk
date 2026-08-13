@@ -23,6 +23,7 @@ use crate::animation::AnimationDescriptor;
 use crate::descriptors::Names;
 use crate::ids::{AbilityId, UnitId};
 use crate::manifest::Version;
+use crate::ui::UiRoot;
 
 /// A procedural primitive the client can draw with no asset. The graceful
 /// fallback a cosmetic mod always has, and what a missing/unknown model degrades
@@ -143,4 +144,8 @@ pub struct ClientRegistration {
     /// animation notifies spawn by name. Keyed within this mod alone — the host
     /// qualifies each name with the declaring package at adoption.
     pub named_effects: Vec<NamedEffect>,
+    /// The widget trees this mod declares (server#66) — the interface the
+    /// content-free client presents. Independent of everything above: a mod may
+    /// ship a HUD and dress nothing, or dress a unit and ship no HUD.
+    pub ui: Vec<UiRoot>,
 }

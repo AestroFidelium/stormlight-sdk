@@ -20,8 +20,9 @@
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{Slot, StatId};
 use stormlight_mod_abi::ui::{
-    Anchor, Border, Flow, Layout, Length, MAX_UI_DEPTH, MAX_UI_WIDGETS, RootVisibility, Style,
-    TextSource, UiError, UiRoot, UiSubject, ValueBinding, Widget, WidgetKind,
+    Anchor, Border, Flow, InteractionStyle, Layout, Length, MAX_UI_DEPTH, MAX_UI_WIDGETS,
+    RootVisibility, StateStyle, Style, TextSource, UiError, UiRoot, UiSubject, ValueBinding,
+    Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -47,6 +48,11 @@ enum Break {
     IconWithoutImage,
     /// An image path that is present but empty.
     EmptyImagePath,
+    /// A *state* override naming an empty image — the same break, hidden behind
+    /// the pointer arriving (server#69).
+    EmptyStateImagePath,
+    /// A NaN in a state override's colour, likewise.
+    NonFiniteState,
     /// Put a NaN in the root's width.
     NonFinite,
     /// Ask for a negative font size.
@@ -78,6 +84,7 @@ fn a_style() -> Style {
         border: Border { color: [1.0, 1.0, 1.0, 1.0], width: 1.0 },
         font_size: 14.0,
         image: None,
+        states: InteractionStyle::default(),
     }
 }
 
@@ -143,6 +150,16 @@ fn apply(brk: Break, root: &mut UiRoot) {
             root.root = a_widget("icon", WidgetKind::Icon);
         }
         Break::EmptyImagePath => root.root.style.image = Some(String::new()),
+        Break::EmptyStateImagePath => {
+            root.root.style.states.hover =
+                Some(StateStyle { image: Some(String::new()), ..StateStyle::default() });
+        }
+        Break::NonFiniteState => {
+            root.root.style.states.disabled = Some(StateStyle {
+                background: Some([f32::NAN, 0.0, 0.0, 1.0]),
+                ..StateStyle::default()
+            });
+        }
         Break::NonFinite => root.root.layout.size[0] = Length::Px(f32::NAN),
         Break::NegativeMetric => root.root.style.font_size = -1.0,
     }
@@ -169,9 +186,10 @@ fn a_well_formed_root_validates_and_each_break_is_classified() {
             Break::IconWithoutImage => {
                 assert_eq!(result, Err(UiError::IconWithoutImage { widget: 0 }));
             }
-            Break::EmptyImagePath => {
+            Break::EmptyImagePath | Break::EmptyStateImagePath => {
                 assert_eq!(result, Err(UiError::EmptyImagePath { widget: 0 }));
             }
+            Break::NonFiniteState => assert_eq!(result, Err(UiError::NonFinite { widget: 0 })),
             Break::NonFinite => assert_eq!(result, Err(UiError::NonFinite { widget: 0 })),
             Break::NegativeMetric => {
                 assert_eq!(result, Err(UiError::NegativeMetric { widget: 0 }));

@@ -24,8 +24,9 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Anchor, Border, Flow, Layout, Length, ListBinding, RootVisibility, Style, TextSource, UiAction,
-    UiRoot, UiSubject, ValueBinding, ValuePart, Widget, WidgetKind,
+    Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility,
+    StateStyle, Style, TextSource, UiAction, UiRoot, UiSubject, ValueBinding, ValuePart, Widget,
+    WidgetKind,
 };
 
 extern crate alloc;
@@ -227,6 +228,25 @@ impl Gen<'_> {
     fn rgba(&mut self) -> [f32; 4] {
         [self.f32(), self.f32(), self.f32(), self.f32()]
     }
+    /// One state override, each property present about half the time — so the
+    /// round-trip sees every combination of declared and undeclared.
+    fn state_style(&mut self) -> Option<StateStyle> {
+        if !self.next().is_multiple_of(2) {
+            return None;
+        }
+        Some(StateStyle {
+            color: self.next().is_multiple_of(2).then(|| self.rgba()),
+            background: self.next().is_multiple_of(2).then(|| self.rgba()),
+            image: self.next().is_multiple_of(2).then(|| self.string()),
+        })
+    }
+    fn states(&mut self) -> InteractionStyle {
+        InteractionStyle {
+            hover: self.state_style(),
+            press: self.state_style(),
+            disabled: self.state_style(),
+        }
+    }
     fn style(&mut self) -> Style {
         Style {
             color: self.rgba(),
@@ -234,6 +254,7 @@ impl Gen<'_> {
             border: Border { color: self.rgba(), width: self.f32() },
             font_size: self.f32(),
             image: if self.next().is_multiple_of(2) { Some(self.string()) } else { None },
+            states: self.states(),
         }
     }
     fn pool(&mut self) -> PoolRef {
@@ -271,9 +292,10 @@ impl Gen<'_> {
         }
     }
     fn action(&mut self) -> UiAction {
-        match self.next() % 2 {
+        match self.next() % 3 {
             0 => UiAction::CastSlot(Slot(self.next() as u8)),
-            _ => UiAction::PickTalent { option: self.next() as u8 },
+            1 => UiAction::PickTalent { tier: self.next() as u8, option: self.next() as u8 },
+            _ => UiAction::Trigger { event: EventId(self.next()) },
         }
     }
     /// A widget, nesting until `depth` runs out — the deeply nested container the

@@ -42,6 +42,16 @@
 //! [`UiRoot::validate`] rejects at load — is a tree deeper or wider than the
 //! renderer will walk ([`MAX_UI_DEPTH`], [`MAX_UI_WIDGETS`]).
 //!
+//! ## A widget asks; it never acts
+//!
+//! An interactive widget carries a [`UiAction`], and every variant of that is a
+//! *request* the server validates — a cast of a slot, a pick from a tier, or a
+//! mod-defined event raised into that mod's own gameplay guest. A declared
+//! interface therefore cannot do anything a player could not do with a keypress,
+//! and cannot touch simulation state at all. [`WidgetKind::action`] is the one
+//! place "what does this widget do" is answered, so a bar clicked with the mouse
+//! and the same bar pressed with a key cannot drift apart (server#69).
+//!
 //! Handles inside bindings are authored in the mod's **local** id space and
 //! remapped to global at adoption like every other family (see [`crate::remap`]).
 
@@ -51,7 +61,7 @@ use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{Slot, StatId};
+use crate::ids::{EventId, Slot, StatId};
 use crate::impacts::PoolRef;
 use crate::remap::{IdMap, RemapIds};
 
@@ -168,7 +178,120 @@ pub struct Border {
     pub width: f32,
 }
 
-/// How a widget is painted. The five properties a HUD actually uses.
+/// Which of the four appearances an interactive widget is currently wearing
+/// (stormlight/server#69).
+///
+/// Exactly four, because they are the four *facts* a pointer and a gate can
+/// produce between them, not a palette of moods: the pointer is over it or not,
+/// the button is held or not, and the request it would send is one the client
+/// already knows would be refused. Anything finer — a focus ring, a toggled-on
+/// tab — is state the descriptor would have to carry, and this ABI does not hold
+/// widget state.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum WidgetState {
+    /// At rest: the declared [`Style`] exactly as authored.
+    #[default]
+    Idle,
+    /// The pointer is over it.
+    Hovered,
+    /// It is being held down.
+    Pressed,
+    /// Its action cannot be taken right now — a slot on cooldown, a talent tier
+    /// the unit has not reached.
+    Disabled,
+}
+
+/// What changes about a widget's painting while it is in one interaction state.
+///
+/// Every property is optional **on its own**, and that is the whole design: a mod
+/// that only brightens a button on hover keeps its declared picture, and one that
+/// only swaps the picture keeps its declared colours. A whole replacement
+/// [`Style`] would make every author restate the properties they did not mean to
+/// change, and the first one they forgot would flicker.
+///
+/// Three properties rather than five: colour, background and picture are what a
+/// HUD's states actually differ in. A border that thickened on hover or text that
+/// grew on press would move the layout under the pointer, which is a worse
+/// interface than one that does not.
+#[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
+pub struct StateStyle {
+    /// Replaces [`Style::color`] while the state holds.
+    pub color: Option<[f32; 4]>,
+    /// Replaces [`Style::background`].
+    pub background: Option<[f32; 4]>,
+    /// Replaces [`Style::image`] — a whole different picture, which is how a real
+    /// HUD draws a hovered or unavailable button.
+    pub image: Option<String>,
+}
+
+impl StateStyle {
+    /// Whether this override names a picture that is present but empty — a
+    /// `mod://` URL to nothing, the same break [`UiError::EmptyImagePath`] catches
+    /// on a base style.
+    #[must_use]
+    pub fn has_empty_image(&self) -> bool {
+        self.image.as_ref().is_some_and(String::is_empty)
+    }
+
+    /// Whether every colour it declares is finite.
+    #[must_use]
+    pub fn is_finite(&self) -> bool {
+        let finite = |c: &Option<[f32; 4]>| c.iter().flatten().all(|v| v.is_finite());
+        finite(&self.color) && finite(&self.background)
+    }
+}
+
+/// A widget's three non-resting appearances. All optional: a widget that declares
+/// none does not react to the pointer at all, which is the right default for the
+/// text and bars that make up most of a HUD.
+#[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
+pub struct InteractionStyle {
+    /// While the pointer is over it.
+    pub hover: Option<StateStyle>,
+    /// While it is held down.
+    pub press: Option<StateStyle>,
+    /// While its action would be refused.
+    pub disabled: Option<StateStyle>,
+}
+
+impl InteractionStyle {
+    /// The override for one state, or `None` for [`WidgetState::Idle`] and for a
+    /// state this widget never declared.
+    ///
+    /// States never *inherit* from one another: a widget with a hover style and no
+    /// press style stays hovered-looking while held, rather than the engine
+    /// darkening the hover into a press it was never given. Borrowing one state's
+    /// appearance for another is the engine deciding how a mod's button looks.
+    #[must_use]
+    pub fn get(&self, state: WidgetState) -> Option<&StateStyle> {
+        match state {
+            WidgetState::Idle => None,
+            WidgetState::Hovered => self.hover.as_ref(),
+            WidgetState::Pressed => self.press.as_ref(),
+            WidgetState::Disabled => self.disabled.as_ref(),
+        }
+    }
+
+    /// Every override declared, in a fixed order — what validation walks.
+    pub fn declared(&self) -> impl Iterator<Item = &StateStyle> {
+        [self.hover.as_ref(), self.press.as_ref(), self.disabled.as_ref()].into_iter().flatten()
+    }
+
+    /// Whether any declared override names an empty picture.
+    #[must_use]
+    pub fn has_empty_image(&self) -> bool {
+        self.declared().any(StateStyle::has_empty_image)
+    }
+
+    /// Whether every declared override's colours are finite.
+    #[must_use]
+    pub fn is_finite(&self) -> bool {
+        self.declared().all(StateStyle::is_finite)
+    }
+}
+
+/// How a widget is painted. The five properties a HUD actually uses, plus what
+/// changes about three of them while the pointer is on it.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Style {
     /// Foreground: text colour, icon tint, the *filled* part of a bar. Linear
@@ -183,11 +306,17 @@ pub struct Style {
     /// A `mod://<id>/<path>` image, resolved within the declaring package.
     /// Required by [`WidgetKind::Icon`]; optional decoration on anything else.
     pub image: Option<String>,
+    /// What changes while the pointer is over it, holding it, or while its action
+    /// would be refused (stormlight/server#69). Inert on a widget that does
+    /// nothing when clicked — there is no state for it to be in.
+    #[serde(default)]
+    pub states: InteractionStyle,
 }
 
 impl Default for Style {
-    /// Opaque white foreground on nothing, no border, ordinary text size — the
-    /// neutral base an author overrides one property at a time.
+    /// Opaque white foreground on nothing, no border, ordinary text size, and no
+    /// reaction to the pointer — the neutral base an author overrides one
+    /// property at a time.
     fn default() -> Self {
         Self {
             color: [1.0, 1.0, 1.0, 1.0],
@@ -195,7 +324,32 @@ impl Default for Style {
             border: Border::default(),
             font_size: 16.0,
             image: None,
+            states: InteractionStyle::default(),
         }
+    }
+}
+
+impl Style {
+    /// This style as it is painted in `state`: the declared base with that state's
+    /// overrides applied, and every property it did not name left alone.
+    ///
+    /// Total and allocating a fresh style rather than mutating: a widget's
+    /// *declared* appearance is what it returns to when the pointer leaves, so the
+    /// base must survive every state it passes through.
+    #[must_use]
+    pub fn resolve(&self, state: WidgetState) -> Self {
+        let mut out = self.clone();
+        let Some(over) = self.states.get(state) else { return out };
+        if let Some(color) = over.color {
+            out.color = color;
+        }
+        if let Some(background) = over.background {
+            out.background = background;
+        }
+        if let Some(image) = &over.image {
+            out.image = Some(image.clone());
+        }
+        out
     }
 }
 
@@ -261,17 +415,42 @@ pub enum TextSource {
     List(ListBinding),
 }
 
-/// What pressing a [`WidgetKind::Button`] asks the server to do.
+/// What activating an interactive widget asks the server to do
+/// (stormlight/server#69).
 ///
-/// Both variants are *requests*, not effects: the button says what the player
-/// wants, the server decides. A UI descriptor can therefore never do anything a
-/// player could not do with a key press.
+/// Every variant is a *request*, not an effect: the widget says what the player
+/// wants and the server decides, exactly as it does for a keypress. That is the
+/// whole safety property of the interface ABI — a mod's HUD can never do anything
+/// a player could not do with a key, and it can never change simulation state at
+/// all. The client refuses an impossible action locally only as a **courtesy**,
+/// to save a round trip; the server validates every one of them regardless.
+///
+/// Closed, and small on purpose: these are the three things a player *does* to
+/// their own unit. Anything a mod wants beyond them goes through
+/// [`Self::Trigger`], where it is that mod's own gameplay guest — running
+/// server-side, under the engine's rules — that decides what happens.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum UiAction {
-    /// Cast the ability bound in this slot — the same request a keybind sends.
+    /// Cast the ability bound in this slot — byte-for-byte the request the
+    /// keybind for that slot sends, aimed the same way.
     CastSlot(Slot),
-    /// Pick option `option` of the talent tier currently pending.
-    PickTalent { option: u8 },
+    /// Take option `option` of tier `tier` of the subject's talent tree.
+    ///
+    /// An **option index**, not a talent handle, because the tree is the *unit's*
+    /// declaration and a cosmetic mod that named a talent directly would be
+    /// authoring gameplay content in a HUD. The client resolves the index against
+    /// the tree its gameplay mods declared, and a tier or option that names
+    /// nothing sends nothing at all.
+    PickTalent { tier: u8, option: u8 },
+    /// Raise a mod-defined event, routed to every gameplay guest subscribed to it
+    /// (the `mod_trigger` fan-out of stormlight/server#34/#39).
+    ///
+    /// The extension point: a mod that wants a button doing something the three
+    /// closed verbs do not cover declares an event, subscribes its gameplay guest
+    /// to it, and gets back the whole effect ISA — **on the server**, against the
+    /// clicking player's own unit. Nothing about that path is client-authoritative;
+    /// the click is a request like the other two.
+    Trigger { event: EventId },
 }
 
 /// What a widget *is*. Five leaves and one container, plus the one composite
@@ -311,6 +490,24 @@ impl WidgetKind {
         match self {
             Self::Panel { children } | Self::Button { children, .. } => children,
             Self::Text { .. } | Self::Bar { .. } | Self::Icon | Self::AbilitySlot { .. } => &[],
+        }
+    }
+
+    /// What activating this widget asks for, or `None` for a kind that does
+    /// nothing when clicked (stormlight/server#69).
+    ///
+    /// Two kinds are interactive and they arrive at their action differently: a
+    /// [`Self::Button`] carries one explicitly, while a [`Self::AbilitySlot`]
+    /// *is* a cast of the slot it draws — an ability bar you cannot click is not
+    /// an ability bar. Stating that equivalence here, once, is what keeps a
+    /// client from re-deriving it and letting a moused slot drift from the
+    /// pressed one.
+    #[must_use]
+    pub fn action(&self) -> Option<UiAction> {
+        match self {
+            Self::Button { action, .. } => Some(*action),
+            Self::AbilitySlot { slot, .. } => Some(UiAction::CastSlot(*slot)),
+            Self::Panel { .. } | Self::Text { .. } | Self::Bar { .. } | Self::Icon => None,
         }
     }
 }
@@ -449,6 +646,10 @@ fn is_finite(widget: &Widget) -> bool {
             .all(|v| v.is_finite())
         && s.border.width.is_finite()
         && s.font_size.is_finite()
+        // A state's colours reach the same layout/paint path the base ones do,
+        // so a NaN hidden in a hover override is the same break — it just waits
+        // for the pointer to arrive before it costs the screen.
+        && s.states.is_finite()
 }
 
 /// Whether any extent a widget carries is negative. Offsets are excluded: moving
@@ -509,6 +710,13 @@ impl UiRoot {
                 }
                 _ => {}
             }
+            // The same rule for the pictures a state swaps in. Checked here rather
+            // than left to the loader: a hover image that resolves to nothing is a
+            // break the author only ever sees by pointing at the widget, which is
+            // the worst possible time to discover it.
+            if widget.style.states.has_empty_image() {
+                return Err(UiError::EmptyImagePath { widget: index });
+            }
             // Reversed, so popping yields declaration order and the index an
             // error reports is the one the author reads down the file.
             for child in widget.kind.children().iter().rev() {
@@ -544,13 +752,31 @@ impl RemapIds for TextSource {
     }
 }
 
+impl RemapIds for UiAction {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        match self {
+            // A slot is a non-interned `Slot` and a talent option is an index into
+            // the *unit's* tree — pure mod convention, like everywhere else. Only
+            // the event names a handle, and it names one in the gameplay side's id
+            // space, which is why the cosmetic bundle's map has to reach it.
+            Self::CastSlot(_) | Self::PickTalent { .. } => {}
+            Self::Trigger { event } => *event = m.event(*event)?,
+        }
+        Ok(())
+    }
+}
+
 impl RemapIds for WidgetKind {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
-            // An icon is an asset path; a slot (here and in a button's action) is
-            // a non-interned `Slot`, pure mod convention like everywhere else.
+            // An icon is an asset path; an ability slot's own `Slot` is not
+            // interned, and the action it implies carries nothing else.
             Self::Icon | Self::AbilitySlot { .. } => {}
-            Self::Panel { children } | Self::Button { children, .. } => children.remap_ids(m)?,
+            Self::Panel { children } => children.remap_ids(m)?,
+            Self::Button { action, children } => {
+                action.remap_ids(m)?;
+                children.remap_ids(m)?;
+            }
             Self::Text { text } => text.remap_ids(m)?,
             Self::Bar { value } => value.remap_ids(m)?,
         }

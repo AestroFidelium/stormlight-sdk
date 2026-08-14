@@ -27,10 +27,10 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use stormlight_mod_abi::ids::Slot;
+use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, ListBinding, Style, TextSource, UiAction, ValueBinding,
-    ValuePart, Widget, WidgetKind,
+    Anchor, Flow, Layout, Length, ListBinding, StateStyle, Style, TextSource, UiAction,
+    ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 
 /// A node of the given kind with a neutral layout and style.
@@ -80,6 +80,28 @@ pub fn button(action: UiAction, children: Vec<Widget>) -> Widget {
     widget(WidgetKind::Button { action, children })
 }
 
+/// A button that casts the ability bound in `slot` — the same request that slot's
+/// keybind sends (stormlight/server#69).
+#[must_use]
+pub fn cast_button(slot: Slot, children: Vec<Widget>) -> Widget {
+    button(UiAction::CastSlot(slot), children)
+}
+
+/// A button that takes option `option` of talent tier `tier`. An index into the
+/// *unit's* declared tree, so a cosmetic mod lays out a talent panel without
+/// naming a single talent.
+#[must_use]
+pub fn talent_button(tier: u8, option: u8, children: Vec<Widget>) -> Widget {
+    button(UiAction::PickTalent { tier, option }, children)
+}
+
+/// A button that raises the mod-defined `event` into every gameplay guest
+/// subscribed to it, against the clicking player's own unit.
+#[must_use]
+pub fn trigger_button(event: EventId, children: Vec<Widget>) -> Widget {
+    button(UiAction::Trigger { event }, children)
+}
+
 /// An ability slot: icon, cooldown sweep and key hint.
 #[must_use]
 pub fn ability_slot(slot: Slot, key_hint: &str) -> Widget {
@@ -119,6 +141,32 @@ pub trait WidgetExt: Sized {
     /// Attach a `mod://<id>/<path>` image.
     #[must_use]
     fn image(self, asset: &str) -> Self;
+    /// Recolour its foreground while it is in `state` (server#69).
+    #[must_use]
+    fn state_color(self, state: WidgetState, rgba: [f32; 4]) -> Self;
+    /// Recolour its background while it is in `state`.
+    #[must_use]
+    fn state_background(self, state: WidgetState, rgba: [f32; 4]) -> Self;
+    /// Swap its picture while it is in `state` — the `_hover` / `_disabled`
+    /// texture a real HUD's buttons ship beside their resting one.
+    #[must_use]
+    fn state_image(self, state: WidgetState, asset: &str) -> Self;
+}
+
+/// The override slot for one state, created empty on first use so the three
+/// `state_*` setters compose on the same widget.
+///
+/// `None` for [`WidgetState::Idle`], which has no slot: the declared style *is*
+/// the resting appearance, so the setters no-op there rather than quietly
+/// rewriting the base an author is measuring their states against.
+fn slot(style: &mut Style, state: WidgetState) -> Option<&mut StateStyle> {
+    let entry = match state {
+        WidgetState::Idle => return None,
+        WidgetState::Hovered => &mut style.states.hover,
+        WidgetState::Pressed => &mut style.states.press,
+        WidgetState::Disabled => &mut style.states.disabled,
+    };
+    Some(entry.get_or_insert_with(StateStyle::default))
 }
 
 impl WidgetExt for Widget {
@@ -163,6 +211,24 @@ impl WidgetExt for Widget {
     }
     fn image(mut self, asset: &str) -> Self {
         self.style.image = Some(asset.to_string());
+        self
+    }
+    fn state_color(mut self, state: WidgetState, rgba: [f32; 4]) -> Self {
+        if let Some(over) = slot(&mut self.style, state) {
+            over.color = Some(rgba);
+        }
+        self
+    }
+    fn state_background(mut self, state: WidgetState, rgba: [f32; 4]) -> Self {
+        if let Some(over) = slot(&mut self.style, state) {
+            over.background = Some(rgba);
+        }
+        self
+    }
+    fn state_image(mut self, state: WidgetState, asset: &str) -> Self {
+        if let Some(over) = slot(&mut self.style, state) {
+            over.image = Some(asset.to_string());
+        }
         self
     }
 }

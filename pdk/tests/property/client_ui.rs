@@ -71,7 +71,7 @@ fn author(s: &Scenario, ctx: &mut ClientContext) -> (usize, usize) {
         panel(vec![
             text("choose"),
             talent_list(),
-            button(UiAction::PickTalent { option: 0 }, vec![icon("mod://m/pick.png")]),
+            button(UiAction::PickTalent { tier: 0, option: 0 }, vec![icon("mod://m/pick.png")]),
         ]),
     );
 

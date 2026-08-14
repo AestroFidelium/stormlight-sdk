@@ -6,4 +6,5 @@
 
 mod isa_roundtrip;
 mod manifest;
+mod ui_action_remap;
 mod ui_remap;

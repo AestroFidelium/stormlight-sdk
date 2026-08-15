@@ -21,7 +21,7 @@ use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{Slot, StatId};
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, MAX_UI_DEPTH, MAX_UI_WIDGETS,
-    RootVisibility, StateStyle, Style, TextSource, UiError, UiRoot, UiSubject, ValueBinding,
+    RootVisibility, Slice, StateStyle, Style, TextSource, UiError, UiRoot, UiSubject, ValueBinding,
     Widget, WidgetKind,
 };
 
@@ -57,6 +57,11 @@ enum Break {
     NonFinite,
     /// Ask for a negative font size.
     NegativeMetric,
+    /// A nine-slice inset that is negative — an extent like any other, and the
+    /// one a stretched frame's corners depend on.
+    NegativeSlice,
+    /// And one that is not a number at all.
+    NonFiniteSlice,
 }
 
 #[derive(Debug, TypeGenerator)]
@@ -83,7 +88,11 @@ fn a_style() -> Style {
         background: [0.0, 0.0, 0.0, 0.5],
         border: Border { color: [1.0, 1.0, 1.0, 1.0], width: 1.0 },
         font_size: 14.0,
+        font: None,
         image: None,
+        slice: None,
+        flip_x: false,
+        flip_y: false,
         states: InteractionStyle::default(),
     }
 }
@@ -162,6 +171,13 @@ fn apply(brk: Break, root: &mut UiRoot) {
         }
         Break::NonFinite => root.root.layout.size[0] = Length::Px(f32::NAN),
         Break::NegativeMetric => root.root.style.font_size = -1.0,
+        Break::NegativeSlice => {
+            root.root.style.slice = Some(Slice { left: -1.0, top: 0.0, right: 0.0, bottom: 0.0 });
+        }
+        Break::NonFiniteSlice => {
+            root.root.style.slice =
+                Some(Slice { left: 0.0, top: f32::NAN, right: 0.0, bottom: 0.0 });
+        }
     }
 }
 
@@ -191,8 +207,11 @@ fn a_well_formed_root_validates_and_each_break_is_classified() {
             }
             Break::NonFiniteState => assert_eq!(result, Err(UiError::NonFinite { widget: 0 })),
             Break::NonFinite => assert_eq!(result, Err(UiError::NonFinite { widget: 0 })),
-            Break::NegativeMetric => {
+            Break::NegativeMetric | Break::NegativeSlice => {
                 assert_eq!(result, Err(UiError::NegativeMetric { widget: 0 }));
+            }
+            Break::NonFiniteSlice => {
+                assert_eq!(result, Err(UiError::NonFinite { widget: 0 }));
             }
         }
     });

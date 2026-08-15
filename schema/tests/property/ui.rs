@@ -24,7 +24,7 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility,
+    Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Slice,
     StateStyle, Style, TextSource, UiAction, UiRoot, UiSubject, ValueBinding, ValuePart, Widget,
     WidgetKind,
 };
@@ -253,7 +253,22 @@ impl Gen<'_> {
             background: self.rgba(),
             border: Border { color: self.rgba(), width: self.f32() },
             font_size: self.f32(),
+            font: if self.next().is_multiple_of(2) { Some(self.string()) } else { None },
             image: if self.next().is_multiple_of(2) { Some(self.string()) } else { None },
+            // Half the styles carry slice insets, so the round trip covers both
+            // the sliced and the stretched frame.
+            slice: if self.next().is_multiple_of(2) {
+                Some(Slice {
+                    left: self.f32(),
+                    top: self.f32(),
+                    right: self.f32(),
+                    bottom: self.f32(),
+                })
+            } else {
+                None
+            },
+            flip_x: self.next().is_multiple_of(2),
+            flip_y: self.next().is_multiple_of(3),
             states: self.states(),
         }
     }

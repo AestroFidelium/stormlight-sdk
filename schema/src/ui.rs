@@ -169,6 +169,33 @@ pub struct Layout {
     pub padding: f32,
 }
 
+/// Nine-slice borders: how far in from each edge of the *texture* the four
+/// slicing lines fall, in the art's own pixels.
+///
+/// Without this a picture drawn at a size other than its own is stretched, and a
+/// frame stretched five times its width has five-times-wide corners. With it the
+/// corners are drawn once at their own size, the sides stretch along one axis
+/// only, and the middle takes the rest — which is how HUD art is authored and
+/// the only way one plate serves a bar of any length.
+///
+/// Insets are of the texture, not of the widget, so the same value is right at
+/// every drawn size. Zero on an axis means that axis is not sliced.
+#[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize)]
+pub struct Slice {
+    pub left: f32,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+}
+
+impl Slice {
+    /// Each inset, for the checks that treat them as the extents they are.
+    #[must_use]
+    pub fn edges(&self) -> [f32; 4] {
+        [self.left, self.top, self.right, self.bottom]
+    }
+}
+
 /// A widget's outline.
 #[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize)]
 pub struct Border {
@@ -303,9 +330,34 @@ pub struct Style {
     pub border: Border,
     /// Text height in pixels, for the kinds that draw text.
     pub font_size: f32,
+    /// A `mod://<id>/<path>` font face, resolved within the declaring package.
+    /// `None` uses the client's own default face.
+    ///
+    /// A HUD's face is part of its design, not a detail: a mod that ships a
+    /// display face for its headings and a text face for its readouts cannot say
+    /// so with a size alone. Shipping the file is the mod's business, the same as
+    /// its art.
+    #[serde(default)]
+    pub font: Option<String>,
     /// A `mod://<id>/<path>` image, resolved within the declaring package.
     /// Required by [`WidgetKind::Icon`]; optional decoration on anything else.
     pub image: Option<String>,
+    /// How [`Self::image`] is cut when it is drawn at a size other than its own.
+    /// `None` stretches it, which is right for art drawn at its native size and
+    /// wrong for a frame or a plate.
+    #[serde(default)]
+    pub slice: Option<Slice>,
+    /// Draw [`Self::image`] mirrored left-to-right.
+    ///
+    /// One asset serves both halves of a symmetric frame — the right end of a bar
+    /// is the left end reversed — so this is how a HUD ships half the art. It
+    /// mirrors the picture only; the widget's box, its slice insets and its
+    /// children are untouched.
+    #[serde(default)]
+    pub flip_x: bool,
+    /// The same, top-to-bottom.
+    #[serde(default)]
+    pub flip_y: bool,
     /// What changes while the pointer is over it, holding it, or while its action
     /// would be refused (stormlight/server#69). Inert on a widget that does
     /// nothing when clicked — there is no state for it to be in.
@@ -323,7 +375,11 @@ impl Default for Style {
             background: [0.0, 0.0, 0.0, 0.0],
             border: Border::default(),
             font_size: 16.0,
+            font: None,
             image: None,
+            slice: None,
+            flip_x: false,
+            flip_y: false,
             states: InteractionStyle::default(),
         }
     }
@@ -646,6 +702,7 @@ fn is_finite(widget: &Widget) -> bool {
             .all(|v| v.is_finite())
         && s.border.width.is_finite()
         && s.font_size.is_finite()
+        && s.slice.is_none_or(|sl| sl.edges().iter().all(|v| v.is_finite()))
         // A state's colours reach the same layout/paint path the base ones do,
         // so a NaN hidden in a hover override is the same break — it just waits
         // for the pointer to arrive before it costs the screen.
@@ -660,6 +717,7 @@ fn is_negative(widget: &Widget) -> bool {
         || widget.layout.padding < 0.0
         || widget.style.border.width < 0.0
         || widget.style.font_size < 0.0
+        || widget.style.slice.is_some_and(|sl| sl.edges().iter().any(|v| *v < 0.0))
 }
 
 impl UiRoot {

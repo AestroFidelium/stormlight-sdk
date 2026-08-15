@@ -29,7 +29,7 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, ListBinding, StateStyle, Style, TextSource, UiAction,
+    Anchor, Flow, Layout, Length, ListBinding, Slice, StateStyle, Style, TextSource, UiAction,
     ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 
@@ -138,9 +138,19 @@ pub trait WidgetExt: Sized {
     /// Set the text height.
     #[must_use]
     fn font_size(self, size: f32) -> Self;
+    /// Set the face, a `mod://<id>/<path>` font this package ships.
+    #[must_use]
+    fn font(self, asset: &str) -> Self;
     /// Attach a `mod://<id>/<path>` image.
     #[must_use]
     fn image(self, asset: &str) -> Self;
+    /// Cut that image nine-slice, `left`/`top`/`right`/`bottom` insets in the
+    /// art's own pixels — so a plate keeps its corners at any width.
+    #[must_use]
+    fn sliced(self, left: f32, top: f32, right: f32, bottom: f32) -> Self;
+    /// Mirror that image left-to-right and/or top-to-bottom.
+    #[must_use]
+    fn flipped(self, x: bool, y: bool) -> Self;
     /// Recolour its foreground while it is in `state` (server#69).
     #[must_use]
     fn state_color(self, state: WidgetState, rgba: [f32; 4]) -> Self;
@@ -209,8 +219,21 @@ impl WidgetExt for Widget {
         self.style.font_size = size;
         self
     }
+    fn font(mut self, asset: &str) -> Self {
+        self.style.font = Some(asset.to_string());
+        self
+    }
     fn image(mut self, asset: &str) -> Self {
         self.style.image = Some(asset.to_string());
+        self
+    }
+    fn sliced(mut self, left: f32, top: f32, right: f32, bottom: f32) -> Self {
+        self.style.slice = Some(Slice { left, top, right, bottom });
+        self
+    }
+    fn flipped(mut self, x: bool, y: bool) -> Self {
+        self.style.flip_x = x;
+        self.style.flip_y = y;
         self
     }
     fn state_color(mut self, state: WidgetState, rgba: [f32; 4]) -> Self {

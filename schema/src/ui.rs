@@ -304,6 +304,14 @@ impl InteractionStyle {
         [self.hover.as_ref(), self.press.as_ref(), self.disabled.as_ref()].into_iter().flatten()
     }
 
+    /// Whether this widget declares any appearance beyond its resting one — the
+    /// question the interpreter asks to decide whether the widget has to be
+    /// watched at all, so a HUD's inert majority costs nothing.
+    #[must_use]
+    pub fn any(&self) -> bool {
+        self.declared().next().is_some()
+    }
+
     /// Whether any declared override names an empty picture.
     #[must_use]
     pub fn has_empty_image(&self) -> bool {

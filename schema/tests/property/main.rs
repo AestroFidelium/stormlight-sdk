@@ -25,5 +25,6 @@ mod tags;
 mod talent_tree;
 mod ui;
 mod ui_action;
+mod ui_sweep;
 mod ui_validation;
 mod visuals;

@@ -21,8 +21,8 @@ use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{Slot, StatId};
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, MAX_UI_DEPTH, MAX_UI_WIDGETS,
-    RootVisibility, Slice, StateStyle, Style, TextSource, UiError, UiRoot, UiSubject, ValueBinding,
-    Widget, WidgetKind,
+    RootVisibility, Slice, StateStyle, Style, Sweep, TextSource, UiError, UiRoot, UiSubject,
+    ValueBinding, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -94,6 +94,7 @@ fn a_style() -> Style {
         flip_x: false,
         flip_y: false,
         states: InteractionStyle::default(),
+        sweep: Sweep::default(),
     }
 }
 

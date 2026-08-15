@@ -29,8 +29,8 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, ListBinding, Slice, StateStyle, Style, TextSource, UiAction,
-    ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+    Anchor, Flow, Layout, Length, ListBinding, Slice, StateStyle, Style, Sweep, SweepDirection,
+    TextSource, UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 
 /// A node of the given kind with a neutral layout and style.
@@ -102,7 +102,8 @@ pub fn trigger_button(event: EventId, children: Vec<Widget>) -> Widget {
     button(UiAction::Trigger { event }, children)
 }
 
-/// An ability slot: icon, cooldown sweep and key hint.
+/// An ability slot: icon, cooldown sweep and key hint. The sweep is a dark
+/// clockwise wedge unless [`WidgetExt::sweep`] says otherwise.
 #[must_use]
 pub fn ability_slot(slot: Slot, key_hint: &str) -> Widget {
     widget(WidgetKind::AbilitySlot { slot, key_hint: key_hint.to_string() })
@@ -161,6 +162,14 @@ pub trait WidgetExt: Sized {
     /// texture a real HUD's buttons ship beside their resting one.
     #[must_use]
     fn state_image(self, state: WidgetState, asset: &str) -> Self;
+    /// Recolour the cooldown wedge wiped over it, and say which way it goes
+    /// (stormlight/server#99).
+    ///
+    /// Only an [`ability_slot`] has a cooldown, so this is inert anywhere else.
+    /// A fully transparent colour draws no sweep at all, which is how a HUD that
+    /// prints its cooldowns instead says so.
+    #[must_use]
+    fn sweep(self, rgba: [f32; 4], direction: SweepDirection) -> Self;
 }
 
 /// The override slot for one state, created empty on first use so the three
@@ -252,6 +261,10 @@ impl WidgetExt for Widget {
         if let Some(over) = slot(&mut self.style, state) {
             over.image = Some(asset.to_string());
         }
+        self
+    }
+    fn sweep(mut self, rgba: [f32; 4], direction: SweepDirection) -> Self {
+        self.style.sweep = Sweep { color: rgba, direction };
         self
     }
 }

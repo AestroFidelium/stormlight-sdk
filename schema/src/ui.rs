@@ -205,6 +205,70 @@ pub struct Border {
     pub width: f32,
 }
 
+/// Which way round an ability slot the cooldown's leading edge travels
+/// (stormlight/server#99).
+///
+/// A direction and nothing else — not a start angle. Every cooldown wipe begins at
+/// twelve o'clock because that is where an eye already is, and an author who could
+/// move it would mostly be moving it by mistake.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum SweepDirection {
+    /// The way a clock's hand goes, which is the way a cooldown is read.
+    #[default]
+    Clockwise,
+    /// The other way, for a HUD whose ability art winds that way.
+    CounterClockwise,
+}
+
+/// How the part of a cooldown still to run is drawn over an ability slot's icon
+/// (stormlight/server#99).
+///
+/// The one thing this ABI declares that no arrangement of boxes can draw: the
+/// covered part is a *wedge*, so what is left says how long is left the way a
+/// clock face does. A rectangle sliding down the icon says the same number and
+/// reads as a bug.
+///
+/// Only [`WidgetKind::AbilitySlot`] has a cooldown to draw, so this is inert on
+/// every other kind — the same as [`Style::slice`] on a text or
+/// [`Style::font_size`] on a bar. It lives on [`Style`] because it is paint: what
+/// the widget looks like while a fact about it holds.
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Sweep {
+    /// What the unelapsed part is covered with. Linear RGBA, and the alpha is the
+    /// point of it: the icon is meant to show through, so the player can still see
+    /// which ability they are waiting for.
+    ///
+    /// **Fully transparent is no sweep at all.** A slot whose scrim cannot be seen
+    /// is one the interpreter draws no overlay for, which is how a HUD that shows
+    /// its cooldowns some other way — a printed number, a dimmed icon — says so
+    /// without a second field that could disagree with this one.
+    pub color: [f32; 4],
+    /// Which way round the icon it wipes.
+    pub direction: SweepDirection,
+}
+
+impl Default for Sweep {
+    /// A dark scrim, clockwise: what a slot gets by saying nothing, because a
+    /// cooldown a HUD does not draw is a HUD the player cannot use.
+    fn default() -> Self {
+        Self { color: [0.0, 0.0, 0.0, 0.6], direction: SweepDirection::Clockwise }
+    }
+}
+
+impl Sweep {
+    /// Whether there is an overlay to draw at all — see [`Self::color`].
+    #[must_use]
+    pub fn is_drawn(&self) -> bool {
+        self.color[3] > 0.0
+    }
+
+    /// Whether its colour can reach a renderer.
+    #[must_use]
+    pub fn is_finite(&self) -> bool {
+        self.color.iter().all(|v| v.is_finite())
+    }
+}
+
 /// Which of the four appearances an interactive widget is currently wearing
 /// (stormlight/server#69).
 ///
@@ -371,6 +435,10 @@ pub struct Style {
     /// nothing when clicked — there is no state for it to be in.
     #[serde(default)]
     pub states: InteractionStyle,
+    /// How a cooldown is wiped over it (stormlight/server#99). Inert on every kind
+    /// but [`WidgetKind::AbilitySlot`], which is the only one with a cooldown.
+    #[serde(default)]
+    pub sweep: Sweep,
 }
 
 impl Default for Style {
@@ -389,6 +457,7 @@ impl Default for Style {
             flip_x: false,
             flip_y: false,
             states: InteractionStyle::default(),
+            sweep: Sweep::default(),
         }
     }
 }
@@ -533,8 +602,9 @@ pub enum WidgetKind {
     Icon,
     /// A clickable container: a [`Self::Panel`] that sends a [`UiAction`].
     Button { action: UiAction, children: Vec<Widget> },
-    /// An ability slot: its icon ([`Style::image`]), a cooldown sweep over it,
-    /// and its key hint. The one composite blessed as a kind of its own, because
+    /// An ability slot: its icon ([`Style::image`]), a cooldown sweep over it
+    /// ([`Style::sweep`]), and its key hint. The one composite blessed as a kind
+    /// of its own, because
     /// every HUD needs it and composing it out of a stacked panel, a bar bound to
     /// [`PoolRef::Cooldown`] and a text would put the same twenty lines in every
     /// mod.
@@ -715,6 +785,9 @@ fn is_finite(widget: &Widget) -> bool {
         // so a NaN hidden in a hover override is the same break — it just waits
         // for the pointer to arrive before it costs the screen.
         && s.states.is_finite()
+        // And a sweep's colour reaches a shader uniform, where a NaN is not a
+        // wrong colour but an undefined pixel.
+        && s.sweep.is_finite()
 }
 
 /// Whether any extent a widget carries is negative. Offsets are excluded: moving

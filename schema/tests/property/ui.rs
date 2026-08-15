@@ -25,8 +25,8 @@ use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Slice,
-    StateStyle, Style, TextSource, UiAction, UiRoot, UiSubject, ValueBinding, ValuePart, Widget,
-    WidgetKind,
+    StateStyle, Style, Sweep, SweepDirection, TextSource, UiAction, UiRoot, UiSubject,
+    ValueBinding, ValuePart, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -270,6 +270,14 @@ impl Gen<'_> {
             flip_x: self.next().is_multiple_of(2),
             flip_y: self.next().is_multiple_of(3),
             states: self.states(),
+            sweep: Sweep {
+                color: self.rgba(),
+                direction: if self.next().is_multiple_of(2) {
+                    SweepDirection::Clockwise
+                } else {
+                    SweepDirection::CounterClockwise
+                },
+            },
         }
     }
     fn pool(&mut self) -> PoolRef {

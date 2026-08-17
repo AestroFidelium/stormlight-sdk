@@ -18,6 +18,24 @@
 //!         .at(Anchor::BottomLeft, Length::Px(16.0), Length::Px(-16.0)));
 //! ```
 //!
+//! An interface that *moves* is the same story one level along: [`track`] and
+//! [`key`] build a curve, [`WidgetExt::animated`] hangs it on the widget, and
+//! [`WidgetExt::transition`] says how a bound number catches up
+//! (stormlight/server#97):
+//!
+//! ```ignore
+//! use stormlight_mod_sdk::ui::{KeyExt, WidgetExt, key, panel, track};
+//! use stormlight_mod_sdk::abi::ui_anim::{Ease, Playback, UiProperty, UiTrigger};
+//!
+//! // Slides up into place when the tree is built, settling rather than stopping.
+//! panel(vec![]).animated(track(
+//!     UiProperty::TranslateY,
+//!     UiTrigger::Built,
+//!     Playback::Once,
+//!     vec![key(0.0, 48.0), key(0.35, 0.0).arriving(Ease::Slow)],
+//! ));
+//! ```
+//!
 //! Registration stays on [`ClientContext::ui`](crate::client::ClientContext::ui),
 //! alongside `unit_visual` and `unit_animation`, and the whole bundle still leaves
 //! through the single `mod_register` export
@@ -31,6 +49,9 @@ use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
     Anchor, Flow, Layout, Length, ListBinding, Slice, StateStyle, Style, Sweep, SweepDirection,
     TextSource, UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+};
+use stormlight_mod_abi::ui_anim::{
+    Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
 };
 
 /// A node of the given kind with a neutral layout and style.
@@ -109,6 +130,47 @@ pub fn ability_slot(slot: Slot, key_hint: &str) -> Widget {
     widget(WidgetKind::AbilitySlot { slot, key_hint: key_hint.to_string() })
 }
 
+/// One keyframe: `value` at `time` seconds, passed through at constant speed.
+///
+/// Pair it with [`KeyExt`] to shape the segments around it — a key is *arrived at*
+/// with one velocity and *left* with another, and every ordinary easing is a pair
+/// of those (see [`Shape`]).
+#[must_use]
+pub fn key(time: f32, value: f32) -> UiKey {
+    UiKey { time, value, arrive: Ease::Linear, leave: Ease::Linear }
+}
+
+/// A curve over one property, started by `on` and repeated by `playback`
+/// (stormlight/server#97).
+///
+/// The track's length is its last key's time; there is no separate duration to
+/// keep in step with the keys.
+#[must_use]
+pub fn track(property: UiProperty, on: UiTrigger, playback: Playback, keys: Vec<UiKey>) -> UiTrack {
+    UiTrack { property, on, playback, keys }
+}
+
+/// Shaping a key's two ends — the velocities the value passes through it with.
+pub trait KeyExt: Sized {
+    /// How the value *arrives* at this key: the tail of the segment before it.
+    #[must_use]
+    fn arriving(self, ease: Ease) -> Self;
+    /// How it *leaves* this key: the head of the segment after it.
+    #[must_use]
+    fn leaving(self, ease: Ease) -> Self;
+}
+
+impl KeyExt for UiKey {
+    fn arriving(mut self, ease: Ease) -> Self {
+        self.arrive = ease;
+        self
+    }
+    fn leaving(mut self, ease: Ease) -> Self {
+        self.leave = ease;
+        self
+    }
+}
+
 /// Chaining overrides for a widget's layout and style — an author states only the
 /// properties that differ from the neutral base.
 pub trait WidgetExt: Sized {
@@ -170,6 +232,15 @@ pub trait WidgetExt: Sized {
     /// prints its cooldowns instead says so.
     #[must_use]
     fn sweep(self, rgba: [f32; 4], direction: SweepDirection) -> Self;
+    /// Give it a curve to play (stormlight/server#97). Called again for another
+    /// property — one track each, and the last one declared for a property is the
+    /// one that drives it.
+    #[must_use]
+    fn animated(self, track: UiTrack) -> Self;
+    /// Say how the number it draws catches up when that number steps: `seconds` to
+    /// cover the distance, on the given curve. Zero seconds draws it exactly.
+    #[must_use]
+    fn transition(self, seconds: f32, shape: Shape) -> Self;
 }
 
 /// The override slot for one state, created empty on first use so the three
@@ -265,6 +336,14 @@ impl WidgetExt for Widget {
     }
     fn sweep(mut self, rgba: [f32; 4], direction: SweepDirection) -> Self {
         self.style.sweep = Sweep { color: rgba, direction };
+        self
+    }
+    fn animated(mut self, track: UiTrack) -> Self {
+        self.style.anim.push(track);
+        self
+    }
+    fn transition(mut self, seconds: f32, shape: Shape) -> Self {
+        self.style.transition = Some(UiTransition { seconds, shape });
         self
     }
 }

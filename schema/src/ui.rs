@@ -18,6 +18,12 @@
 //! composes it out of [`WidgetKind::Panel`] and the leaves, the way an ability is
 //! composed out of the effect ISA rather than given a new leaf.
 //!
+//! ## A frame, and how it moves
+//!
+//! Everything here describes one settled frame. What that frame *does* over time —
+//! the entrance, the pulse, the catch-up — is [`ui_anim`](crate::ui_anim), declared
+//! on [`Style`] beside the paint it animates (stormlight/server#97).
+//!
 //! ## Bindings name *what*, never *where*
 //!
 //! A widget's dynamic value is a [`ValueBinding`]: "the health of the subject",
@@ -64,6 +70,7 @@ use serde::{Deserialize, Serialize};
 use crate::ids::{EventId, Slot, StatId};
 use crate::impacts::PoolRef;
 use crate::remap::{IdMap, RemapIds};
+use crate::ui_anim::{MAX_UI_TRACKS, TrackFault, UiTrack, UiTransition};
 
 /// How deeply one widget tree may nest, counting the root as level 1.
 ///
@@ -389,8 +396,9 @@ impl InteractionStyle {
     }
 }
 
-/// How a widget is painted. The five properties a HUD actually uses, plus what
-/// changes about three of them while the pointer is on it.
+/// How a widget is painted. The five properties a HUD actually uses, what changes
+/// about three of them while the pointer is on it, and — since server#97 — how any
+/// of that moves over time.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Style {
     /// Foreground: text colour, icon tint, the *filled* part of a bar. Linear
@@ -439,6 +447,16 @@ pub struct Style {
     /// but [`WidgetKind::AbilitySlot`], which is the only one with a cooldown.
     #[serde(default)]
     pub sweep: Sweep,
+    /// The curves it plays, and what starts each of them (stormlight/server#97) —
+    /// the time axis of a style that otherwise describes one frame. Empty on a
+    /// widget that does not move, which is most of a HUD.
+    #[serde(default)]
+    pub anim: Vec<UiTrack>,
+    /// How the number it *draws* catches up when that number steps
+    /// (stormlight/server#97). `None` leaves the catch-up to the interpreter;
+    /// inert on a widget that draws no continuous quantity.
+    #[serde(default)]
+    pub transition: Option<UiTransition>,
 }
 
 impl Default for Style {
@@ -458,6 +476,8 @@ impl Default for Style {
             flip_y: false,
             states: InteractionStyle::default(),
             sweep: Sweep::default(),
+            anim: Vec::new(),
+            transition: None,
         }
     }
 }
@@ -738,6 +758,20 @@ pub enum UiError {
     /// A negative size, gap, padding, border width or font size. (An *offset*
     /// may be negative; an extent may not.)
     NegativeMetric { widget: u16 },
+    /// A declared curve that cannot be played (stormlight/server#97).
+    BadTrack {
+        /// The widget that declared it, by pre-order index.
+        widget: u16,
+        /// Which of its tracks, in declaration order.
+        track: u16,
+        /// What is wrong with it.
+        fault: TrackFault,
+    },
+    /// More tracks on one widget than [`MAX_UI_TRACKS`].
+    TooManyTracks { widget: u16 },
+    /// A catch-up with a negative or non-finite duration — not a slower
+    /// transition, a break.
+    BadTransition { widget: u16 },
 }
 
 impl fmt::Display for UiError {
@@ -758,6 +792,15 @@ impl fmt::Display for UiError {
             Self::NonFinite { widget } => write!(f, "widget {widget} carries a non-finite number"),
             Self::NegativeMetric { widget } => {
                 write!(f, "widget {widget} carries a negative extent")
+            }
+            Self::BadTrack { widget, track, fault } => {
+                write!(f, "widget {widget}: track {track} {fault}")
+            }
+            Self::TooManyTracks { widget } => {
+                write!(f, "widget {widget} declares more than {MAX_UI_TRACKS} tracks")
+            }
+            Self::BadTransition { widget } => {
+                write!(f, "widget {widget} carries a catch-up no clock can run")
             }
         }
     }
@@ -799,6 +842,30 @@ fn is_negative(widget: &Widget) -> bool {
         || widget.style.border.width < 0.0
         || widget.style.font_size < 0.0
         || widget.style.slice.is_some_and(|sl| sl.edges().iter().any(|v| *v < 0.0))
+}
+
+/// Whether anything a widget declares about *time* is unplayable (server#97).
+///
+/// Separate from [`is_finite`] and [`is_negative`] because it answers with the
+/// track at fault rather than with a yes or no: a widget may declare four curves,
+/// and "one of them has a NaN in it" is not something an author can act on.
+fn animation_fault(widget: &Widget, index: u16) -> Result<(), UiError> {
+    if widget.style.anim.len() > MAX_UI_TRACKS {
+        return Err(UiError::TooManyTracks { widget: index });
+    }
+    for (track, declared) in widget.style.anim.iter().enumerate() {
+        if let Some(fault) = declared.fault() {
+            // Saturating rather than wrapping: `MAX_UI_TRACKS` is far below the
+            // cast's ceiling, so this is only ever the identity — but a truncated
+            // index would name the wrong track, which is worse than a clamped one.
+            let track = u16::try_from(track).unwrap_or(u16::MAX);
+            return Err(UiError::BadTrack { widget: index, track, fault });
+        }
+    }
+    if widget.style.transition.is_some_and(|t| !t.is_usable()) {
+        return Err(UiError::BadTransition { widget: index });
+    }
+    Ok(())
 }
 
 impl UiRoot {
@@ -856,6 +923,11 @@ impl UiRoot {
             if widget.style.states.has_empty_image() {
                 return Err(UiError::EmptyImagePath { widget: index });
             }
+            // And the same for the time axis (server#97): a curve is checked here
+            // rather than left to the interpreter, because a track that only
+            // misbehaves when its trigger fires is one an author discovers by
+            // pointing at the widget, or by watching their HUD leave the screen.
+            animation_fault(widget, index)?;
             // Reversed, so popping yields declaration order and the index an
             // error reports is the one the author reads down the file.
             for child in widget.kind.children().iter().rev() {

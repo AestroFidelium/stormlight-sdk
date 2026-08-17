@@ -26,7 +26,10 @@ use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Slice,
     StateStyle, Style, Sweep, SweepDirection, TextSource, UiAction, UiRoot, UiSubject,
-    ValueBinding, ValuePart, Widget, WidgetKind,
+    ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+};
+use stormlight_mod_abi::ui_anim::{
+    Ease, MAX_UI_TRACKS, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
 };
 
 extern crate alloc;
@@ -278,7 +281,54 @@ impl Gen<'_> {
                     SweepDirection::CounterClockwise
                 },
             },
+            anim: self.anim(),
+            transition: self.next().is_multiple_of(3).then(|| UiTransition {
+                seconds: self.f32(),
+                shape: Shape { leave: self.ease(), arrive: self.ease() },
+            }),
         }
+    }
+    fn ease(&mut self) -> Ease {
+        match self.next() % 4 {
+            0 => Ease::Linear,
+            1 => Ease::Slow,
+            2 => Ease::Fast,
+            _ => Ease::Step,
+        }
+    }
+    /// The tracks a widget declares (server#97) — usually none, which is the case
+    /// a HUD is mostly made of, and never more than the interpreter's budget.
+    fn anim(&mut self) -> Vec<UiTrack> {
+        let count = usize::from(self.next()) % (MAX_UI_TRACKS + 1);
+        (0..count)
+            .map(|_| UiTrack {
+                property: match self.next() % 4 {
+                    0 => UiProperty::TranslateX,
+                    1 => UiProperty::TranslateY,
+                    2 => UiProperty::Scale,
+                    _ => UiProperty::Opacity,
+                },
+                on: match self.next() % 3 {
+                    0 => UiTrigger::Built,
+                    1 => UiTrigger::State(WidgetState::Hovered),
+                    _ => UiTrigger::Hidden,
+                },
+                playback: match self.next() % 3 {
+                    0 => Playback::Once,
+                    1 => Playback::Loop,
+                    _ => Playback::PingPong,
+                },
+                keys: (0..=usize::from(self.next()) % 3)
+                    .map(|index| UiKey {
+                        #[allow(clippy::cast_precision_loss)] // Three keys at most.
+                        time: index as f32,
+                        value: self.f32(),
+                        arrive: self.ease(),
+                        leave: self.ease(),
+                    })
+                    .collect(),
+            })
+            .collect()
     }
     fn pool(&mut self) -> PoolRef {
         match self.next() % 6 {

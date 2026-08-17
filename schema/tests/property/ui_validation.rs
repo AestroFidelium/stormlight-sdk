@@ -95,6 +95,8 @@ fn a_style() -> Style {
         flip_y: false,
         states: InteractionStyle::default(),
         sweep: Sweep::default(),
+        anim: Vec::new(),
+        transition: None,
     }
 }
 

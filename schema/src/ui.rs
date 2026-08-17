@@ -18,6 +18,12 @@
 //! composes it out of [`WidgetKind::Panel`] and the leaves, the way an ability is
 //! composed out of the effect ISA rather than given a new leaf.
 //!
+//! ## A frame, and how it moves
+//!
+//! Everything here describes one settled frame. What that frame *does* over time —
+//! the entrance, the pulse, the catch-up — is [`ui_anim`](crate::ui_anim), declared
+//! on [`Style`] beside the paint it animates (stormlight/server#97).
+//!
 //! ## Bindings name *what*, never *where*
 //!
 //! A widget's dynamic value is a [`ValueBinding`]: "the health of the subject",
@@ -64,6 +70,7 @@ use serde::{Deserialize, Serialize};
 use crate::ids::{EventId, Slot, StatId};
 use crate::impacts::PoolRef;
 use crate::remap::{IdMap, RemapIds};
+use crate::ui_anim::{MAX_UI_TRACKS, TrackFault, UiTrack, UiTransition};
 
 /// How deeply one widget tree may nest, counting the root as level 1.
 ///
@@ -169,6 +176,33 @@ pub struct Layout {
     pub padding: f32,
 }
 
+/// Nine-slice borders: how far in from each edge of the *texture* the four
+/// slicing lines fall, in the art's own pixels.
+///
+/// Without this a picture drawn at a size other than its own is stretched, and a
+/// frame stretched five times its width has five-times-wide corners. With it the
+/// corners are drawn once at their own size, the sides stretch along one axis
+/// only, and the middle takes the rest — which is how HUD art is authored and
+/// the only way one plate serves a bar of any length.
+///
+/// Insets are of the texture, not of the widget, so the same value is right at
+/// every drawn size. Zero on an axis means that axis is not sliced.
+#[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize)]
+pub struct Slice {
+    pub left: f32,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+}
+
+impl Slice {
+    /// Each inset, for the checks that treat them as the extents they are.
+    #[must_use]
+    pub fn edges(&self) -> [f32; 4] {
+        [self.left, self.top, self.right, self.bottom]
+    }
+}
+
 /// A widget's outline.
 #[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize)]
 pub struct Border {
@@ -176,6 +210,70 @@ pub struct Border {
     pub color: [f32; 4],
     /// Thickness in pixels; `0.0` draws none.
     pub width: f32,
+}
+
+/// Which way round an ability slot the cooldown's leading edge travels
+/// (stormlight/server#99).
+///
+/// A direction and nothing else — not a start angle. Every cooldown wipe begins at
+/// twelve o'clock because that is where an eye already is, and an author who could
+/// move it would mostly be moving it by mistake.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum SweepDirection {
+    /// The way a clock's hand goes, which is the way a cooldown is read.
+    #[default]
+    Clockwise,
+    /// The other way, for a HUD whose ability art winds that way.
+    CounterClockwise,
+}
+
+/// How the part of a cooldown still to run is drawn over an ability slot's icon
+/// (stormlight/server#99).
+///
+/// The one thing this ABI declares that no arrangement of boxes can draw: the
+/// covered part is a *wedge*, so what is left says how long is left the way a
+/// clock face does. A rectangle sliding down the icon says the same number and
+/// reads as a bug.
+///
+/// Only [`WidgetKind::AbilitySlot`] has a cooldown to draw, so this is inert on
+/// every other kind — the same as [`Style::slice`] on a text or
+/// [`Style::font_size`] on a bar. It lives on [`Style`] because it is paint: what
+/// the widget looks like while a fact about it holds.
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Sweep {
+    /// What the unelapsed part is covered with. Linear RGBA, and the alpha is the
+    /// point of it: the icon is meant to show through, so the player can still see
+    /// which ability they are waiting for.
+    ///
+    /// **Fully transparent is no sweep at all.** A slot whose scrim cannot be seen
+    /// is one the interpreter draws no overlay for, which is how a HUD that shows
+    /// its cooldowns some other way — a printed number, a dimmed icon — says so
+    /// without a second field that could disagree with this one.
+    pub color: [f32; 4],
+    /// Which way round the icon it wipes.
+    pub direction: SweepDirection,
+}
+
+impl Default for Sweep {
+    /// A dark scrim, clockwise: what a slot gets by saying nothing, because a
+    /// cooldown a HUD does not draw is a HUD the player cannot use.
+    fn default() -> Self {
+        Self { color: [0.0, 0.0, 0.0, 0.6], direction: SweepDirection::Clockwise }
+    }
+}
+
+impl Sweep {
+    /// Whether there is an overlay to draw at all — see [`Self::color`].
+    #[must_use]
+    pub fn is_drawn(&self) -> bool {
+        self.color[3] > 0.0
+    }
+
+    /// Whether its colour can reach a renderer.
+    #[must_use]
+    pub fn is_finite(&self) -> bool {
+        self.color.iter().all(|v| v.is_finite())
+    }
 }
 
 /// Which of the four appearances an interactive widget is currently wearing
@@ -277,6 +375,14 @@ impl InteractionStyle {
         [self.hover.as_ref(), self.press.as_ref(), self.disabled.as_ref()].into_iter().flatten()
     }
 
+    /// Whether this widget declares any appearance beyond its resting one — the
+    /// question the interpreter asks to decide whether the widget has to be
+    /// watched at all, so a HUD's inert majority costs nothing.
+    #[must_use]
+    pub fn any(&self) -> bool {
+        self.declared().next().is_some()
+    }
+
     /// Whether any declared override names an empty picture.
     #[must_use]
     pub fn has_empty_image(&self) -> bool {
@@ -290,8 +396,9 @@ impl InteractionStyle {
     }
 }
 
-/// How a widget is painted. The five properties a HUD actually uses, plus what
-/// changes about three of them while the pointer is on it.
+/// How a widget is painted. The five properties a HUD actually uses, what changes
+/// about three of them while the pointer is on it, and — since server#97 — how any
+/// of that moves over time.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Style {
     /// Foreground: text colour, icon tint, the *filled* part of a bar. Linear
@@ -303,14 +410,53 @@ pub struct Style {
     pub border: Border,
     /// Text height in pixels, for the kinds that draw text.
     pub font_size: f32,
+    /// A `mod://<id>/<path>` font face, resolved within the declaring package.
+    /// `None` uses the client's own default face.
+    ///
+    /// A HUD's face is part of its design, not a detail: a mod that ships a
+    /// display face for its headings and a text face for its readouts cannot say
+    /// so with a size alone. Shipping the file is the mod's business, the same as
+    /// its art.
+    #[serde(default)]
+    pub font: Option<String>,
     /// A `mod://<id>/<path>` image, resolved within the declaring package.
     /// Required by [`WidgetKind::Icon`]; optional decoration on anything else.
     pub image: Option<String>,
+    /// How [`Self::image`] is cut when it is drawn at a size other than its own.
+    /// `None` stretches it, which is right for art drawn at its native size and
+    /// wrong for a frame or a plate.
+    #[serde(default)]
+    pub slice: Option<Slice>,
+    /// Draw [`Self::image`] mirrored left-to-right.
+    ///
+    /// One asset serves both halves of a symmetric frame — the right end of a bar
+    /// is the left end reversed — so this is how a HUD ships half the art. It
+    /// mirrors the picture only; the widget's box, its slice insets and its
+    /// children are untouched.
+    #[serde(default)]
+    pub flip_x: bool,
+    /// The same, top-to-bottom.
+    #[serde(default)]
+    pub flip_y: bool,
     /// What changes while the pointer is over it, holding it, or while its action
     /// would be refused (stormlight/server#69). Inert on a widget that does
     /// nothing when clicked — there is no state for it to be in.
     #[serde(default)]
     pub states: InteractionStyle,
+    /// How a cooldown is wiped over it (stormlight/server#99). Inert on every kind
+    /// but [`WidgetKind::AbilitySlot`], which is the only one with a cooldown.
+    #[serde(default)]
+    pub sweep: Sweep,
+    /// The curves it plays, and what starts each of them (stormlight/server#97) —
+    /// the time axis of a style that otherwise describes one frame. Empty on a
+    /// widget that does not move, which is most of a HUD.
+    #[serde(default)]
+    pub anim: Vec<UiTrack>,
+    /// How the number it *draws* catches up when that number steps
+    /// (stormlight/server#97). `None` leaves the catch-up to the interpreter;
+    /// inert on a widget that draws no continuous quantity.
+    #[serde(default)]
+    pub transition: Option<UiTransition>,
 }
 
 impl Default for Style {
@@ -323,8 +469,15 @@ impl Default for Style {
             background: [0.0, 0.0, 0.0, 0.0],
             border: Border::default(),
             font_size: 16.0,
+            font: None,
             image: None,
+            slice: None,
+            flip_x: false,
+            flip_y: false,
             states: InteractionStyle::default(),
+            sweep: Sweep::default(),
+            anim: Vec::new(),
+            transition: None,
         }
     }
 }
@@ -469,8 +622,9 @@ pub enum WidgetKind {
     Icon,
     /// A clickable container: a [`Self::Panel`] that sends a [`UiAction`].
     Button { action: UiAction, children: Vec<Widget> },
-    /// An ability slot: its icon ([`Style::image`]), a cooldown sweep over it,
-    /// and its key hint. The one composite blessed as a kind of its own, because
+    /// An ability slot: its icon ([`Style::image`]), a cooldown sweep over it
+    /// ([`Style::sweep`]), and its key hint. The one composite blessed as a kind
+    /// of its own, because
     /// every HUD needs it and composing it out of a stacked panel, a bar bound to
     /// [`PoolRef::Cooldown`] and a text would put the same twenty lines in every
     /// mod.
@@ -604,6 +758,20 @@ pub enum UiError {
     /// A negative size, gap, padding, border width or font size. (An *offset*
     /// may be negative; an extent may not.)
     NegativeMetric { widget: u16 },
+    /// A declared curve that cannot be played (stormlight/server#97).
+    BadTrack {
+        /// The widget that declared it, by pre-order index.
+        widget: u16,
+        /// Which of its tracks, in declaration order.
+        track: u16,
+        /// What is wrong with it.
+        fault: TrackFault,
+    },
+    /// More tracks on one widget than [`MAX_UI_TRACKS`].
+    TooManyTracks { widget: u16 },
+    /// A catch-up with a negative or non-finite duration — not a slower
+    /// transition, a break.
+    BadTransition { widget: u16 },
 }
 
 impl fmt::Display for UiError {
@@ -624,6 +792,15 @@ impl fmt::Display for UiError {
             Self::NonFinite { widget } => write!(f, "widget {widget} carries a non-finite number"),
             Self::NegativeMetric { widget } => {
                 write!(f, "widget {widget} carries a negative extent")
+            }
+            Self::BadTrack { widget, track, fault } => {
+                write!(f, "widget {widget}: track {track} {fault}")
+            }
+            Self::TooManyTracks { widget } => {
+                write!(f, "widget {widget} declares more than {MAX_UI_TRACKS} tracks")
+            }
+            Self::BadTransition { widget } => {
+                write!(f, "widget {widget} carries a catch-up no clock can run")
             }
         }
     }
@@ -646,10 +823,14 @@ fn is_finite(widget: &Widget) -> bool {
             .all(|v| v.is_finite())
         && s.border.width.is_finite()
         && s.font_size.is_finite()
+        && s.slice.is_none_or(|sl| sl.edges().iter().all(|v| v.is_finite()))
         // A state's colours reach the same layout/paint path the base ones do,
         // so a NaN hidden in a hover override is the same break — it just waits
         // for the pointer to arrive before it costs the screen.
         && s.states.is_finite()
+        // And a sweep's colour reaches a shader uniform, where a NaN is not a
+        // wrong colour but an undefined pixel.
+        && s.sweep.is_finite()
 }
 
 /// Whether any extent a widget carries is negative. Offsets are excluded: moving
@@ -660,6 +841,31 @@ fn is_negative(widget: &Widget) -> bool {
         || widget.layout.padding < 0.0
         || widget.style.border.width < 0.0
         || widget.style.font_size < 0.0
+        || widget.style.slice.is_some_and(|sl| sl.edges().iter().any(|v| *v < 0.0))
+}
+
+/// Whether anything a widget declares about *time* is unplayable (server#97).
+///
+/// Separate from [`is_finite`] and [`is_negative`] because it answers with the
+/// track at fault rather than with a yes or no: a widget may declare four curves,
+/// and "one of them has a NaN in it" is not something an author can act on.
+fn animation_fault(widget: &Widget, index: u16) -> Result<(), UiError> {
+    if widget.style.anim.len() > MAX_UI_TRACKS {
+        return Err(UiError::TooManyTracks { widget: index });
+    }
+    for (track, declared) in widget.style.anim.iter().enumerate() {
+        if let Some(fault) = declared.fault() {
+            // Saturating rather than wrapping: `MAX_UI_TRACKS` is far below the
+            // cast's ceiling, so this is only ever the identity — but a truncated
+            // index would name the wrong track, which is worse than a clamped one.
+            let track = u16::try_from(track).unwrap_or(u16::MAX);
+            return Err(UiError::BadTrack { widget: index, track, fault });
+        }
+    }
+    if widget.style.transition.is_some_and(|t| !t.is_usable()) {
+        return Err(UiError::BadTransition { widget: index });
+    }
+    Ok(())
 }
 
 impl UiRoot {
@@ -717,6 +923,11 @@ impl UiRoot {
             if widget.style.states.has_empty_image() {
                 return Err(UiError::EmptyImagePath { widget: index });
             }
+            // And the same for the time axis (server#97): a curve is checked here
+            // rather than left to the interpreter, because a track that only
+            // misbehaves when its trigger fires is one an author discovers by
+            // pointing at the widget, or by watching their HUD leave the screen.
+            animation_fault(widget, index)?;
             // Reversed, so popping yields declaration order and the index an
             // error reports is the one the author reads down the file.
             for child in widget.kind.children().iter().rev() {

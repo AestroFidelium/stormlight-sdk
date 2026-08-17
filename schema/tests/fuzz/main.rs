@@ -7,3 +7,4 @@
 mod animation;
 mod manifest;
 mod ui;
+mod ui_anim;

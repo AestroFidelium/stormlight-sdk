@@ -25,7 +25,7 @@ use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, UiRoot, UiSubject, ValueBinding, Widget, WidgetKind,
+    Layout, RootVisibility, Style, SummonGate, UiRoot, UiSubject, ValueBinding, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -140,6 +140,7 @@ fn a_mod(stats: &[&str], resources: &[&str]) -> Mod {
         root: UiRoot {
             name: "hud".to_string(),
             when: RootVisibility::Always,
+            summon: SummonGate::Ignored,
             subject: UiSubject::LocalPlayer,
             root: a_widget(WidgetKind::Panel { children }),
         },

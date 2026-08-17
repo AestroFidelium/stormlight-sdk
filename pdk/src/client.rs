@@ -26,7 +26,7 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
-use stormlight_mod_abi::ui::{RootVisibility, UiRoot, UiSubject, Widget};
+use stormlight_mod_abi::ui::{RootVisibility, SummonGate, UiRoot, UiSubject, Widget};
 use stormlight_mod_abi::visuals::{
     AbilityIcon, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect,
     VisualDescriptor, VisualModel,
@@ -156,7 +156,26 @@ impl ClientContext {
     /// nameplate is authored once rather than per unit dressed. Build the tree
     /// with the constructors in [`crate::ui`].
     pub fn ui(&mut self, name: &str, when: RootVisibility, subject: UiSubject, root: Widget) {
-        self.ui.push(UiRoot { name: name.into(), when, subject, root });
+        self.ui_gated(name, when, SummonGate::Ignored, subject, root);
+    }
+
+    /// Declare a widget tree that also waits on the summon input
+    /// (stormlight/server#98) — [`Self::ui`] with the gate spelled out.
+    ///
+    /// The gate is orthogonal to `when`: that says whether there is anything to
+    /// show, this says whether the player is asking to see it. Declaring the same
+    /// `when` with opposite gates is how two trees take turns — a banner that a
+    /// choice is waiting and the panel that answers it — without either naming the
+    /// other, and with the client owning which input does the summoning.
+    pub fn ui_gated(
+        &mut self,
+        name: &str,
+        when: RootVisibility,
+        summon: SummonGate,
+        subject: UiSubject,
+        root: Widget,
+    ) {
+        self.ui.push(UiRoot { name: name.into(), when, summon, subject, root });
     }
 
     /// Intern a unit stat by name, returning the handle a

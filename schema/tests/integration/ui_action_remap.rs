@@ -24,7 +24,7 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, UiAction, UiRoot, UiSubject, Widget, WidgetKind,
+    Layout, RootVisibility, Style, SummonGate, UiAction, UiRoot, UiSubject, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -123,6 +123,7 @@ fn a_root(events: &[&str], slot: u8, tier: u8, option: u8) -> UiRoot {
     UiRoot {
         name: "hud".to_string(),
         when: RootVisibility::Always,
+        summon: SummonGate::Ignored,
         subject: UiSubject::LocalPlayer,
         root: a_widget(WidgetKind::Panel { children }),
     }
@@ -235,6 +236,7 @@ fn a_trigger_naming_an_event_the_mod_never_declared_is_rejected() {
         let mut root = UiRoot {
             name: "hud".to_string(),
             when: RootVisibility::Always,
+            summon: SummonGate::Ignored,
             subject: UiSubject::LocalPlayer,
             root: a_button(UiAction::Trigger { event: EventId(u16::from(raw) + 1) }),
         };

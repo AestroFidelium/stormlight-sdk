@@ -23,7 +23,8 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, Sweep, SweepDirection, UiError, UiRoot, Widget, WidgetKind,
+    Layout, RootVisibility, Style, SummonGate, Sweep, SweepDirection, UiError, UiRoot, Widget,
+    WidgetKind,
 };
 
 extern crate alloc;
@@ -71,6 +72,7 @@ fn a_root(style: Style) -> UiRoot {
     UiRoot {
         name: "hud".to_string(),
         when: RootVisibility::Always,
+        summon: SummonGate::Ignored,
         subject: stormlight_mod_abi::ui::UiSubject::LocalPlayer,
         root: Widget {
             name: "bar".to_string(),

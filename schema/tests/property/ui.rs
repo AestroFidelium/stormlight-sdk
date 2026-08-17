@@ -25,7 +25,7 @@ use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Slice,
-    StateStyle, Style, Sweep, SweepDirection, TextSource, UiAction, UiRoot, UiSubject,
+    StateStyle, Style, SummonGate, Sweep, SweepDirection, TextSource, UiAction, UiRoot, UiSubject,
     ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
@@ -399,6 +399,11 @@ impl Gen<'_> {
         UiRoot {
             name: self.string(),
             when,
+            summon: match self.next() % 3 {
+                0 => SummonGate::Ignored,
+                1 => SummonGate::Held,
+                _ => SummonGate::Released,
+            },
             subject: match self.next() % 3 {
                 0 => UiSubject::LocalPlayer,
                 1 => UiSubject::HoveredUnit,

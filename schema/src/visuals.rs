@@ -95,6 +95,32 @@ pub struct EffectVisualDescriptor {
     pub model: VisualModel,
 }
 
+/// The picture an ability wears in an interface — the icon a HUD draws in
+/// whichever slot that ability occupies (stormlight/server#94).
+///
+/// Keyed by the ability's interned handle for the same reason
+/// [`EffectVisualDescriptor`] is: the picture is a fact about the *ability*, and
+/// the mod that draws the ability bar is not the mod that authored the ability.
+/// An interface mod ships widget trees and dresses no unit — it cannot know which
+/// ability a unit binds in slot 2, so the only thing it can supply for that slot
+/// is the socket it draws round every one of them. The engine resolves the icon
+/// per slot from whatever the bound ability declared, leaving
+/// [`Style::image`](crate::ui::Style::image) on the widget as what a slot wears
+/// when its ability supplies no picture — or when nothing is bound to it at all.
+///
+/// A bare `mod://<id>/<path>` URL rather than a [`VisualModel`]: an icon is a flat
+/// picture in a widget, so a mesh, a scale and a yaw offset would all be fields
+/// with nothing to mean. How it is *drawn* — its tint, its nine-slice, whether it
+/// flips — stays the interface's, declared once on the socket and applied to
+/// whatever picture lands in it.
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AbilityIcon {
+    /// The ability this picture is for.
+    pub ability: AbilityId,
+    /// The `mod://<id>/<path>` URL of the picture.
+    pub image: String,
+}
+
 /// A cosmetic effect declared under a name of the mod's own choosing, for
 /// anything that spawns a visual without an ability behind it — today, an
 /// animation notify (server#76): a footstep puff, a weapon trail, a landing
@@ -136,6 +162,10 @@ pub struct ClientRegistration {
     /// The ability-feedback visuals this cosmetic mod declares (projectile /
     /// impact / cast indicator), keyed by ability + role.
     pub effects: Vec<EffectVisualDescriptor>,
+    /// The icons this cosmetic mod declares, one per ability it gives a picture
+    /// to (server#94). Read by an interface it knows nothing about: the icon
+    /// travels with the ability so a HUD can ask for it *by slot*.
+    pub icons: Vec<AbilityIcon>,
     /// The animations this cosmetic mod declares, one per unit it animates
     /// (stormlight/server#72). Independent of `visuals`: a mod may dress a unit
     /// without animating it, or animate a unit whose model another mod supplied.

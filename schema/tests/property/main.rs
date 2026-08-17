@@ -4,6 +4,7 @@
 //! drop a <feature>.rs beside this file and declare `mod <feature>;` here.
 //! Keep invariants directional/structural, never magnitude-only.
 
+mod ability_icon;
 mod aiming;
 mod anim_notify;
 mod animation;

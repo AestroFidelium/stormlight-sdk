@@ -3,7 +3,8 @@
 //!
 //! A cosmetic mod declares how content *looks*, how it *moves*, and what the
 //! player *reads*: a [`VisualModel`] per unit, a per-ability feedback visual
-//! ([`EffectVisualDescriptor`], keyed by an [`EffectRole`]), an
+//! ([`EffectVisualDescriptor`], keyed by an [`EffectRole`]), the icon an ability
+//! wears in an interface ([`AbilityIcon`], server#94), an
 //! [`AnimationDescriptor`] per unit, and the widget trees of its interface
 //! ([`UiRoot`], server#66). Like the gameplay context it names everything with
 //! stable strings that intern to dense handles; [`ClientContext::finish`] emits
@@ -27,8 +28,8 @@ use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
 use stormlight_mod_abi::ui::{RootVisibility, UiRoot, UiSubject, Widget};
 use stormlight_mod_abi::visuals::{
-    ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, VisualDescriptor,
-    VisualModel,
+    AbilityIcon, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect,
+    VisualDescriptor, VisualModel,
 };
 
 use crate::context::table;
@@ -49,6 +50,7 @@ pub struct ClientContext {
 
     visuals: Vec<VisualDescriptor>,
     effects: Vec<EffectVisualDescriptor>,
+    icons: Vec<AbilityIcon>,
     animations: Vec<AnimationDescriptor>,
     named_effects: Vec<NamedEffect>,
     ui: Vec<UiRoot>,
@@ -81,6 +83,22 @@ impl ClientContext {
     ) -> AbilityId {
         let id = self.ability_names.intern(ability);
         self.effects.push(EffectVisualDescriptor { ability: id, role, model });
+        id
+    }
+
+    /// Declare the icon the ability named `ability` wears in an interface
+    /// (server#94) — the picture a HUD draws in whichever slot binds it —
+    /// returning the ability's interned handle.
+    ///
+    /// Declared here rather than on the interface for the reason the ABI keys it
+    /// by handle: an interface mod ships widget trees and dresses no unit, so it
+    /// cannot know what a given unit binds in slot 2. The icon travels with the
+    /// ability, and the HUD asks for it by slot. `image` is a `mod://<id>/<path>`
+    /// URL like every other asset. Re-declaring an ability's icon overrides the
+    /// earlier one at adoption (later wins).
+    pub fn ability_icon(&mut self, ability: &str, image: &str) -> AbilityId {
+        let id = self.ability_names.intern(ability);
+        self.icons.push(AbilityIcon { ability: id, image: image.into() });
         id
     }
 
@@ -188,6 +206,7 @@ impl ClientContext {
             },
             visuals: self.visuals,
             effects: self.effects,
+            icons: self.icons,
             animations: self.animations,
             named_effects: self.named_effects,
             ui: self.ui,

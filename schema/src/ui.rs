@@ -691,6 +691,37 @@ pub enum RootVisibility {
     WhileUnitHovered,
 }
 
+/// Whether a tree also waits on the player *summoning* the interface
+/// (stormlight/server#98) — the one input condition this ABI can name.
+///
+/// Orthogonal to [`RootVisibility`] on purpose. That condition says whether there
+/// is anything worth showing; this says whether the player is asking to see it,
+/// and the two are combined by the client. What the pair buys is a **handover**
+/// with nothing coordinating it: an alert that a choice is waiting and the panel
+/// that answers it declare the same [`RootVisibility`] and opposite gates, so
+/// exactly one of them is ever on screen and neither has to know the other
+/// exists. Nothing in the alert names the picker, and a third mod can replace
+/// either half on its own.
+///
+/// **No key is named here, and that is the point.** Which input summons the
+/// interface is client convention — the same rule that keeps ability keybinds out
+/// of a loadout, where a mod says *slot 0* and the client decides that is `Q`. A
+/// mod says a tree wants the summon input held; the client owns what that input
+/// is, and can let a player rebind it without a single mod caring.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum SummonGate {
+    /// The summon input is not consulted: the tree is shown on its
+    /// [`RootVisibility`] alone. What every root means that does not say
+    /// otherwise, and what the ordinary always-on HUD wants.
+    #[default]
+    Ignored,
+    /// Only while the summon input is held — the summoned half of a pair.
+    Held,
+    /// Only while it is *not* — the resting half, which gives way the moment the
+    /// player asks for the other.
+    Released,
+}
+
 /// Whose state a tree's bindings read — and, for the last variant, *where the
 /// tree sits*, because a tree that reads a unit in the world is drawn over that
 /// unit rather than in a corner.
@@ -725,6 +756,9 @@ pub struct UiRoot {
     pub name: String,
     /// When it is on screen.
     pub when: RootVisibility,
+    /// Whether it also waits on the summon input (stormlight/server#98).
+    /// [`SummonGate::Ignored`] — the default — leaves `when` deciding alone.
+    pub summon: SummonGate,
     /// Whose state its bindings read — and, for [`UiSubject::EachUnit`], that it
     /// is instanced per unit and anchored to it rather than to the screen.
     pub subject: UiSubject,

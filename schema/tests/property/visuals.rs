@@ -296,6 +296,11 @@ impl Gen<'_> {
             // `animation.rs`); this file stays about visuals.
             animations: Vec::new(),
             named_effects: (0..self.count(4)).map(|_| self.named_effect()).collect(),
+            // Ability icons have their own invariants (see `ability_icon.rs`) —
+            // and they are the *second* place a cosmetic bundle names an ability,
+            // so leaving them empty here keeps the ability-error invariant below
+            // about effect visuals alone.
+            icons: Vec::new(),
             // Widget trees have their own invariants (see `ui.rs`); this file
             // stays about visuals.
             ui: Vec::new(),

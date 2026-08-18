@@ -12,9 +12,9 @@
 //! ## Deliberately small
 //!
 //! This is not a general-purpose UI language, and growing it into one is a
-//! non-goal: it is the smallest vocabulary that expresses a real HUD. Six widget
+//! non-goal: it is the smallest vocabulary that expresses a real HUD. Seven widget
 //! kinds, one anchor-plus-offset layout model, five style properties, and a
-//! closed set of bindings. A mod that needs a *seventh* kind of thing on screen
+//! closed set of bindings. A mod that needs an *eighth* kind of thing on screen
 //! composes it out of [`WidgetKind::Panel`] and the leaves, the way an ability is
 //! composed out of the effect ISA rather than given a new leaf.
 //!
@@ -546,14 +546,43 @@ pub enum ValuePart {
 
 /// A binding that yields a *list* rather than a number.
 ///
-/// One variant, and no widget kind repeats a template over it: a
-/// [`TextSource::List`] renders the entries as lines. That is the whole of the
-/// list support, deliberately — a repeater is the point where a descriptor ABI
-/// turns into a template language.
+/// Still **no repeater**: a [`TextSource::List`] renders the entries as lines of
+/// one text widget, and no widget kind instances a template per entry. That is the
+/// whole of the list support, deliberately — a repeater is the point where a
+/// descriptor ABI turns into a template language, and the thing it would buy is
+/// already had for free one level up. A mod is a Rust program: repeating a cell
+/// across a grid is a `for` loop at authoring time, which produces an explicit tree
+/// the client neither has to scope nor to re-instance. What a compile-time loop
+/// cannot know — how many tiers *this* unit declares — is answered by the refusal a
+/// cell already gets ([`WidgetState::Disabled`]), which is what lets one panel serve
+/// trees of different shapes.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum ListBinding {
     /// The talents the subject has chosen so far, in tier order.
     ChosenTalents,
+    /// The talents one tier *offers*, in pick-index order — the counterpart of
+    /// [`Self::ChosenTalents`] (stormlight/server#95).
+    ///
+    /// For the panel that wants the whole tier in one widget rather than a cell per
+    /// option. Empty for a tier the subject's tree does not have, which is a tier
+    /// no pick could name either.
+    TierOptions(u8),
+}
+
+/// Which of a talent's authored strings a text reads (stormlight/server#95).
+///
+/// Two, because they are the two things a player deciding needs: what it is called
+/// and what it does. Both come off the talent's own
+/// [`TalentCard`](crate::visuals::TalentCard) — a mod that carded none prints the
+/// identifier its gameplay side interned, which is a label rather than a sentence
+/// but is at least the author's own word.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum TalentText {
+    /// Its display name.
+    #[default]
+    Name,
+    /// What it does, in the declaring mod's words.
+    Description,
 }
 
 /// What a [`WidgetKind::Text`] displays.
@@ -566,6 +595,14 @@ pub enum TextSource {
     Value { binding: ValueBinding, part: ValuePart, decimals: u8 },
     /// Every entry of a list binding, one per line.
     List(ListBinding),
+    /// One offered talent's name or description (stormlight/server#95), addressed
+    /// by the same `(tier, option)` coordinate a [`UiAction::PickTalent`] names.
+    ///
+    /// **A coordinate, not a handle** — for exactly the reason the pick is one: an
+    /// interface mod that named a talent would be authoring gameplay content in a
+    /// HUD. The client resolves the index against the subject unit's own declared
+    /// tree, and a coordinate that names nothing prints nothing at all.
+    Talent { tier: u8, option: u8, field: TalentText },
 }
 
 /// What activating an interactive widget asks the server to do
@@ -635,6 +672,24 @@ pub enum WidgetKind {
         /// input mapping is the player's, not the mod's.
         key_hint: String,
     },
+    /// The picture the talent offered at `(tier, option)` wears
+    /// (stormlight/server#95) — the talent-panel counterpart of the icon inside
+    /// [`Self::AbilitySlot`], and it exists for the same reason.
+    ///
+    /// A [`Self::Icon`]'s picture is the interface's own and must be declared. This
+    /// one's cannot be: a panel addresses a cell by coordinate precisely so that it
+    /// names no talent, so it cannot name that talent's art either. The picture is
+    /// resolved from the offered talent's
+    /// [`TalentCard`](crate::visuals::TalentCard), and [`Style::image`] stays what
+    /// the cell wears when the coordinate offers nothing or the offered talent was
+    /// never carded — the empty socket, exactly as on a slot.
+    ///
+    /// It draws and does not act. The pick stays a [`UiAction::PickTalent`] on an
+    /// enclosing [`Self::Button`], so a cell is composed the way the rest of a HUD
+    /// is — an ability slot bundles its cast because a slot you cannot click is not
+    /// an ability bar, while a talent cell is a picture, a heading and a sentence
+    /// inside one button, and only the button is clicked.
+    TalentIcon { tier: u8, option: u8 },
 }
 
 impl WidgetKind {
@@ -643,7 +698,11 @@ impl WidgetKind {
     pub fn children(&self) -> &[Widget] {
         match self {
             Self::Panel { children } | Self::Button { children, .. } => children,
-            Self::Text { .. } | Self::Bar { .. } | Self::Icon | Self::AbilitySlot { .. } => &[],
+            Self::Text { .. }
+            | Self::Bar { .. }
+            | Self::Icon
+            | Self::TalentIcon { .. }
+            | Self::AbilitySlot { .. } => &[],
         }
     }
 
@@ -661,7 +720,14 @@ impl WidgetKind {
         match self {
             Self::Button { action, .. } => Some(*action),
             Self::AbilitySlot { slot, .. } => Some(UiAction::CastSlot(*slot)),
-            Self::Panel { .. } | Self::Text { .. } | Self::Bar { .. } | Self::Icon => None,
+            // A talent icon is deliberately *not* here: a cell's pick lives on the
+            // button around it, so there stays exactly one spelling of the action
+            // (server#95).
+            Self::Panel { .. }
+            | Self::Text { .. }
+            | Self::Bar { .. }
+            | Self::Icon
+            | Self::TalentIcon { .. } => None,
         }
     }
 }
@@ -783,7 +849,9 @@ pub enum UiError {
     TooDeep { widget: u16 },
     /// More than [`MAX_UI_WIDGETS`] widgets in one tree.
     TooManyWidgets,
-    /// An [`WidgetKind::Icon`] whose style names no image.
+    /// An [`WidgetKind::Icon`] whose style names no image. Only that kind: a
+    /// [`WidgetKind::TalentIcon`] resolves its picture from the talent it draws, so
+    /// declaring none is how a cell says it wants no empty-socket art (server#95).
     IconWithoutImage { widget: u16 },
     /// An image path that is present but empty — a `mod://` URL to nothing.
     EmptyImagePath { widget: u16 },
@@ -989,8 +1057,10 @@ impl RemapIds for ValueBinding {
 impl RemapIds for TextSource {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
-            // Authored text is content; a list binding names no family.
-            Self::Literal(_) | Self::List(_) => {}
+            // Authored text is content; a list binding names no family, and a
+            // talent coordinate is an index into the *unit's* tree — the same pure
+            // mod convention `PickTalent` addresses a cell by (server#95).
+            Self::Literal(_) | Self::List(_) | Self::Talent { .. } => {}
             Self::Value { binding, .. } => binding.remap_ids(m)?,
         }
         Ok(())
@@ -1015,8 +1085,9 @@ impl RemapIds for WidgetKind {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
             // An icon is an asset path; an ability slot's own `Slot` is not
-            // interned, and the action it implies carries nothing else.
-            Self::Icon | Self::AbilitySlot { .. } => {}
+            // interned, and the action it implies carries nothing else. A talent
+            // icon carries only a coordinate, like the pick it sits under.
+            Self::Icon | Self::TalentIcon { .. } | Self::AbilitySlot { .. } => {}
             Self::Panel { children } => children.remap_ids(m)?,
             Self::Button { action, children } => {
                 action.remap_ids(m)?;

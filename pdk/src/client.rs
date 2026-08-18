@@ -4,14 +4,15 @@
 //! A cosmetic mod declares how content *looks*, how it *moves*, and what the
 //! player *reads*: a [`VisualModel`] per unit, a per-ability feedback visual
 //! ([`EffectVisualDescriptor`], keyed by an [`EffectRole`]), the icon an ability
-//! wears in an interface ([`AbilityIcon`], server#94), an
-//! [`AnimationDescriptor`] per unit, and the widget trees of its interface
-//! ([`UiRoot`], server#66). Like the gameplay context it names everything with
-//! stable strings that intern to dense handles; [`ClientContext::finish`] emits
-//! the [`Names`] tables (a cosmetic bundle fills `units`, `abilities`,
-//! `anim_states`, `events`, and — for what its HUD binds to — `stats`,
-//! `resources` and `stacks`) alongside the accumulated declarations, so the host
-//! can map each handle to the gameplay mod's global id by **name** at adoption.
+//! wears in an interface ([`AbilityIcon`], server#94), what each talent is called
+//! and does ([`TalentCard`], server#95), an [`AnimationDescriptor`] per unit, and
+//! the widget trees of its interface ([`UiRoot`], server#66). Like the gameplay
+//! context it names everything with stable strings that intern to dense handles;
+//! [`ClientContext::finish`] emits the [`Names`] tables (a cosmetic bundle fills
+//! `units`, `abilities`, `talents`, `anim_states`, `events`, and — for what its HUD
+//! binds to — `stats`, `resources` and `stacks`) alongside the accumulated
+//! declarations, so the host can map each handle to the gameplay mod's global id by
+//! **name** at adoption.
 //!
 //! Content-free host: the engine ships nothing here — it renders whatever asset a
 //! declared [`VisualModel`] names via a `mod://<id>/<path>` URL, falling back to a
@@ -22,14 +23,14 @@ use alloc::vec::Vec;
 use stormlight_mod_abi::animation::{AnimState, AnimationDescriptor};
 use stormlight_mod_abi::descriptors::Names;
 use stormlight_mod_abi::ids::{
-    AbilityId, AnimStateId, EventId, ResourceId, StackId, StatId, UnitId,
+    AbilityId, AnimStateId, EventId, ResourceId, StackId, StatId, TalentId, UnitId,
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
 use stormlight_mod_abi::ui::{RootVisibility, SummonGate, UiRoot, UiSubject, Widget};
 use stormlight_mod_abi::visuals::{
-    AbilityIcon, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect,
-    VisualDescriptor, VisualModel,
+    AbilityIcon, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, TalentCard,
+    TalentInfo, VisualDescriptor, VisualModel,
 };
 
 use crate::context::table;
@@ -42,6 +43,7 @@ use crate::context::table;
 pub struct ClientContext {
     unit_names: Interner<UnitId>,
     ability_names: Interner<AbilityId>,
+    talent_names: Interner<TalentId>,
     anim_state_names: Interner<AnimStateId>,
     event_names: Interner<EventId>,
     stat_names: Interner<StatId>,
@@ -51,6 +53,7 @@ pub struct ClientContext {
     visuals: Vec<VisualDescriptor>,
     effects: Vec<EffectVisualDescriptor>,
     icons: Vec<AbilityIcon>,
+    cards: Vec<TalentCard>,
     animations: Vec<AnimationDescriptor>,
     named_effects: Vec<NamedEffect>,
     ui: Vec<UiRoot>,
@@ -99,6 +102,39 @@ impl ClientContext {
     pub fn ability_icon(&mut self, ability: &str, image: &str) -> AbilityId {
         let id = self.ability_names.intern(ability);
         self.icons.push(AbilityIcon { ability: id, image: image.into() });
+        id
+    }
+
+    /// Declare what the talent named `talent` is called, does and looks like
+    /// (server#95), returning the talent's interned handle.
+    ///
+    /// The counterpart of [`ability_icon`](Self::ability_icon), one family along
+    /// and for the same reason. A talent panel addresses a cell by **tier and
+    /// option index** so that it names no content — which also leaves it nothing to
+    /// print in the cell. The card travels with the talent, and the panel asks for
+    /// it by coordinate.
+    ///
+    /// `talent` is the same stable name the gameplay mod interned the talent under,
+    /// which is how the two sides meet; `image` is a `mod://<id>/<path>` URL like
+    /// every other asset, and may be empty for a talent with no picture.
+    /// Re-declaring a talent's card overrides the earlier one at adoption (later
+    /// wins).
+    pub fn talent_card(
+        &mut self,
+        talent: &str,
+        name: &str,
+        description: &str,
+        image: &str,
+    ) -> TalentId {
+        let id = self.talent_names.intern(talent);
+        self.cards.push(TalentCard {
+            talent: id,
+            info: TalentInfo {
+                name: name.into(),
+                description: description.into(),
+                image: image.into(),
+            },
+        });
         id
     }
 
@@ -216,6 +252,7 @@ impl ClientContext {
             names: Names {
                 units: table(&self.unit_names),
                 abilities: table(&self.ability_names),
+                talents: table(&self.talent_names),
                 anim_states: table(&self.anim_state_names),
                 events: table(&self.event_names),
                 stats: table(&self.stat_names),
@@ -226,6 +263,7 @@ impl ClientContext {
             visuals: self.visuals,
             effects: self.effects,
             icons: self.icons,
+            cards: self.cards,
             animations: self.animations,
             named_effects: self.named_effects,
             ui: self.ui,

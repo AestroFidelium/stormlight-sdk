@@ -33,7 +33,9 @@ use crate::talent_tree::{TalentTier, TalentTree};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
 use crate::triggers::{EventFilter, EventKind, Reaction};
 use crate::units::{ResourcePool, UnitDescriptor};
-use crate::visuals::{AbilityIcon, ClientRegistration, EffectVisualDescriptor, VisualDescriptor};
+use crate::visuals::{
+    AbilityIcon, ClientRegistration, EffectVisualDescriptor, TalentCard, VisualDescriptor,
+};
 
 /// Translates one interned handle to another, one method per id family. A total
 /// map (identity, or a complete local→global table) never errors; a map missing a
@@ -662,12 +664,22 @@ impl RemapIds for AbilityIcon {
     }
 }
 
+impl RemapIds for TalentCard {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // Only the talent key is an interned handle; `info` is the mod's own words
+        // and assets, and must reach the screen exactly as authored.
+        self.talent = m.talent(self.talent)?;
+        Ok(())
+    }
+}
+
 impl RemapIds for ClientRegistration {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         // `abi` and `names` (the string tables) carry no interned handle.
         self.visuals.remap_ids(m)?;
         self.effects.remap_ids(m)?;
         self.icons.remap_ids(m)?;
+        self.cards.remap_ids(m)?;
         self.animations.remap_ids(m)?;
         self.ui.remap_ids(m)
     }

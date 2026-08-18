@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::animation::AnimationDescriptor;
 use crate::descriptors::Names;
-use crate::ids::{AbilityId, UnitId};
+use crate::ids::{AbilityId, TalentId, UnitId};
 use crate::manifest::Version;
 use crate::ui::UiRoot;
 
@@ -121,6 +121,58 @@ pub struct AbilityIcon {
     pub image: String,
 }
 
+/// What a talent is called, what it does in words, and what it looks like
+/// (stormlight/server#95) — everything a panel offering a pending tier needs in
+/// order to say what the choice *means*.
+///
+/// Keyed by the talent's interned handle for the same reason [`AbilityIcon`] is
+/// keyed by the ability's, and it is the same separation one level along: the mod
+/// that lays out the talent panel is not the mod that authored the talents. A
+/// panel addresses a cell by **tier and option index** ([`UiAction::PickTalent`](crate::ui::UiAction::PickTalent)),
+/// so it can offer a whole tree while naming no content — but that also means it
+/// has nothing to print in the cell. The card travels with the talent, and the
+/// panel asks for it by coordinate.
+///
+/// Cosmetic rather than a field of
+/// [`TalentDescriptor`](crate::talents::TalentDescriptor): these are words on a
+/// screen and a picture in a widget, and the server neither reads nor replicates
+/// any of them. The gameplay side keeps naming its talents with the stable
+/// identifier it interns them by, which stays what a card-less talent prints.
+///
+/// **One language.** The strings are authored literals, so a mod ships the words of
+/// whichever language it was written in — see the localization work this is the
+/// forcing case for (stormlight/server#101).
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct TalentCard {
+    /// The talent this card describes.
+    pub talent: TalentId,
+    /// What to show for it.
+    pub info: TalentInfo,
+}
+
+/// The presentation half of a [`TalentCard`] — what a talent is called, what it
+/// does in words, and what it looks like, with no handle attached.
+///
+/// Carried on its own so that every table downstream is keyed by the id the *host*
+/// resolved the declaration to, and holds no copy of the local handle the mod
+/// authored it with. A stale handle sitting inside an adopted value is how a card
+/// ends up describing the neighbouring package's talent.
+///
+/// Every field may be empty, and each means the same thing on its own: nothing to
+/// show. A talent with a name and no description is a cell with a heading; a talent
+/// with no picture leaves the socket wearing whatever the interface declared for an
+/// empty one.
+#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub struct TalentInfo {
+    /// Its display name — what a cell's heading prints. Empty falls back to the
+    /// identifier the gameplay mod interned it under.
+    pub name: String,
+    /// What it does, in the mod's own words. Empty prints nothing.
+    pub description: String,
+    /// The `mod://<id>/<path>` URL of its picture. Empty wears no picture.
+    pub image: String,
+}
+
 /// A cosmetic effect declared under a name of the mod's own choosing, for
 /// anything that spawns a visual without an ability behind it — today, an
 /// animation notify (server#76): a footstep puff, a weapon trail, a landing
@@ -178,4 +230,9 @@ pub struct ClientRegistration {
     /// content-free client presents. Independent of everything above: a mod may
     /// ship a HUD and dress nothing, or dress a unit and ship no HUD.
     pub ui: Vec<UiRoot>,
+    /// What each talent is called, does and looks like (server#95), one per talent
+    /// this mod cards. Read by a panel that knows no talent's name: the card
+    /// travels with the talent so the panel can ask for it *by tier and option*.
+    #[serde(default)]
+    pub cards: Vec<TalentCard>,
 }

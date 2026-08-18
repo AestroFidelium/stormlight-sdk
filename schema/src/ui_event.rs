@@ -88,9 +88,9 @@ pub enum Coalesce {
 /// Which of a live popup's numbers a binding reads.
 ///
 /// A popup is not a snapshot of one hit: under [`Coalesce`] it is an accumulator,
-/// and these are the four things it accumulates. Both of the first two are worth
-/// declaring at once — a beam that reads `24` beside a running `312` says what is
-/// happening to you *and* how much it has cost, which neither number says alone.
+/// and these are the things it accumulates. A beam that reads `24` beside a running
+/// `312` says what is happening to you *and* how much it has cost, which neither
+/// number says alone.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub enum EventQuantity {
     /// The most recent occurrence's amount — the tick that just landed.
@@ -99,6 +99,10 @@ pub enum EventQuantity {
     /// Everything this instance has absorbed since it appeared. Equal to
     /// [`Self::Latest`] under [`Coalesce::Never`], where an instance only ever holds
     /// one occurrence.
+    ///
+    /// Always present, which is what a readout wants: a panel that prints "damage
+    /// taken" must say `42` for one hit rather than falling silent. A *popup* that
+    /// prints this beside [`Self::Latest`] wants [`Self::Toll`] instead — see there.
     Total,
     /// How many occurrences it has absorbed — the "×7" on a merged popup. Always at
     /// least `1`, since an instance exists because something happened.
@@ -111,4 +115,21 @@ pub enum EventQuantity {
     /// print what got through as `Total - Absorbed`, cannot recover it from one
     /// number.
     Absorbed,
+    /// The same running total as [`Self::Total`], but **absent while the popup
+    /// holds a single occurrence**.
+    ///
+    /// This exists because of what a popup looks like on screen. The natural way to
+    /// author combat text is the blow that just landed with the toll beneath it —
+    /// and until something has been merged those two are, by definition, the same
+    /// figure, so a player hit once reads their damage twice. Every way out of that
+    /// is worse than a second quantity: printing only the total loses the tick a
+    /// beam is doing right now, printing only the latest loses what it has cost, and
+    /// a rule that hid a widget whose value duplicated its sibling's would be the
+    /// engine deciding what a mod's interface says.
+    ///
+    /// Absent means absent, not zero: a bound text draws nothing at all, so the
+    /// second line simply is not there for a lone hit and appears the moment the
+    /// popup becomes a sum of more than one thing — which is the moment it starts
+    /// saying something the first line does not.
+    Toll,
 }

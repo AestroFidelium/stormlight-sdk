@@ -284,6 +284,7 @@ fn the_new_variants_were_appended_never_inserted() {
             EventQuantity::Total,
             EventQuantity::Hits,
             EventQuantity::Absorbed,
+            EventQuantity::Toll,
         ]
         .iter()
         .enumerate()
@@ -307,6 +308,7 @@ fn the_occurrences_own_number_names_no_handle() {
             EventQuantity::Total,
             EventQuantity::Hits,
             EventQuantity::Absorbed,
+            EventQuantity::Toll,
         ] {
             let mut binding = ValueBinding::Event(quantity);
             binding.remap_ids(&RefuseEverything).expect("an amount cannot fail to remap");

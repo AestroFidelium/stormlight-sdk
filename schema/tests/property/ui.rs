@@ -489,6 +489,10 @@ fn a_widget_kinds_wire_tag_is_its_declaration_index() {
             WidgetKind::Icon,
             WidgetKind::Button { action: g.action(), children: g.children(2) },
             WidgetKind::AbilitySlot { slot: Slot(g.next() as u8), key_hint: g.string() },
+            // Appended by server#95, and appended is the whole point: inserting it
+            // anywhere earlier would have shifted the slot's tag out from under
+            // every already-built mod.
+            WidgetKind::TalentIcon { tier: g.next() as u8, option: g.next() as u8 },
         ];
         for (tag, kind) in kinds.iter().enumerate() {
             let bytes = postcard::to_allocvec(kind).expect("serialize");

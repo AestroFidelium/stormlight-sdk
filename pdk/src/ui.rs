@@ -48,7 +48,7 @@ use alloc::vec::Vec;
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
     Anchor, Flow, Layout, Length, ListBinding, Slice, StateStyle, Style, Sweep, SweepDirection,
-    TextSource, UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+    TalentText, TextSource, UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -81,6 +81,31 @@ pub fn bound_text(binding: ValueBinding, part: ValuePart, decimals: u8) -> Widge
 #[must_use]
 pub fn talent_list() -> Widget {
     widget(WidgetKind::Text { text: TextSource::List(ListBinding::ChosenTalents) })
+}
+
+/// What tier `tier` *offers*, one option per line — the counterpart of
+/// [`talent_list`] (stormlight/server#95).
+#[must_use]
+pub fn tier_options(tier: u8) -> Widget {
+    widget(WidgetKind::Text { text: TextSource::List(ListBinding::TierOptions(tier)) })
+}
+
+/// One offered talent's name or description (stormlight/server#95), addressed by
+/// the same `(tier, option)` coordinate [`talent_button`] takes — so a cell says
+/// what it is and what it does without this mod naming a single talent.
+#[must_use]
+pub fn talent_text(tier: u8, option: u8, field: TalentText) -> Widget {
+    widget(WidgetKind::Text { text: TextSource::Talent { tier, option, field } })
+}
+
+/// The picture the talent offered at `(tier, option)` wears, falling back to
+/// [`WidgetExt::image`] for a coordinate that offers nothing (server#95).
+///
+/// It draws and does not act: put it inside a [`talent_button`] with the same
+/// coordinate, which is what the player clicks.
+#[must_use]
+pub fn talent_icon(tier: u8, option: u8) -> Widget {
+    widget(WidgetKind::TalentIcon { tier, option })
 }
 
 /// A fill bar bound to `value`.

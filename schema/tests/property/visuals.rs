@@ -301,6 +301,9 @@ impl Gen<'_> {
             // so leaving them empty here keeps the ability-error invariant below
             // about effect visuals alone.
             icons: Vec::new(),
+            // Talent cards have their own invariants (see `talent_card.rs`), and
+            // are the one place a cosmetic bundle names a *talent*.
+            cards: Vec::new(),
             // Widget trees have their own invariants (see `ui.rs`); this file
             // stays about visuals.
             ui: Vec::new(),

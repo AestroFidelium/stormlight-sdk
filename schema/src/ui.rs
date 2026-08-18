@@ -71,6 +71,7 @@ use crate::ids::{EventId, Slot, StatId};
 use crate::impacts::PoolRef;
 use crate::remap::{IdMap, RemapIds};
 use crate::ui_anim::{MAX_UI_TRACKS, TrackFault, UiTrack, UiTransition};
+use crate::ui_event::{Coalesce, EventQuantity, UiEvent};
 
 /// How deeply one widget tree may nest, counting the root as level 1.
 ///
@@ -530,6 +531,18 @@ pub enum ValueBinding {
     /// How far the cast or channel currently running has progressed, `0.0..=1.0`.
     /// Reads empty when nothing is casting.
     CastProgress,
+    /// A number belonging to the **occurrence** that spawned this tree, not to its
+    /// subject (stormlight/server#93).
+    ///
+    /// The one binding here that does not read unit state, and it exists because the
+    /// number on a damage popup is not a quantity the struck unit *carries*: it is
+    /// how much it just lost. Every other variant would still answer if the popup
+    /// were shown a second later; this one is the event itself.
+    ///
+    /// Resolves to nothing outside a tree built by
+    /// [`RootVisibility::OnEvent`] — a HUD panel that binds to it reads empty
+    /// rather than borrowing whatever happened to something else.
+    Event(EventQuantity),
 }
 
 /// Which number of a binding a text reads. A bar always reads the fraction.
@@ -746,7 +759,14 @@ pub struct Widget {
 }
 
 /// When a widget tree is on screen.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+///
+/// Three of these are *conditions*: something is true, and the tree is up for as
+/// long as it stays true. The fourth is an **occurrence** (stormlight/server#93):
+/// nothing about it holds for a while, so it declares its own lifetime and the
+/// interpreter spawns an instance per event rather than showing one per truth. That
+/// is why the enum is no longer `Eq` — a lifetime is a duration, and durations
+/// compare like the floats they are.
+#[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize)]
 pub enum RootVisibility {
     /// Whenever the player has a unit to read — the ordinary HUD.
     #[default]
@@ -755,6 +775,65 @@ pub enum RootVisibility {
     WhileTalentPending,
     /// While the cursor is over a unit — the frame that describes it.
     WhileUnitHovered,
+    /// Once per authoritative occurrence, over the unit it happened to —
+    /// floating combat text and everything shaped like it (stormlight/server#93).
+    ///
+    /// The instance is anchored to the unit the occurrence named, exactly as a
+    /// nameplate is, which is why such a root declares [`UiSubject::EachUnit`]: the
+    /// subject means "the unit this instance was built for", and for a transient
+    /// that is the unit that was hit. Everything the [`crate::ui_anim`] axis offers
+    /// applies unchanged — a rise and a fade are a
+    /// [`UiTrigger::Built`](crate::ui_anim::UiTrigger::Built) track, so nothing new
+    /// was needed to make a popup move.
+    OnEvent {
+        /// What it listens for. Two roots listening for different occurrences never
+        /// share an instance, so damage and healing cannot merge into one number.
+        event: UiEvent,
+        /// How long an instance lives after the last occurrence it absorbed, in
+        /// seconds. Restarted by each absorbed occurrence, so under [`Coalesce`] a
+        /// unit that keeps being hit carries one popup for as long as that lasts
+        /// and it leaves this long after the hits stop.
+        seconds: f32,
+        /// Whether a fresh occurrence joins a popup already on screen.
+        coalesce: Coalesce,
+    },
+}
+
+impl RootVisibility {
+    /// The occurrence this root waits for, or `None` for the three conditions that
+    /// simply hold.
+    ///
+    /// The one question the lifecycle pass asks: a transient is not built by the
+    /// pass that walks conditions every frame, and a condition root is not built by
+    /// the observer that watches the wire.
+    #[must_use]
+    pub fn occurrence(self) -> Option<UiEvent> {
+        match self {
+            Self::Always | Self::WhileTalentPending | Self::WhileUnitHovered => None,
+            Self::OnEvent { event, .. } => Some(event),
+        }
+    }
+
+    /// How long an instance of this root lives after the last occurrence it
+    /// absorbed. Zero for a root that is shown on a condition instead — such a tree
+    /// is not on a clock at all.
+    #[must_use]
+    pub fn lifetime(self) -> f32 {
+        match self {
+            Self::Always | Self::WhileTalentPending | Self::WhileUnitHovered => 0.0,
+            Self::OnEvent { seconds, .. } => seconds,
+        }
+    }
+
+    /// Whether a fresh occurrence joins a live instance. [`Coalesce::Never`] for a
+    /// condition root, which has no occurrences to merge.
+    #[must_use]
+    pub fn coalesce(self) -> Coalesce {
+        match self {
+            Self::Always | Self::WhileTalentPending | Self::WhileUnitHovered => Coalesce::Never,
+            Self::OnEvent { coalesce, .. } => coalesce,
+        }
+    }
 }
 
 /// Whether a tree also waits on the player *summoning* the interface
@@ -874,6 +953,14 @@ pub enum UiError {
     /// A catch-up with a negative or non-finite duration — not a slower
     /// transition, a break.
     BadTransition { widget: u16 },
+    /// A transient root whose lifetime no clock can run — zero, negative or
+    /// non-finite (stormlight/server#93).
+    ///
+    /// Refused rather than clamped, and zero counts: a popup that lives no time is
+    /// one the author will never see and would never be told about, which is the
+    /// worst way to discover a mistyped duration. It is the root's, not a widget's,
+    /// so it carries no index.
+    BadEventLifetime,
 }
 
 impl fmt::Display for UiError {
@@ -903,6 +990,9 @@ impl fmt::Display for UiError {
             }
             Self::BadTransition { widget } => {
                 write!(f, "widget {widget} carries a catch-up no clock can run")
+            }
+            Self::BadEventLifetime => {
+                f.write_str("ui root is spawned by an occurrence but lives no time")
             }
         }
     }
@@ -987,6 +1077,15 @@ impl UiRoot {
         if self.subject == UiSubject::HoveredUnit && self.when != RootVisibility::WhileUnitHovered {
             return Err(UiError::SubjectNeverPresent);
         }
+        // A transient's lifetime is the one thing about it that can be unrunnable,
+        // and it is checked here rather than clamped at spawn for the reason every
+        // other break in this walk is: an author hears about it when their mod
+        // loads, not by watching a screen where nothing ever appears.
+        if let RootVisibility::OnEvent { seconds, .. } = self.when
+            && !(seconds.is_finite() && seconds > 0.0)
+        {
+            return Err(UiError::BadEventLifetime);
+        }
 
         // Pre-order walk over an explicit stack, so an error's index is the
         // widget an author counts to in the source.
@@ -1045,8 +1144,9 @@ impl RemapIds for ValueBinding {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
             // Health, level and cast progress are the engine's own quantities;
-            // no mod ever named them, so there is no handle to rewrite.
-            Self::Health | Self::Level | Self::CastProgress => {}
+            // no mod ever named them, so there is no handle to rewrite. Neither
+            // does an occurrence's own number, which belongs to no family at all.
+            Self::Health | Self::Level | Self::CastProgress | Self::Event(_) => {}
             Self::Pool(pool) => pool.remap_ids(m)?,
             Self::Stat(id) => *id = m.stat(*id)?,
         }

@@ -36,5 +36,6 @@ pub mod talents;
 pub mod triggers;
 pub mod ui;
 pub mod ui_anim;
+pub mod ui_event;
 pub mod units;
 pub mod visuals;

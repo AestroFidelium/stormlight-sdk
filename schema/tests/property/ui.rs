@@ -233,6 +233,11 @@ impl Gen<'_> {
                 0 => Shown::WhileTierSelected((self.next() % 256) as u8),
                 _ => Shown::Always,
             },
+            // Which sibling it is drawn in front of (server#110). Generated over
+            // the whole signed range, because negative is a meaningful layer and
+            // the round-trip has to carry it.
+            #[allow(clippy::cast_possible_wrap)] // A generated bit pattern is the point.
+            layer: self.next() as i32,
         }
     }
     fn rgba(&mut self) -> [f32; 4] {

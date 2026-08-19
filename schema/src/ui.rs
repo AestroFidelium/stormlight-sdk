@@ -219,6 +219,23 @@ pub struct Layout {
     /// Here rather than on [`Style`] because a gated-out widget is *absent*, not
     /// invisible: it reserves no space, takes no pointer and reads no binding.
     pub shown: Shown,
+    /// Which of its siblings it is drawn in front of (stormlight/server#110).
+    /// Higher is nearer the player; `0` — the default — is declaration order.
+    ///
+    /// **And for a root, the other roots are its siblings.** That is the whole of
+    /// the concept, at both scales, and it is the reason this is one field rather
+    /// than a root property beside a widget property: a HUD is a stack of pictures
+    /// whichever level you look at it from.
+    ///
+    /// Without it, order between trees was whatever order the client happened to
+    /// build them in — and roots are built and dropped as their conditions turn,
+    /// so a summoned panel could land over the console it rises out of or under
+    /// it, in one session. Within a tree it changes nothing that was not asked
+    /// for: siblings at the same layer keep the order they were declared in.
+    ///
+    /// Negative is meaningful and deliberate: it is how a mod puts something
+    /// behind an interface everyone else declared at zero.
+    pub layer: i32,
 }
 
 /// Nine-slice borders: how far in from each edge of the *texture* the four

@@ -92,6 +92,7 @@ fn a_tree(children: u8) -> Widget {
             gap: 0.0,
             padding: 0.0,
             shown: Shown::Always,
+            layer: 0,
         },
         style: Style::default(),
         kind: WidgetKind::Panel { children: kids },

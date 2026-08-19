@@ -287,6 +287,16 @@ pub trait WidgetExt: Sized {
     /// waiting on a choice.
     #[must_use]
     fn shown_while_tier(self, tier: u8) -> Self;
+    /// Draw it in front of the siblings that declare a lower layer
+    /// (stormlight/server#110) — and for a root, the other roots are its siblings.
+    ///
+    /// Undeclared is `0`, which is declaration order, so this is only ever worth
+    /// reaching for where declaration order cannot say it: a summoned panel that
+    /// has to rise out from *behind* an always-on console, or a nameplate that has
+    /// to stay over both. Negative puts something deliberately behind an interface
+    /// declared at zero.
+    #[must_use]
+    fn layered(self, layer: i32) -> Self;
 }
 
 /// The override slot for one state, created empty on first use so the three
@@ -394,6 +404,10 @@ impl WidgetExt for Widget {
     }
     fn shown_while_tier(mut self, tier: u8) -> Self {
         self.layout.shown = Shown::WhileTierSelected(tier);
+        self
+    }
+    fn layered(mut self, layer: i32) -> Self {
+        self.layout.layer = layer;
         self
     }
 }

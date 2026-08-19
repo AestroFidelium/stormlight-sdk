@@ -86,7 +86,14 @@ pub const MAX_UI_DEPTH: usize = 16;
 /// unbounded amount of work on the frame it appears. A bundle that wants more
 /// than this splits it across several [`UiRoot`]s, which the client can show and
 /// hide independently.
-pub const MAX_UI_WIDGETS: usize = 256;
+///
+/// Raised from 256 when tooltips arrived (server#112). A tooltip is real widgets
+/// counted against this, and it multiplies rather than adds: a paged talent panel
+/// declares every page's rows whether or not that page is open, so putting a
+/// three-line box on each of thirty-five choices is a hundred nodes on its own. The
+/// limit exists to bound the walk, not to make a normal HUD split itself in half,
+/// and a thousand nodes is still a walk that finishes in the frame it starts.
+pub const MAX_UI_WIDGETS: usize = 1024;
 
 /// A distance along one axis.
 ///
@@ -194,6 +201,49 @@ impl Shown {
             Self::Always => None,
             Self::WhileTierSelected(tier) => Some(tier),
         }
+    }
+}
+
+/// What a widget says about itself while the pointer rests on it
+/// (stormlight/server#112).
+///
+/// A subtree of the widget it belongs to, rather than a root with a subject of its
+/// own. That is the whole design decision and it buys three things: it reads the
+/// same bindings everything else does, so a talent's tooltip is
+/// [`TextSource::Talent`] at the coordinate the row already names and **no new
+/// binding source is needed**; it lives and dies with the tree that declared it; and
+/// it works for any widget rather than only for the one kind somebody thought of.
+///
+/// The alternative — a root shown while a widget is hovered — needs a new subject
+/// kind ("the thing under the pointer") *and* a way to address which talent that is,
+/// which is a second addressing scheme beside the coordinate that already works.
+///
+/// Every number here is the mod's, like every other duration and offset in this ABI.
+#[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
+pub struct Tooltip {
+    /// The tree. Empty — the overwhelming majority of a HUD — is no tooltip at all,
+    /// and costs one empty `Vec` in the descriptor.
+    pub content: Vec<Widget>,
+    /// Which corner of the tooltip sits at the pointer. [`Anchor::TopLeft`] hangs it
+    /// down and to the right, which is what a pointer with a box under it usually
+    /// wants.
+    pub anchor: Anchor,
+    /// Pixels away from the pointer, `[x, y]`, positive right and down. So a box
+    /// does not open underneath the cursor that summoned it.
+    pub offset: [f32; 2],
+    /// Seconds the pointer must rest before it opens. `0.0` opens at once.
+    ///
+    /// The mod's number, not the engine's: a tooltip on an ability bar wants to be
+    /// instant and one on a dense panel wants to wait, and which is which is a
+    /// design decision of the interface (server#97).
+    pub delay: f32,
+}
+
+impl Tooltip {
+    /// Whether this widget has anything to say at all.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.content.is_empty()
     }
 }
 
@@ -519,6 +569,16 @@ pub struct Style {
     /// inert on a widget that draws no continuous quantity.
     #[serde(default)]
     pub transition: Option<UiTransition>,
+    /// What it says about itself while the pointer rests on it
+    /// (stormlight/server#112). Empty on almost every widget there is.
+    ///
+    /// Here beside [`Self::states`] rather than on [`Widget`], because it is the
+    /// same kind of fact — what this widget does while the pointer is on it — and
+    /// because `Style` has a `Default` that a hundred construction sites already go
+    /// through. On `Widget` it would have been a fifth field on every literal in
+    /// three repositories.
+    #[serde(default)]
+    pub tooltip: Tooltip,
 }
 
 impl Default for Style {
@@ -540,6 +600,7 @@ impl Default for Style {
             sweep: Sweep::default(),
             anim: Vec::new(),
             transition: None,
+            tooltip: Tooltip::default(),
         }
     }
 }
@@ -840,6 +901,24 @@ pub enum WidgetKind {
     TalentIcon { tier: u8, option: u8 },
 }
 
+impl Widget {
+    /// Every widget inside this one: the children its kind holds, and the tree its
+    /// tooltip is made of (stormlight/server#112).
+    ///
+    /// The single reading of "what is inside", so that a walk cannot see one and
+    /// miss the other — which is how a tooltip would slip past validation, past the
+    /// widget budget, and past the id remap that makes a cosmetic bundle's handles
+    /// mean anything.
+    pub fn subtrees(&self) -> impl Iterator<Item = &Self> {
+        self.kind.children().iter().chain(self.style.tooltip.content.iter())
+    }
+
+    /// The same, to mutate.
+    pub fn subtrees_mut(&mut self) -> impl Iterator<Item = &mut Self> {
+        self.kind.children_mut().iter_mut().chain(self.style.tooltip.content.iter_mut())
+    }
+}
+
 impl WidgetKind {
     /// The children this kind contains — empty for every leaf.
     #[must_use]
@@ -851,6 +930,19 @@ impl WidgetKind {
             | Self::Icon
             | Self::TalentIcon { .. }
             | Self::AbilitySlot { .. } => &[],
+        }
+    }
+
+    /// The same, to mutate.
+    #[must_use]
+    pub fn children_mut(&mut self) -> &mut [Widget] {
+        match self {
+            Self::Panel { children } | Self::Button { children, .. } => children,
+            Self::Text { .. }
+            | Self::Bar { .. }
+            | Self::Icon
+            | Self::TalentIcon { .. }
+            | Self::AbilitySlot { .. } => &mut [],
         }
     }
 
@@ -1265,8 +1357,12 @@ impl UiRoot {
             // pointing at the widget, or by watching their HUD leave the screen.
             animation_fault(widget, index)?;
             // Reversed, so popping yields declaration order and the index an
-            // error reports is the one the author reads down the file.
-            for child in widget.kind.children().iter().rev() {
+            // error reports is the one the author reads down the file. A tooltip's
+            // tree is in there (server#112): it is real widgets that are really laid
+            // out, so it counts against the budget and is held to every rule the
+            // rest of the tree is.
+            let inside: Vec<&Widget> = widget.subtrees().collect();
+            for child in inside.into_iter().rev() {
                 stack.push((child, depth + 1));
             }
             index += 1;
@@ -1347,9 +1443,12 @@ impl RemapIds for WidgetKind {
 
 impl RemapIds for Widget {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
-        // `name`, `layout` and `style` are diagnostics, geometry and asset
-        // strings — never a handle.
-        self.kind.remap_ids(m)
+        // `name`, `layout` and the rest of `style` are diagnostics, geometry and
+        // asset strings — never a handle. A tooltip is the exception, because it is
+        // widgets: one of them may well be a trigger button or a bound number, and a
+        // handle left unremapped there resolves against the wrong mod's id space.
+        self.kind.remap_ids(m)?;
+        self.style.tooltip.content.remap_ids(m)
     }
 }
 

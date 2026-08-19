@@ -25,8 +25,8 @@ use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Shown,
-    Slice, StateStyle, Style, SummonGate, Sweep, SweepDirection, TextSource, UiAction, UiRoot,
-    UiSubject, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+    Slice, StateStyle, Style, SummonGate, Sweep, SweepDirection, TextSource, Tooltip, UiAction,
+    UiRoot, UiSubject, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, MAX_UI_TRACKS, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -294,6 +294,12 @@ impl Gen<'_> {
                 },
             },
             anim: self.anim(),
+            // A tooltip is widgets, and generating them here would make this a
+            // recursive generator with no base case. The round trip of a tooltip's
+            // own tree is `ui_tooltip`'s; what this covers is that the *empty* one
+            // every other widget carries survives, which is the case that costs
+            // every descriptor a byte.
+            tooltip: Tooltip::default(),
             transition: self.next().is_multiple_of(3).then(|| UiTransition {
                 seconds: self.f32(),
                 shape: Shape { leave: self.ease(), arrive: self.ease() },

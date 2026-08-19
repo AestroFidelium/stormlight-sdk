@@ -14,6 +14,10 @@
 //! | [`OptionState::Taken`] | this is the choice made in this tier |
 //! | [`OptionState::PassedOver`] | the tier is decided and this is not what was taken |
 //!
+//! Beside them sits the one question about a tier no coordinate can answer —
+//! [`Shown::WhileTierUndecided`] (stormlight/server#120), which is what steps a
+//! socket's number aside once the tier it labels has an answer to show instead.
+//!
 //! ## What is pinned here, and what is not
 //!
 //! The **client** decides whether a gate holds — it is the only side that has the
@@ -83,11 +87,14 @@ fn a_widget(kind: WidgetKind) -> Widget {
 }
 
 /// A page container holding one gated row — the two-node shape a panel uses to say
-/// "on this page *and* at this coordinate".
+/// "on this page *and* at this coordinate" — and beside it the label a decided tier
+/// steps aside (server#120).
 fn build(row: Row) -> Widget {
     let mut child = a_widget(WidgetKind::Text { text: TextSource::Literal("row".to_string()) });
     child.layout.shown = row.gate();
-    let mut page = a_widget(WidgetKind::Panel { children: vec![child] });
+    let mut label = a_widget(WidgetKind::Text { text: TextSource::Literal("lvl".to_string()) });
+    label.layout.shown = Shown::WhileTierUndecided(row.tier);
+    let mut page = a_widget(WidgetKind::Panel { children: vec![child, label] });
     page.layout.shown = Shown::WhileTierSelected(row.page);
     page
 }
@@ -129,12 +136,16 @@ fn a_gated_panel_survives_a_postcard_round_trip() {
 #[test]
 fn every_conditional_gate_names_exactly_one_tier() {
     check!().with_type::<Row>().for_each(|&row| {
-        assert_eq!(
-            row.gate().tier(),
-            Some(row.tier),
-            "a coordinate gate did not report the tier it is about, so a client cannot \
-             tell which row of which tree to ask",
-        );
+        for gate in
+            [row.gate(), Shown::WhileTierSelected(row.tier), Shown::WhileTierUndecided(row.tier)]
+        {
+            assert_eq!(
+                gate.tier(),
+                Some(row.tier),
+                "{gate:?} did not report the tier it is about, so a client cannot tell \
+                 which row of which tree to ask",
+            );
+        }
         assert_eq!(Shown::Always.tier(), None, "the ungated case named a tier");
     });
 }
@@ -162,8 +173,13 @@ fn a_pages_gate_and_a_rows_gate_are_independent() {
         let page = build(row);
         assert_eq!(page.layout.shown, Shown::WhileTierSelected(row.page));
         let WidgetKind::Panel { children } = &page.kind else { panic!("a page is a panel") };
-        assert_eq!(children.len(), 1, "a page holds the row it was built around");
+        assert_eq!(children.len(), 2, "a page holds the row and the label it was built around");
         assert_eq!(children[0].layout.shown, row.gate(), "the page's gate overwrote the row's");
+        assert_eq!(
+            children[1].layout.shown,
+            Shown::WhileTierUndecided(row.tier),
+            "the page's gate overwrote its label's",
+        );
     });
 }
 

@@ -328,6 +328,16 @@ pub trait WidgetExt: Sized {
     /// holding rows gated on their own coordinate.
     #[must_use]
     fn shown_while_option(self, tier: u8, option: u8, is: OptionState) -> Self;
+    /// Lay it out only while `tier` is still waiting on a choice
+    /// (stormlight/server#120).
+    ///
+    /// What a socket's number is for: a tier nobody has answered is worth labelling
+    /// with the level that opens it, and one that has been answered is worth
+    /// labelling with the answer. Draw the answer with [`talent_icon`]s gated
+    /// [`OptionState::Taken`] — at most one is ever on screen — and step the number
+    /// aside with this.
+    #[must_use]
+    fn shown_while_tier_undecided(self, tier: u8) -> Self;
     /// Draw it in front of the siblings that declare a lower layer
     /// (stormlight/server#110) — and for a root, the other roots are its siblings.
     ///
@@ -460,6 +470,10 @@ impl WidgetExt for Widget {
     }
     fn shown_while_option(mut self, tier: u8, option: u8, is: OptionState) -> Self {
         self.layout.shown = Shown::WhileOption { tier, option, is };
+        self
+    }
+    fn shown_while_tier_undecided(mut self, tier: u8) -> Self {
+        self.layout.shown = Shown::WhileTierUndecided(tier);
         self
     }
     fn layered(mut self, layer: i32) -> Self {

@@ -10,6 +10,7 @@ mod client_animation;
 mod client_context;
 mod client_icon;
 mod client_notify;
+mod client_option_gate;
 mod client_summon;
 mod client_tier_view;
 mod client_ui;

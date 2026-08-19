@@ -184,6 +184,14 @@ pub enum Flow {
 /// Which tier is open is the *client's* — a player's own paging through their own
 /// panel, settled from [`UiAction::SelectTier`] and from whichever tier is waiting
 /// on a choice. A mod says which page a widget is on and never which page that is.
+///
+/// # One gate per widget, and why that is enough
+///
+/// A widget has exactly one condition, not a list of them. A panel that needs two —
+/// *on this page* **and** *this coordinate offers something* — says so with two
+/// nodes: a container per page, holding rows gated on their own coordinate. That is
+/// not a workaround, it is the shape the panel wants anyway, and it means a client
+/// never has to define what several conditions on one widget compose to.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub enum Shown {
     /// Always, for as long as its tree is up — every widget that says nothing.
@@ -191,17 +199,64 @@ pub enum Shown {
     Always,
     /// Only while the panel is paged to tier `0`.
     WhileTierSelected(u8),
+    /// Only while one coordinate of one tier is in a given state
+    /// (stormlight/server#118).
+    ///
+    /// The coordinate is the same `(tier, option)` a
+    /// [`UiAction::PickTalent`] names and a [`WidgetKind::TalentIcon`] draws, so a
+    /// panel gates a row on exactly the row it already declared — and still names no
+    /// talent.
+    WhileOption {
+        /// Which tier of the subject's tree.
+        tier: u8,
+        /// Which of that tier's options, by the index a pick names it by.
+        option: u8,
+        /// What has to be true of it.
+        is: OptionState,
+    },
 }
 
 impl Shown {
-    /// The tier this gate names, or `None` for [`Self::Always`].
+    /// The tier this gate is about, or `None` for [`Self::Always`].
+    ///
+    /// Every conditional gate names exactly one tier: a widget's condition is always
+    /// a question about one row of one tree.
     #[must_use]
     pub fn tier(self) -> Option<u8> {
         match self {
             Self::Always => None,
-            Self::WhileTierSelected(tier) => Some(tier),
+            Self::WhileTierSelected(tier) | Self::WhileOption { tier, .. } => Some(tier),
         }
     }
+}
+
+/// What a tier has to say about one of its options for a gated widget to be laid
+/// out (stormlight/server#118, stormlight/server#119).
+///
+/// Three questions, and the first is a different *kind* of question from the other
+/// two. [`Offered`](Self::Offered) asks whether anything is there at all — a fact
+/// about the tree, which is content both ends hold, and the answer a panel needs to
+/// draw as many rows as a tier really has rather than a fixed rectangle. The other
+/// two ask what was *decided*, which is a fact about the player and comes off the
+/// owner-scoped view.
+///
+/// So `Offered` is implied by both of the others, while
+/// [`Taken`](Self::Taken) and [`PassedOver`](Self::PassedOver) are mutually
+/// exclusive and together mean "this tier is decided". A coordinate the tree does
+/// not reach is in **none** of the three: there is nothing there to be in a state.
+///
+/// Deliberately not a fifth [`WidgetState`]. The four states are exactly what a
+/// pointer and a refusal produce between them; what a player *took* is neither, and
+/// a HUD marks it the way it already marks the open page — with a gated child.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum OptionState {
+    /// The tier offers a talent at this index.
+    #[default]
+    Offered,
+    /// This is the choice made in this tier.
+    Taken,
+    /// This tier has been decided and this is not what was taken.
+    PassedOver,
 }
 
 /// What a widget says about itself while the pointer rests on it

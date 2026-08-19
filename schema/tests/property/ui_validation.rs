@@ -80,6 +80,7 @@ fn a_layout() -> Layout {
         gap: 4.0,
         padding: 2.0,
         shown: Shown::Always,
+        layer: 0,
     }
 }
 

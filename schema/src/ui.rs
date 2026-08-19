@@ -199,6 +199,19 @@ pub enum Shown {
     Always,
     /// Only while the panel is paged to tier `0`.
     WhileTierSelected(u8),
+    /// Only while tier `0` is still waiting on a choice (stormlight/server#120).
+    ///
+    /// The one question about a tier that no coordinate can answer. "Has this tier
+    /// been decided" is a fact about the *tier*, and a widget that has to step aside
+    /// once it is — a socket's number, giving way to the picture of what was taken —
+    /// belongs to the tier rather than to any of its options.
+    ///
+    /// Only the one polarity, as with [`Self::WhileTierSelected`]: what a decided
+    /// tier *shows* is drawn by widgets that already say which option they are
+    /// about, each gated [`OptionState::Taken`], of which at most one is ever on
+    /// screen. So "while decided" would be a second way to say something already
+    /// sayable.
+    WhileTierUndecided(u8),
     /// Only while one coordinate of one tier is in a given state
     /// (stormlight/server#118).
     ///
@@ -225,7 +238,9 @@ impl Shown {
     pub fn tier(self) -> Option<u8> {
         match self {
             Self::Always => None,
-            Self::WhileTierSelected(tier) | Self::WhileOption { tier, .. } => Some(tier),
+            Self::WhileTierSelected(tier)
+            | Self::WhileTierUndecided(tier)
+            | Self::WhileOption { tier, .. } => Some(tier),
         }
     }
 }

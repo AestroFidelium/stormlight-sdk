@@ -127,6 +127,18 @@ fn the_coordinate_is_not_transposed() {
     });
 }
 
+/// The socket's answer (server#120): the number steps aside while the tier still has
+/// one to give, and what it steps aside *for* is said with coordinates, not with a
+/// second polarity of this gate.
+#[test]
+fn a_tier_label_waits_on_its_own_tier() {
+    check!().with_type::<u8>().for_each(|&tier| {
+        let label = text("4").shown_while_tier_undecided(tier);
+        assert_eq!(label.layout.shown, Shown::WhileTierUndecided(tier));
+        assert_eq!(label.layout.shown.tier(), Some(tier), "the label named no tier");
+    });
+}
+
 #[test]
 fn an_authored_adapting_panel_is_one_the_host_accepts() {
     check!().with_type::<Panel>().for_each(|p| {

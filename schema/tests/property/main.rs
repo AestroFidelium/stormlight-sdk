@@ -31,6 +31,7 @@ mod ui_anim;
 mod ui_anim_validation;
 mod ui_layer;
 mod ui_summon;
+mod ui_summon_action;
 mod ui_sweep;
 mod ui_talent_option;
 mod ui_tier_level;

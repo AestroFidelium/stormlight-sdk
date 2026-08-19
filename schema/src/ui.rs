@@ -712,7 +712,8 @@ pub enum TextSource {
 /// to save a round trip; the server validates every one of them regardless.
 ///
 /// Closed, and small on purpose: these are the things a player *does* to their own
-/// unit, plus the one that only moves their own eyes ([`Self::SelectTier`]).
+/// unit, plus the two that only move their own eyes ([`Self::SelectTier`] and
+/// [`Self::Summon`]).
 /// Anything a mod wants beyond them goes through
 /// [`Self::Trigger`], where it is that mod's own gameplay guest — running
 /// server-side, under the engine's rules — that decides what happens.
@@ -755,6 +756,39 @@ pub enum UiAction {
     /// clicking player's own unit. Nothing about that path is client-authoritative;
     /// the click is a request like the other two.
     Trigger { event: EventId },
+    /// Hold this client's own interface summoned, let go of it, or flip between the
+    /// two (stormlight/server#107).
+    ///
+    /// The second variant that asks the server for **nothing**, and it exists
+    /// because holding a key is the wrong shape for a panel a player *reads*. The
+    /// summon input stays what it is — a peek, level-triggered, impossible to get
+    /// stuck — and a declared widget can latch the same interface open beside it. A
+    /// tree is summoned while either says so.
+    ///
+    /// Which key summons is still the client's (server#98) and a mod still never
+    /// learns it. This says only *that* the interface is wanted, which is the same
+    /// thing the key says.
+    ///
+    /// **Appended, not inserted**: the variant order is this enum's wire tag.
+    Summon(SummonRequest),
+}
+
+/// What a [`UiAction::Summon`] asks for (stormlight/server#107).
+///
+/// Three rather than one, because the obvious button and the honest one are
+/// different: a portrait a player clicks to look at their tree wants
+/// [`Self::Toggle`], while a close button on the thing that opened wants
+/// [`Self::Close`] and must not reopen it by being clicked twice.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum SummonRequest {
+    /// Summon it and leave it summoned.
+    #[default]
+    Open,
+    /// Let go of it. Does not fight the summon *input*: a player holding the key
+    /// still sees the interface, because that is what holding the key means.
+    Close,
+    /// Whichever of the two the latch is not already doing.
+    Toggle,
 }
 
 /// What a widget *is*. Five leaves and one container, plus the one composite
@@ -1282,7 +1316,10 @@ impl RemapIds for UiAction {
             // the *unit's* tree — pure mod convention, like everywhere else. Only
             // the event names a handle, and it names one in the gameplay side's id
             // space, which is why the cosmetic bundle's map has to reach it.
-            Self::CastSlot(_) | Self::PickTalent { .. } | Self::SelectTier(_) => {}
+            // A summon names nothing at all: it says the interface is wanted, and
+            // which input normally says that is the client's.
+            Self::CastSlot(_) | Self::PickTalent { .. } | Self::SelectTier(_) | Self::Summon(_) => {
+            }
             Self::Trigger { event } => *event = m.event(*event)?,
         }
         Ok(())

@@ -74,11 +74,18 @@ impl IdMap for ShiftTalents {
     }
 }
 
-/// One generated tier: the level it opens at and the handles it offers.
+/// One generated tier: the level it opens at, the handles it offers, and which of
+/// them it suggests.
+///
+/// The suggestion is generated **unconstrained**, so a tier that points past its own
+/// options is as ordinary a case here as one that points at a real choice — nothing
+/// validates a mod's declaration, and the out-of-range answer is the one worth
+/// pinning.
 #[derive(Debug, TypeGenerator)]
 struct Tier {
     level: u8,
     options: Vec<u16>,
+    recommended: Option<u8>,
 }
 
 #[derive(Debug, TypeGenerator)]
@@ -101,6 +108,7 @@ fn tree(s: &Scenario) -> TalentTree {
             .map(|t| TalentTier {
                 level: t.level,
                 options: t.options.iter().map(|o| TalentId(u32::from(*o))).collect(),
+                recommended: t.recommended,
             })
             .collect(),
         repick: if s.free { RepickPolicy::Free } else { RepickPolicy::Locked },
@@ -288,6 +296,77 @@ fn every_accessor_is_total_over_whatever_a_mod_declares() {
         );
         if let Some(found) = tree.tier_of(talent) {
             assert!(usize::from(found) < reachable, "tier_of named an unreachable tier");
+        }
+    });
+}
+
+/// What a tree *suggests* (stormlight/server#127).
+///
+/// A suggestion is advice and nothing else: it may not change what a tier offers,
+/// what it costs, or what a unit may take. So the properties are all about it being
+/// inert and total —
+///
+///   - **at most one option per tier is suggested**, and it is the one the tier
+///     named. Two would be a tier with two opinions, which is no opinion;
+///   - **an index the tier does not reach suggests nothing.** A tier that points
+///     past its own options must not fall back to whatever sits at that index in
+///     some other tier, which is exactly what a naive `== Some(i)` would do once the
+///     options are re-balanced under it;
+///   - **a tier with no opinion suggests nothing**, which is what every tree
+///     authored before this says by default;
+///   - **suggesting changes nothing else about the tier**: the same levels unlock
+///     it, the same talents are offered, the same talent is found in it.
+#[test]
+fn a_tier_suggests_at_most_one_of_its_own_options() {
+    check!().with_type::<Scenario>().for_each(|s| {
+        for tier in tree(s).tiers {
+            let suggested: Vec<u8> =
+                (0..=u8::MAX).filter(|index| tier.recommends(*index)).collect();
+            assert!(
+                suggested.len() <= 1,
+                "a tier suggested {suggested:?}, which is two opinions and therefore none",
+            );
+            match suggested.first() {
+                Some(index) => {
+                    assert_eq!(
+                        tier.recommended,
+                        Some(*index),
+                        "a tier suggested what it did not name"
+                    );
+                    assert!(
+                        usize::from(*index) < tier.options.len(),
+                        "a tier suggested option {index} of {}, which it does not offer",
+                        tier.options.len(),
+                    );
+                }
+                None => assert!(
+                    tier.recommended.is_none_or(|i| usize::from(i) >= tier.options.len()),
+                    "a tier named a reachable suggestion and then suggested nothing",
+                ),
+            }
+        }
+    });
+}
+
+#[test]
+fn suggesting_changes_nothing_else_about_a_tier() {
+    check!().with_type::<Scenario>().for_each(|s| {
+        for tier in tree(s).tiers {
+            let mut silent = tier.clone();
+            silent.recommended = None;
+            assert_eq!(tier.options, silent.options, "a suggestion changed what a tier offers");
+            assert_eq!(tier.level, silent.level, "a suggestion changed when a tier opens");
+            for level in [0u8, tier.level, tier.level.saturating_add(1), u8::MAX] {
+                assert_eq!(
+                    tier.unlocked(level),
+                    silent.unlocked(level),
+                    "a suggestion changed whether a tier is open at level {level}",
+                );
+            }
+            for option in &tier.options {
+                assert!(silent.offers(*option), "a suggestion changed what a tier offers");
+            }
+            assert!(!silent.recommends(0), "a tier with no opinion suggested something");
         }
     });
 }

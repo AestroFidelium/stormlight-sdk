@@ -47,9 +47,9 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, ListBinding, Shown, Slice, StateStyle, Style, SummonRequest,
-    Sweep, SweepDirection, TalentText, TextSource, Tooltip, UiAction, ValueBinding, ValuePart,
-    Widget, WidgetKind, WidgetState,
+    Anchor, Flow, Layout, Length, ListBinding, OptionState, Shown, Slice, StateStyle, Style,
+    SummonRequest, Sweep, SweepDirection, TalentText, TextSource, Tooltip, UiAction, ValueBinding,
+    ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -311,6 +311,23 @@ pub trait WidgetExt: Sized {
     /// waiting on a choice.
     #[must_use]
     fn shown_while_tier(self, tier: u8) -> Self;
+    /// Lay it out only while one coordinate of one tier is in `is`
+    /// (stormlight/server#118).
+    ///
+    /// The same `(tier, option)` a [`talent_button`] picks and a [`talent_icon`]
+    /// draws, so a panel gates a row on the row it already declared and still names
+    /// no talent. Three uses, one per state:
+    ///
+    /// - [`OptionState::Offered`] — a tier that offers two choices draws two rows
+    ///   rather than however many the panel happened to declare;
+    /// - [`OptionState::Taken`] — the mark on the one that was chosen;
+    /// - [`OptionState::PassedOver`] — the veil over the ones it beat.
+    ///
+    /// A widget carries one gate, so a row that is also on a page says the page part
+    /// with a container: one per tier, [`shown_while_tier`](Self::shown_while_tier),
+    /// holding rows gated on their own coordinate.
+    #[must_use]
+    fn shown_while_option(self, tier: u8, option: u8, is: OptionState) -> Self;
     /// Draw it in front of the siblings that declare a lower layer
     /// (stormlight/server#110) — and for a root, the other roots are its siblings.
     ///
@@ -439,6 +456,10 @@ impl WidgetExt for Widget {
     }
     fn shown_while_tier(mut self, tier: u8) -> Self {
         self.layout.shown = Shown::WhileTierSelected(tier);
+        self
+    }
+    fn shown_while_option(mut self, tier: u8, option: u8, is: OptionState) -> Self {
+        self.layout.shown = Shown::WhileOption { tier, option, is };
         self
     }
     fn layered(mut self, layer: i32) -> Self {

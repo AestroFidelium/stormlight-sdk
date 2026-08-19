@@ -47,7 +47,12 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 /// Every family fails, so a declaration that survives it names no interned handle.
-struct FailEverything;
+///
+/// `pub(crate)` because the sibling coordinate-gate file
+/// ([`ui_option_gate`](super::ui_option_gate)) asks the same question of the same
+/// enum, and one implementation that fails everything is worth more than two that
+/// might drift apart about what "everything" is.
+pub(crate) struct FailEverything;
 
 impl IdMap for FailEverything {
     type Error = ();

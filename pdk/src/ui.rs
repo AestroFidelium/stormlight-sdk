@@ -109,6 +109,18 @@ pub fn talent_icon(tier: u8, option: u8) -> Widget {
     widget(WidgetKind::TalentIcon { tier, option })
 }
 
+/// The unit level at which tier `tier` of the subject's tree becomes choosable
+/// (stormlight/server#111).
+///
+/// A tier *index*, like every other talent coordinate in this ABI, so a strip of
+/// buttons labelled with these reads `1 4 7 10 …` for one tree and whatever a
+/// different tree declares — and names no content either way. A tier no tree
+/// declares prints nothing.
+#[must_use]
+pub fn tier_level(tier: u8) -> Widget {
+    bound_text(ValueBinding::TierLevel(tier), ValuePart::Current, 0)
+}
+
 /// A fill bar bound to `value`.
 #[must_use]
 pub fn bar(value: ValueBinding) -> Widget {

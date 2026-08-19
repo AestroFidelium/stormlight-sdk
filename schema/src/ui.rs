@@ -604,6 +604,28 @@ pub enum ValueBinding {
     /// [`RootVisibility::OnEvent`] — a HUD panel that binds to it reads empty
     /// rather than borrowing whatever happened to something else.
     Event(EventQuantity),
+    /// The unit level at which tier `0` of the subject's tree becomes choosable
+    /// (stormlight/server#111).
+    ///
+    /// A **tier index**, not a level: which level a tier unlocks at is the tree's
+    /// own declaration, so an interface that printed the level itself would be
+    /// authoring content, and one that numbered its tiers `I II III` would be
+    /// telling the player something they never think in. A strip of buttons bound
+    /// to this reads `1 4 7 10 …` for one tree and whatever a different tree
+    /// declares, with no HUD change either way.
+    ///
+    /// Resolved against the subject's declared tree, which the client already holds
+    /// — this is content, identical for every player driving that unit, so nothing
+    /// about it reaches the wire. A tier the tree does not declare reads empty, the
+    /// same answer a talent coordinate past the end of a short tree gives.
+    ///
+    /// It has no ceiling, so only its [`ValuePart::Current`] is meaningful and a bar
+    /// bound to one reads full — exactly as one bound to [`Self::Level`] does.
+    ///
+    /// **Appended, not inserted.** The variant order is the wire tag: slotting this
+    /// beside [`Self::Level`], where it reads better, moved `CastProgress` and
+    /// `Event` by one and silently reinterpreted every descriptor already built.
+    TierLevel(u8),
 }
 
 /// Which number of a binding a text reads. A bar always reads the fraction.
@@ -1224,8 +1246,15 @@ impl RemapIds for ValueBinding {
         match self {
             // Health, level and cast progress are the engine's own quantities;
             // no mod ever named them, so there is no handle to rewrite. Neither
-            // does an occurrence's own number, which belongs to no family at all.
-            Self::Health | Self::Level | Self::CastProgress | Self::Event(_) => {}
+            // does an occurrence's own number, which belongs to no family at all,
+            // nor a tier's unlock level — that one names an *index* into the
+            // subject's own tree, which is a pure mod convention exactly as a
+            // talent coordinate is (server#111).
+            Self::Health
+            | Self::Level
+            | Self::CastProgress
+            | Self::Event(_)
+            | Self::TierLevel(_) => {}
             Self::Pool(pool) => pool.remap_ids(m)?,
             Self::Stat(id) => *id = m.stat(*id)?,
         }

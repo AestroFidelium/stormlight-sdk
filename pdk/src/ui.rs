@@ -47,9 +47,9 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, ListBinding, Shown, Slice, StateStyle, Style, Sweep,
-    SweepDirection, TalentText, TextSource, UiAction, ValueBinding, ValuePart, Widget, WidgetKind,
-    WidgetState,
+    Anchor, Flow, Layout, Length, ListBinding, Shown, Slice, StateStyle, Style, SummonRequest,
+    Sweep, SweepDirection, TalentText, TextSource, UiAction, ValueBinding, ValuePart, Widget,
+    WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -170,6 +170,18 @@ pub fn select_tier_button(tier: u8, children: Vec<Widget>) -> Widget {
 #[must_use]
 pub fn trigger_button(event: EventId, children: Vec<Widget>) -> Widget {
     button(UiAction::Trigger { event }, children)
+}
+
+/// A button that latches this client's own interface summoned, lets go of it, or
+/// flips between the two (stormlight/server#107).
+///
+/// The other button that asks the server for nothing. Pair it with a root that
+/// declares [`SummonGate::Held`](stormlight_mod_abi::ui::SummonGate::Held): the
+/// summon *input* is still a peek the player holds, and this is the same interface
+/// asked for in a way they can let go of.
+#[must_use]
+pub fn summon_button(request: SummonRequest, children: Vec<Widget>) -> Widget {
+    button(UiAction::Summon(request), children)
 }
 
 /// An ability slot: icon, cooldown sweep and key hint. The sweep is a dark

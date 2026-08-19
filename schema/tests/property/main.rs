@@ -36,6 +36,7 @@ mod ui_sweep;
 mod ui_talent_option;
 mod ui_tier_level;
 mod ui_tier_view;
+mod ui_tooltip;
 mod ui_transient;
 mod ui_validation;
 mod visuals;

@@ -24,7 +24,8 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, SummonGate, UiAction, UiRoot, UiSubject, Widget, WidgetKind,
+    Layout, RootVisibility, Style, SummonGate, Tooltip, UiAction, UiRoot, UiSubject, Widget,
+    WidgetKind,
 };
 
 extern crate alloc;
@@ -246,5 +247,39 @@ fn a_trigger_naming_an_event_the_mod_never_declared_is_rejected() {
             "local event {} has no name-table entry",
             raw as u16 + 1,
         );
+    });
+}
+
+/// The same bridge, one level in (stormlight/server#112).
+///
+/// A tooltip is widgets, and a widget in one may perfectly well be a trigger button —
+/// "click here to do the thing this explains". It is reached through
+/// [`Style::tooltip`] rather than through the kind's children, so a remap that walked
+/// only the kind would leave every handle in there pointing into the declaring mod's
+/// own id space: exactly the collision the rest of this file exists to prevent,
+/// hidden one field deeper.
+#[test]
+fn a_handle_inside_a_tooltip_crosses_the_bridge_with_the_rest() {
+    check!().with_type::<Scenario>().for_each(|s| {
+        let events = pick(&EVENTS, &s.a_events);
+        let inner: Vec<Widget> = (0..events.len())
+            .map(|raw| a_button(UiAction::Trigger { event: EventId(raw as u16) }))
+            .collect();
+        let mut root = a_root(&events, s.slot, s.tier, s.option);
+        root.root.style.tooltip = Tooltip { content: inner, ..Tooltip::default() };
+
+        let table = names(&events);
+        let global = RefCell::new(Interner::<EventId>::new());
+        root.remap_ids(&Adoption { names: &table, events: &global }).expect("adopt");
+
+        let global_of = |name: &str| global.borrow().get(name).expect("interned");
+        for (i, name) in events.iter().enumerate() {
+            let widget = &root.root.style.tooltip.content[i];
+            assert_eq!(
+                widget.kind.action(),
+                Some(UiAction::Trigger { event: global_of(name) }),
+                "the tooltip's `{name}` button still names the handle its own mod gave it",
+            );
+        }
     });
 }

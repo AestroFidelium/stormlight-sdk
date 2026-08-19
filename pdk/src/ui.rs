@@ -48,8 +48,8 @@ use alloc::vec::Vec;
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
     Anchor, Flow, Layout, Length, ListBinding, Shown, Slice, StateStyle, Style, SummonRequest,
-    Sweep, SweepDirection, TalentText, TextSource, UiAction, ValueBinding, ValuePart, Widget,
-    WidgetKind, WidgetState,
+    Sweep, SweepDirection, TalentText, TextSource, Tooltip, UiAction, ValueBinding, ValuePart,
+    Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -321,6 +321,17 @@ pub trait WidgetExt: Sized {
     /// declared at zero.
     #[must_use]
     fn layered(self, layer: i32) -> Self;
+    /// Say what it is, at length, while the pointer rests on it
+    /// (stormlight/server#112).
+    ///
+    /// `content` is an ordinary widget tree and reads the ordinary bindings, so a
+    /// talent's tooltip is [`talent_text`] at the coordinate its row already names —
+    /// this mod still names no content. `anchor` says which corner of the box sits
+    /// at the pointer, `offset` moves it clear of the cursor, and `delay` is how
+    /// long the pointer has to rest first. All three are the interface's decisions,
+    /// like every other duration and offset it declares.
+    #[must_use]
+    fn tooltip(self, anchor: Anchor, offset: [f32; 2], delay: f32, content: Vec<Widget>) -> Self;
 }
 
 /// The override slot for one state, created empty on first use so the three
@@ -432,6 +443,16 @@ impl WidgetExt for Widget {
     }
     fn layered(mut self, layer: i32) -> Self {
         self.layout.layer = layer;
+        self
+    }
+    fn tooltip(
+        mut self,
+        anchor: Anchor,
+        offset: [f32; 2],
+        delay: f32,
+        content: Vec<Widget>,
+    ) -> Self {
+        self.style.tooltip = Tooltip { content, anchor, offset, delay };
         self
     }
 }

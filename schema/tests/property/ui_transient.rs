@@ -30,8 +30,8 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, RootVisibility, Style, SummonGate, TextSource, UiError, UiRoot,
-    UiSubject, ValueBinding, ValuePart, Widget, WidgetKind,
+    Anchor, Flow, Layout, Length, RootVisibility, Shown, Style, SummonGate, TextSource, UiError,
+    UiRoot, UiSubject, ValueBinding, ValuePart, Widget, WidgetKind,
 };
 use stormlight_mod_abi::ui_event::{Coalesce, EventQuantity, UiEvent};
 
@@ -149,6 +149,7 @@ fn a_tree(children: u8) -> Widget {
             flow: Flow::Column,
             gap: 0.0,
             padding: 0.0,
+            shown: Shown::Always,
         },
         style: Style::default(),
         kind: WidgetKind::Panel { children: kids },

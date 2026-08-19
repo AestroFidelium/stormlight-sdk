@@ -47,8 +47,9 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, ListBinding, Slice, StateStyle, Style, Sweep, SweepDirection,
-    TalentText, TextSource, UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+    Anchor, Flow, Layout, Length, ListBinding, Shown, Slice, StateStyle, Style, Sweep,
+    SweepDirection, TalentText, TextSource, UiAction, ValueBinding, ValuePart, Widget, WidgetKind,
+    WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -139,6 +140,17 @@ pub fn cast_button(slot: Slot, children: Vec<Widget>) -> Widget {
 #[must_use]
 pub fn talent_button(tier: u8, option: u8, children: Vec<Widget>) -> Widget {
     button(UiAction::PickTalent { tier, option }, children)
+}
+
+/// A button that pages this client's own talent panel to `tier`
+/// (stormlight/server#104).
+///
+/// The one button that asks the server for nothing: it moves the player's eyes,
+/// not their unit. Pair it with [`WidgetExt::shown_while_tier`] on the rows it
+/// pages to.
+#[must_use]
+pub fn select_tier_button(tier: u8, children: Vec<Widget>) -> Widget {
+    button(UiAction::SelectTier(tier), children)
 }
 
 /// A button that raises the mod-defined `event` into every gameplay guest
@@ -266,6 +278,15 @@ pub trait WidgetExt: Sized {
     /// cover the distance, on the given curve. Zero seconds draws it exactly.
     #[must_use]
     fn transition(self, seconds: f32, shape: Shape) -> Self;
+    /// Lay it out only while the panel is paged to `tier` (stormlight/server#104).
+    ///
+    /// Absent, not transparent: off its page the widget reserves no space, takes no
+    /// pointer and reads no binding — so a column of choices sits where the panel's
+    /// art expects it instead of after a run of hidden rows. Which page is open is
+    /// the client's answer, from [`select_tier_button`] and from whichever tier is
+    /// waiting on a choice.
+    #[must_use]
+    fn shown_while_tier(self, tier: u8) -> Self;
 }
 
 /// The override slot for one state, created empty on first use so the three
@@ -369,6 +390,10 @@ impl WidgetExt for Widget {
     }
     fn transition(mut self, seconds: f32, shape: Shape) -> Self {
         self.style.transition = Some(UiTransition { seconds, shape });
+        self
+    }
+    fn shown_while_tier(mut self, tier: u8) -> Self {
+        self.layout.shown = Shown::WhileTierSelected(tier);
         self
     }
 }

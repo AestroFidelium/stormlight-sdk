@@ -24,9 +24,9 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Slice,
-    StateStyle, Style, SummonGate, Sweep, SweepDirection, TextSource, UiAction, UiRoot, UiSubject,
-    ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+    Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Shown,
+    Slice, StateStyle, Style, SummonGate, Sweep, SweepDirection, TextSource, UiAction, UiRoot,
+    UiSubject, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, MAX_UI_TRACKS, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -226,6 +226,13 @@ impl Gen<'_> {
             },
             gap: self.f32(),
             padding: self.f32(),
+            // The page a widget belongs to (server#104), generated so the
+            // round-trip covers both polarities of the gate rather than only the
+            // default every other declaration carries.
+            shown: match self.next() % 3 {
+                0 => Shown::WhileTierSelected((self.next() % 256) as u8),
+                _ => Shown::Always,
+            },
         }
     }
     fn rgba(&mut self) -> [f32; 4] {

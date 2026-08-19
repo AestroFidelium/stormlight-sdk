@@ -74,6 +74,24 @@ pub struct TalentTier {
     pub level: u8,
     /// The talents this tier offers, of which a unit may hold at most one.
     pub options: Vec<TalentId>,
+    /// Which of them this tree suggests, by its index in `options`
+    /// (stormlight/server#127).
+    ///
+    /// A **suggestion and nothing else**: the engine never applies it, never
+    /// defaults to it, and never refuses anything because of it. It exists so a
+    /// player meeting a tree for the first time has somewhere to start, and so a
+    /// mod can say so without shipping a second interface to say it in.
+    ///
+    /// On the **tier**, not on the talent, for the same reason the unlock level is:
+    /// a talent may be offered by several trees and be right in one of them and
+    /// wrong in another. `None` is a tier with no opinion, which is the honest
+    /// default and what every tree authored before this says.
+    ///
+    /// An index past the end of `options` suggests nothing — see
+    /// [`recommends`](Self::recommends). Nothing validates a mod's declaration, and
+    /// one stable answer is worth more than a diagnostic nobody reads.
+    #[serde(default)]
+    pub recommended: Option<u8>,
 }
 
 impl TalentTier {
@@ -87,6 +105,17 @@ impl TalentTier {
     #[must_use]
     pub fn offers(&self, talent: TalentId) -> bool {
         self.options.contains(&talent)
+    }
+
+    /// Whether this tier suggests the option at `index`.
+    ///
+    /// False for a tier with no opinion, and false for an index this tier does not
+    /// reach — including the case where the *suggestion itself* is out of range,
+    /// which suggests nothing rather than suggesting whatever happens to sit at that
+    /// index in some other tier.
+    #[must_use]
+    pub fn recommends(&self, index: u8) -> bool {
+        self.recommended == Some(index) && usize::from(index) < self.options.len()
     }
 }
 

@@ -248,17 +248,25 @@ impl Shown {
 /// What a tier has to say about one of its options for a gated widget to be laid
 /// out (stormlight/server#118, stormlight/server#119).
 ///
-/// Three questions, and the first is a different *kind* of question from the other
-/// two. [`Offered`](Self::Offered) asks whether anything is there at all — a fact
-/// about the tree, which is content both ends hold, and the answer a panel needs to
-/// draw as many rows as a tier really has rather than a fixed rectangle. The other
-/// two ask what was *decided*, which is a fact about the player and comes off the
-/// owner-scoped view.
+/// Four questions of three different *kinds*.
 ///
-/// So `Offered` is implied by both of the others, while
-/// [`Taken`](Self::Taken) and [`PassedOver`](Self::PassedOver) are mutually
-/// exclusive and together mean "this tier is decided". A coordinate the tree does
-/// not reach is in **none** of the three: there is nothing there to be in a state.
+/// [`Offered`](Self::Offered) asks whether anything is there at all — a fact about
+/// the tree, which is content both ends hold, and the answer a panel needs to draw
+/// as many rows as a tier really has rather than a fixed rectangle.
+///
+/// [`Taken`](Self::Taken) and [`PassedOver`](Self::PassedOver) ask what was
+/// *decided*, which is a fact about the player and comes off the owner-scoped view.
+/// They are mutually exclusive and together mean "this tier is decided".
+///
+/// [`Recommended`](Self::Recommended) asks what the tree *suggests*
+/// (stormlight/server#127) — a fact about the tree again, and one that is true
+/// whatever the player has done. It is deliberately independent of the other three:
+/// the suggestion for a tier does not stop being the suggestion once somebody has
+/// ignored it, and a HUD that wants to stop drawing it then says so with the tier
+/// gate rather than with this one.
+///
+/// `Offered` is implied by all three of the others. A coordinate the tree does not
+/// reach is in **none** of the four: there is nothing there to be in a state.
 ///
 /// Deliberately not a fifth [`WidgetState`]. The four states are exactly what a
 /// pointer and a refusal produce between them; what a player *took* is neither, and
@@ -272,6 +280,8 @@ pub enum OptionState {
     Taken,
     /// This tier has been decided and this is not what was taken.
     PassedOver,
+    /// This is the option the tree suggests for its tier.
+    Recommended,
 }
 
 /// What a widget says about itself while the pointer rests on it

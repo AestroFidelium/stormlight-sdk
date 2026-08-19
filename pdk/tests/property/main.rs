@@ -11,6 +11,7 @@ mod client_context;
 mod client_icon;
 mod client_notify;
 mod client_summon;
+mod client_tier_view;
 mod client_ui;
 mod context;
 mod ui_anim;

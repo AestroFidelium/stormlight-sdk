@@ -17,8 +17,8 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, RootVisibility, Style, SummonGate, TextSource, UiRoot, UiSubject,
-    Widget, WidgetKind,
+    Anchor, Flow, Layout, Length, RootVisibility, Shown, Style, SummonGate, TextSource, UiRoot,
+    UiSubject, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -91,6 +91,7 @@ fn a_tree(children: u8) -> Widget {
             flow: Flow::Stack,
             gap: 0.0,
             padding: 0.0,
+            shown: Shown::Always,
         },
         style: Style::default(),
         kind: WidgetKind::Panel { children: kids },

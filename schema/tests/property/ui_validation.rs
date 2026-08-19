@@ -21,8 +21,8 @@ use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{Slot, StatId};
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, MAX_UI_DEPTH, MAX_UI_WIDGETS,
-    RootVisibility, Slice, StateStyle, Style, SummonGate, Sweep, TextSource, UiError, UiRoot,
-    UiSubject, ValueBinding, Widget, WidgetKind,
+    RootVisibility, Shown, Slice, StateStyle, Style, SummonGate, Sweep, TextSource, UiError,
+    UiRoot, UiSubject, ValueBinding, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -79,6 +79,7 @@ fn a_layout() -> Layout {
         flow: Flow::Column,
         gap: 4.0,
         padding: 2.0,
+        shown: Shown::Always,
     }
 }
 

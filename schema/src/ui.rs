@@ -158,6 +158,45 @@ pub enum Flow {
     Stack,
 }
 
+/// Whether a widget takes part in its tree's layout right now
+/// (stormlight/server#104).
+///
+/// The one piece of *conditional* structure in an otherwise static descriptor, and
+/// it is deliberately the narrowest one that answers a real panel: a talent tree is
+/// read one tier at a time, so the rows of the tier being read have to sit where the
+/// panel's art expects them rather than after a run of hidden ones. A gated widget
+/// that is not on the open page is therefore not laid out at all — not merely
+/// transparent — which is also what keeps it out of hit-testing and out of the
+/// binding pass.
+///
+/// **One polarity, not two.** There is no "while some other tier is selected": a
+/// tier button that must look picked declares the picked art as a gated child
+/// stacked over the resting one, which is how such a button is authored anyway. A
+/// second variant would buy nothing and double what a client has to agree about.
+///
+/// Which tier is open is the *client's* — a player's own paging through their own
+/// panel, settled from [`UiAction::SelectTier`] and from whichever tier is waiting
+/// on a choice. A mod says which page a widget is on and never which page that is.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum Shown {
+    /// Always, for as long as its tree is up — every widget that says nothing.
+    #[default]
+    Always,
+    /// Only while the panel is paged to tier `0`.
+    WhileTierSelected(u8),
+}
+
+impl Shown {
+    /// The tier this gate names, or `None` for [`Self::Always`].
+    #[must_use]
+    pub fn tier(self) -> Option<u8> {
+        match self {
+            Self::Always => None,
+            Self::WhileTierSelected(tier) => Some(tier),
+        }
+    }
+}
+
 /// Where a widget sits and how big it is. Enough for corners, rows, columns and
 /// stacks; deliberately not a flexbox surface.
 #[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize)]
@@ -175,6 +214,11 @@ pub struct Layout {
     pub gap: f32,
     /// Pixels between this widget's edge and its children.
     pub padding: f32,
+    /// Whether it takes part in the layout at all right now (server#104).
+    ///
+    /// Here rather than on [`Style`] because a gated-out widget is *absent*, not
+    /// invisible: it reserves no space, takes no pointer and reads no binding.
+    pub shown: Shown,
 }
 
 /// Nine-slice borders: how far in from each edge of the *texture* the four
@@ -628,8 +672,9 @@ pub enum TextSource {
 /// all. The client refuses an impossible action locally only as a **courtesy**,
 /// to save a round trip; the server validates every one of them regardless.
 ///
-/// Closed, and small on purpose: these are the three things a player *does* to
-/// their own unit. Anything a mod wants beyond them goes through
+/// Closed, and small on purpose: these are the things a player *does* to their own
+/// unit, plus the one that only moves their own eyes ([`Self::SelectTier`]).
+/// Anything a mod wants beyond them goes through
 /// [`Self::Trigger`], where it is that mod's own gameplay guest — running
 /// server-side, under the engine's rules — that decides what happens.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -645,6 +690,23 @@ pub enum UiAction {
     /// the tree its gameplay mods declared, and a tier or option that names
     /// nothing sends nothing at all.
     PickTalent { tier: u8, option: u8 },
+    /// Page this client's own talent panel to tier `0` (stormlight/server#104).
+    ///
+    /// The one variant that asks the server for **nothing**. The other three are
+    /// requests it validates; this one changes which page of a panel this one
+    /// player is reading and touches nothing else — no wire message, no simulation
+    /// state, no other client. That is a strengthening of the rule above rather
+    /// than an exception to it: a declared interface could already do nothing a
+    /// keypress could not, and paging a panel does less than that.
+    ///
+    /// It is here, among the actions, rather than being some second kind of thing a
+    /// button can carry, because [`WidgetKind::action`] is the single reading of
+    /// what a widget does and a second one is how a moused widget drifts from a
+    /// pressed one.
+    ///
+    /// A tier the subject's tree does not have is refused, exactly as a
+    /// [`Self::PickTalent`] at a coordinate it does not have is.
+    SelectTier(u8),
     /// Raise a mod-defined event, routed to every gameplay guest subscribed to it
     /// (the `mod_trigger` fan-out of stormlight/server#34/#39).
     ///
@@ -1174,7 +1236,7 @@ impl RemapIds for UiAction {
             // the *unit's* tree — pure mod convention, like everywhere else. Only
             // the event names a handle, and it names one in the gameplay side's id
             // space, which is why the cosmetic bundle's map has to reach it.
-            Self::CastSlot(_) | Self::PickTalent { .. } => {}
+            Self::CastSlot(_) | Self::PickTalent { .. } | Self::SelectTier(_) => {}
             Self::Trigger { event } => *event = m.event(*event)?,
         }
         Ok(())

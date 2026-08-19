@@ -32,6 +32,7 @@ mod ui_anim_validation;
 mod ui_summon;
 mod ui_sweep;
 mod ui_talent_option;
+mod ui_tier_view;
 mod ui_transient;
 mod ui_validation;
 mod visuals;

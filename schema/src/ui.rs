@@ -614,6 +614,29 @@ pub struct Style {
     /// A `mod://<id>/<path>` image, resolved within the declaring package.
     /// Required by [`WidgetKind::Icon`]; optional decoration on anything else.
     pub image: Option<String>,
+    /// A second `mod://` image whose **alpha multiplies** the drawn picture's
+    /// (stormlight/server#121) — the shape the widget's picture is cut to.
+    ///
+    /// Content art is square; the sockets a HUD draws around it are not. A square
+    /// picture drawn at a six-sided plate's full size hangs out of every corner,
+    /// and insetting it until the corners fit leaves a gap all round instead. So
+    /// the mod supplies the silhouette and the interpreter cuts to it.
+    ///
+    /// A **shape**, in the same sense [`Self::sweep`] is a shape: the engine knows
+    /// how to multiply two samples and nothing else. Which shape, on which widget,
+    /// is entirely the mod's — usually the alpha of a plate it already ships.
+    ///
+    /// It belongs to the **widget**, not to the file underneath it. A slot's
+    /// picture is resolved at run time from whatever ability is bound to it, and
+    /// the socket it sits in does not change when the loadout does — so the shape
+    /// is declared once, here, and every picture that passes through the widget is
+    /// cut to it.
+    ///
+    /// Only the alpha is read. The mask's own colour is ignored, which is what lets
+    /// a mod point this at a frame it already draws rather than authoring a second
+    /// black-and-white copy of it.
+    #[serde(default)]
+    pub mask: Option<String>,
     /// How [`Self::image`] is cut when it is drawn at a size other than its own.
     /// `None` stretches it, which is right for art drawn at its native size and
     /// wrong for a frame or a plate.
@@ -673,6 +696,7 @@ impl Default for Style {
             font_size: 16.0,
             font: None,
             image: None,
+            mask: None,
             slice: None,
             flip_x: false,
             flip_y: false,
@@ -1423,6 +1447,13 @@ impl UiRoot {
                     return Err(UiError::IconWithoutImage { widget: index });
                 }
                 _ => {}
+            }
+            // A shape naming nothing (server#121) is refused where the picture it
+            // would have cut is: the only symptom of the typo is a picture quietly
+            // not being cut, which looks exactly like the fault the field exists to
+            // fix.
+            if widget.style.mask.as_ref().is_some_and(alloc::string::String::is_empty) {
+                return Err(UiError::EmptyImagePath { widget: index });
             }
             // The same rule for the pictures a state swaps in. Checked here rather
             // than left to the loader: a hover image that resolves to nothing is a

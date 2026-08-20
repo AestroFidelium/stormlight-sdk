@@ -16,4 +16,5 @@ mod client_tier_view;
 mod client_ui;
 mod context;
 mod ui_anim;
+mod ui_mask;
 mod ui_sweep;

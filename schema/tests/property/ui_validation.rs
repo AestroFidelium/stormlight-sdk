@@ -92,6 +92,7 @@ fn a_style() -> Style {
         font_size: 14.0,
         font: None,
         image: None,
+        mask: None,
         slice: None,
         flip_x: false,
         flip_y: false,

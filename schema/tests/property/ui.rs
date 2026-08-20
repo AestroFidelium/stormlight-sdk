@@ -270,6 +270,9 @@ impl Gen<'_> {
             font_size: self.f32(),
             font: if self.next().is_multiple_of(2) { Some(self.string()) } else { None },
             image: if self.next().is_multiple_of(2) { Some(self.string()) } else { None },
+            // Independently of the picture: a widget may declare the shape of its
+            // socket without declaring what goes in it (server#121).
+            mask: if self.next().is_multiple_of(2) { Some(self.string()) } else { None },
             // Half the styles carry slice insets, so the round trip covers both
             // the sliced and the stretched frame.
             slice: if self.next().is_multiple_of(2) {

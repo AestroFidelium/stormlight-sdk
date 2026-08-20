@@ -282,6 +282,21 @@ pub enum OptionState {
     PassedOver,
     /// This is the option the tree suggests for its tier.
     Recommended,
+    /// The talent at this index changes **one** of the caster's own abilities, so
+    /// something drawn here can say which key that is (stormlight/server#129).
+    ///
+    /// Answered from the talent's own declaration — see
+    /// [`TalentDescriptor::changes`](crate::talents::TalentDescriptor::changes) —
+    /// and false whenever that question has no single answer: a talent selecting by
+    /// tag, one that changes no ability at all, one granting two of them. A hotkey
+    /// plate on any of those would be a label that is confidently wrong, which is
+    /// worse than the absence it was added to fix.
+    ///
+    /// Unlike its three neighbours it says nothing about the tier's *decision*. It
+    /// is here rather than in a gate of its own because what a widget needs is the
+    /// same thing every time — one fact about one coordinate — and a second family
+    /// of conditions is a second thing an author has to learn.
+    Keyed,
 }
 
 /// What a widget says about itself while the pointer rests on it
@@ -830,10 +845,12 @@ pub enum ListBinding {
     TierOptions(u8),
 }
 
-/// Which of a talent's authored strings a text reads (stormlight/server#95).
+/// Which of a talent's strings a text reads (stormlight/server#95).
 ///
-/// Two, because they are the two things a player deciding needs: what it is called
-/// and what it does. Both come off the talent's own
+/// The three things a player deciding needs: what it is called, what it does, and
+/// which of their own buttons it lands on (stormlight/server#129). A tier whose
+/// talents change four different abilities reads, without the third, as a list of
+/// unrelated sentences. Both come off the talent's own
 /// [`TalentCard`](crate::visuals::TalentCard) — a mod that carded none prints the
 /// identifier its gameplay side interned, which is a label rather than a sentence
 /// but is at least the author's own word.
@@ -844,6 +861,16 @@ pub enum TalentText {
     Name,
     /// What it does, in the declaring mod's words.
     Description,
+    /// The key that casts the ability it changes (stormlight/server#129).
+    ///
+    /// Not authored, unlike the two above — derived from what the talent already
+    /// declares it applies to, and resolved against the keys this client actually
+    /// casts with. A second authored field would be a mod's words free to disagree
+    /// with the mod's mechanism, which is the worst kind of label.
+    ///
+    /// Empty for a talent that changes no single ability. Pair it with
+    /// [`OptionState::Keyed`] to leave out the plate around it as well.
+    Hotkey,
 }
 
 /// What a [`WidgetKind::Text`] displays.

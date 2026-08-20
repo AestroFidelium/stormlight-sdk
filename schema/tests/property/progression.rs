@@ -113,6 +113,9 @@ struct Scenario {
     period: Amount,
     timed: bool,
     unit: u16,
+    /// The level the unit declares it begins at — unconstrained, so a start above
+    /// the ceiling and a start of zero are both ordinary cases here.
+    starting_level: u8,
 }
 
 /// The share policies, generated structurally so the round trip sees each one.
@@ -171,6 +174,7 @@ fn spec(s: &Scenario) -> ProgressionSpec {
             share: XpShare::from(*share),
             credit_window: window.as_ref().map(Amount::value),
         }),
+        starting_level: s.starting_level,
     }
 }
 
@@ -335,5 +339,41 @@ fn an_effective_timed_period_is_finite_and_strictly_positive() {
                 "an ordinary declared period was discarded",
             ),
         }
+    });
+}
+
+/// Where a unit begins (stormlight/server#131).
+///
+/// A suggestion the engine has to make sense of whatever a mod writes, so the
+/// properties are all about totality:
+///
+///   - **never below the first level.** Zero means "said nothing", which is the
+///     ordinary unit that starts at the bottom and climbs — and it is what every
+///     spec written before this field says;
+///   - **never above the unit's own ceiling.** A unit declaring a start past its
+///     maximum would stand at a level no threshold describes and no climb could
+///     produce, so it starts at the top instead, which is what it meant;
+///   - **inside its own range**, so the answer is always a level the unit could
+///     really be at.
+#[test]
+fn a_unit_begins_somewhere_it_could_really_be() {
+    check!().with_type::<Scenario>().for_each(|s| {
+        let spec = spec(s);
+        let start = spec.start();
+        assert!(start >= 1, "a unit began at level {start}");
+        assert!(
+            start <= spec.ceiling(),
+            "a unit declaring a start of {} began at {start}, past its own ceiling of {}",
+            spec.starting_level,
+            spec.ceiling(),
+        );
+        // And it is the declaration wherever the declaration is reachable.
+        if spec.starting_level >= 1 && spec.starting_level <= spec.ceiling() {
+            assert_eq!(start, spec.starting_level, "a reachable start was not honoured");
+        }
+        // Saying nothing is saying the bottom.
+        let mut silent = spec.clone();
+        silent.starting_level = 0;
+        assert_eq!(silent.start(), 1, "a spec that declares no start did not begin at the bottom");
     });
 }

@@ -86,4 +86,5 @@ fn the_new_states_were_appended_never_inserted() {
     assert_eq!(tag(OptionState::Recommended), Some(3));
     assert_eq!(tag(OptionState::Keyed), Some(4), "the hotkey state (server#129) was inserted");
     assert_eq!(tag(OptionState::Prepicked), Some(5), "the mark (server#133) was inserted");
+    assert_eq!(tag(OptionState::Quest), Some(6), "the task mark (server#132) was inserted");
 }

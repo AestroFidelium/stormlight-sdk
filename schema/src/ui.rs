@@ -310,6 +310,19 @@ pub enum OptionState {
     /// At most one per tier, and cleared when that tier is decided: a plan for a
     /// choice already made is not a plan.
     Prepicked,
+    /// The talent at this index sets the player a **task** rather than handing over
+    /// a step (stormlight/server#132).
+    ///
+    /// Which of the two a talent is has to be legible at the moment of *choosing* —
+    /// a quest row that looked identical to the ones around it until forty minutes
+    /// in would be the panel hiding the single most important thing about that
+    /// choice. So it is a gate like the four above rather than something a HUD reads
+    /// out of the description.
+    ///
+    /// The **mark**, not the progress. Counting the task and paying it out are the
+    /// effect system's, and the running count is not on the wire yet; this says only
+    /// that there is a task.
+    Quest,
 }
 
 /// What a widget says about itself while the pointer rests on it

@@ -98,6 +98,7 @@ impl Scenario {
                 .collect(),
             modifiers: Vec::new(),
             tags: Vec::new(),
+            quest: None,
         }
     }
 

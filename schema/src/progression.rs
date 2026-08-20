@@ -193,6 +193,19 @@ pub struct ProgressionSpec {
     /// The highest level this unit can reach. Read through
     /// [`ceiling`](Self::ceiling).
     pub max_level: u8,
+    /// The level this unit **begins** at, read through [`start`](Self::start)
+    /// (stormlight/server#131).
+    ///
+    /// `0` and `1` both mean the ordinary thing — a unit that starts at the bottom
+    /// and climbs — so a spec written before this field says what it always said.
+    ///
+    /// It is a real content decision rather than only a testing convenience: a
+    /// practice dummy worth practising on, a boss that is not level one, a mode that
+    /// starts everybody at the ceiling. What it does **not** do is hand over XP: the
+    /// unit's account starts empty and its level is simply floored here, so the
+    /// number it earns is still the number it earned.
+    #[serde(default)]
+    pub starting_level: u8,
     /// What each level hands over, keyed by the level reached. Rows for the same
     /// level apply in declaration order; a level with no row grants nothing
     /// structural (its stat growth is in the unit's own `Value`s — see the module
@@ -215,6 +228,8 @@ impl ProgressionSpec {
             grants: Vec::new(),
             sources: Vec::new(),
             bounty: Some(bounty),
+            // It never levels, so where it starts is where it stays.
+            starting_level: 1,
         }
     }
 
@@ -225,6 +240,17 @@ impl ProgressionSpec {
     #[must_use]
     pub fn ceiling(&self) -> u8 {
         self.max_level.max(1)
+    }
+
+    /// The level this unit begins at: what it declared, floored at the first level
+    /// and capped at its own [`ceiling`](Self::ceiling).
+    ///
+    /// The cap is why this is a method. A unit declaring a start above its own
+    /// maximum would otherwise stand at a level no threshold describes and no climb
+    /// could produce — so it starts at the top instead, which is what it meant.
+    #[must_use]
+    pub fn start(&self) -> u8 {
+        self.starting_level.max(1).min(self.ceiling())
     }
 
     /// Every grant declared for `level`, in declaration order.

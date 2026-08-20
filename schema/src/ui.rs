@@ -297,6 +297,19 @@ pub enum OptionState {
     /// same thing every time — one fact about one coordinate — and a second family
     /// of conditions is a second thing an author has to learn.
     Keyed,
+    /// The player has marked this index as the one they mean to take
+    /// (stormlight/server#133).
+    ///
+    /// The **player's** opinion, where [`Self::Recommended`] is the *tree's*: a
+    /// recommendation is the same for everybody driving that unit, and a mark is one
+    /// person's plan for one match. It changes no simulation state and never leaves
+    /// the client, exactly as paging a panel does not
+    /// ([`UiAction::SelectTier`]) — so it may be set for a tier the player has not
+    /// reached, which is most of what makes it worth having.
+    ///
+    /// At most one per tier, and cleared when that tier is decided: a plan for a
+    /// choice already made is not a plan.
+    Prepicked,
 }
 
 /// What a widget says about itself while the pointer rests on it
@@ -963,6 +976,25 @@ pub enum UiAction {
     ///
     /// **Appended, not inserted**: the variant order is this enum's wire tag.
     Summon(SummonRequest),
+    /// Mark option `option` of tier `tier` as the one this player means to take
+    /// (stormlight/server#133), or clear the mark by naming it again.
+    ///
+    /// The third variant that asks the server for **nothing**, and the one that most
+    /// obviously could not: a plan is not a state the simulation has, and validating
+    /// one would mean the server storing what a player is thinking about. It changes
+    /// nothing about the unit, and it may be set for a tier the player has not
+    /// reached — which is the whole of why it is useful, since a plan stops being a
+    /// plan the moment it is actionable.
+    ///
+    /// A **coordinate**, like [`Self::PickTalent`], and for the same reason: an
+    /// interface mod that named a talent would be authoring gameplay content in a
+    /// HUD.
+    ///
+    /// Marking and picking must not share a refusal. A row of a tier the player
+    /// cannot pick from yet is refused a *pick* and must still accept a *mark*, so a
+    /// HUD declares the two on separate widgets rather than reading one click two
+    /// ways.
+    PrepickTalent { tier: u8, option: u8 },
 }
 
 /// What a [`UiAction::Summon`] asks for (stormlight/server#107).
@@ -1552,8 +1584,11 @@ impl RemapIds for UiAction {
             // space, which is why the cosmetic bundle's map has to reach it.
             // A summon names nothing at all: it says the interface is wanted, and
             // which input normally says that is the client's.
-            Self::CastSlot(_) | Self::PickTalent { .. } | Self::SelectTier(_) | Self::Summon(_) => {
-            }
+            Self::CastSlot(_)
+            | Self::PickTalent { .. }
+            | Self::PrepickTalent { .. }
+            | Self::SelectTier(_)
+            | Self::Summon(_) => {}
             Self::Trigger { event } => *event = m.event(*event)?,
         }
         Ok(())

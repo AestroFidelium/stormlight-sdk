@@ -32,6 +32,7 @@ mod ui_anim;
 mod ui_anim_validation;
 mod ui_layer;
 mod ui_mask;
+mod ui_prepick;
 mod ui_option_gate;
 mod ui_summon;
 mod ui_summon_action;

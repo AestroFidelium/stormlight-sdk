@@ -111,4 +111,9 @@ fn the_new_variant_was_appended_never_inserted() {
         Some(4),
         "the summon was slotted in among the actions that were already on the wire",
     );
+    assert_eq!(
+        tag(UiAction::PrepickTalent { tier: 0, option: 0 }),
+        Some(5),
+        "the mark (server#133) was slotted in among the actions that were already on the wire",
+    );
 }

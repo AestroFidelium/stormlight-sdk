@@ -154,6 +154,21 @@ pub fn talent_button(tier: u8, option: u8, children: Vec<Widget>) -> Widget {
     button(UiAction::PickTalent { tier, option }, children)
 }
 
+/// A button that marks option `option` of tier `tier` as the one this player means
+/// to take, or clears the mark by naming it again (stormlight/server#133).
+///
+/// A plan, not a pick: it asks the server for nothing, changes nothing about the
+/// unit, and works for a tier the player has not reached — which is the whole of
+/// why it is useful, since a plan stops being a plan the moment it is actionable.
+///
+/// Declare it as a **widget of its own**, inside the row rather than as the row.
+/// A row of a locked tier is refused a pick and must still accept a mark, so
+/// reading one click two ways would tie the two refusals together.
+#[must_use]
+pub fn prepick_button(tier: u8, option: u8, children: Vec<Widget>) -> Widget {
+    button(UiAction::PrepickTalent { tier, option }, children)
+}
+
 /// A button that pages this client's own talent panel to `tier`
 /// (stormlight/server#104).
 ///

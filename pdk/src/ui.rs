@@ -268,6 +268,16 @@ pub trait WidgetExt: Sized {
     /// Attach a `mod://<id>/<path>` image.
     #[must_use]
     fn image(self, asset: &str) -> Self;
+    /// Cut whatever picture this widget draws to the **alpha of `asset`**
+    /// (server#121) — the shape of the socket it sits in.
+    ///
+    /// For square content art in a plate that is not square. The mask's own colour
+    /// is ignored, so this can point at a plate the package already ships rather
+    /// than at a second black-and-white copy of it, and it belongs to the widget
+    /// rather than to the picture — a slot cut to its socket stays cut whichever
+    /// ability is bound to it.
+    #[must_use]
+    fn mask(self, asset: &str) -> Self;
     /// Cut that image nine-slice, `left`/`top`/`right`/`bottom` insets in the
     /// art's own pixels — so a plate keeps its corners at any width.
     #[must_use]
@@ -423,6 +433,10 @@ impl WidgetExt for Widget {
     }
     fn image(mut self, asset: &str) -> Self {
         self.style.image = Some(asset.to_string());
+        self
+    }
+    fn mask(mut self, asset: &str) -> Self {
+        self.style.mask = Some(asset.to_string());
         self
     }
     fn sliced(mut self, left: f32, top: f32, right: f32, bottom: f32) -> Self {

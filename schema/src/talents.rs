@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::behaviors::Modifier;
 use crate::common::NumOp;
-use crate::ids::{AbilityId, ParamId, Slot, TagId, TalentId};
+use crate::ids::{AbilityId, ParamId, Slot, StackId, TagId, TalentId};
 use crate::impacts::Impact;
 use crate::math::Value;
 use crate::triggers::Reaction;
@@ -76,6 +76,48 @@ pub enum AbilityFocus {
     Ability(AbilityId),
 }
 
+/// A talent that sets the player a task and pays out when it is done
+/// (stormlight/server#132).
+///
+/// **The declaration only.** Counting the task and paying it out are the effect
+/// system's — a reaction adjusting a bounded counter, a condition on it, an
+/// `Impact` tree for the reward — and none of that is here. What is here is the two
+/// facts an interface needs in order to *say* that a talent is a quest at all: which
+/// counter it watches and how far it has to go.
+///
+/// That split is deliberate rather than partial. A quest is a real design axis
+/// beside the ordinary talent — one is a step, the other is something a player plays
+/// toward — and which of the two a talent is has to be legible **at the moment of
+/// choosing**, before any of it has happened. A row that looked identical to the
+/// ones around it until forty minutes in would be the panel hiding the single most
+/// important thing about that choice.
+///
+/// The counter is named so a HUD can follow the progress the day that counter
+/// reaches the wire; until then the mark and the goal are what it draws.
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+pub struct QuestSpec {
+    /// The stack counter the task is counted in.
+    pub counter: StackId,
+    /// How many are needed. A plain number rather than a [`Value`], because this is
+    /// the figure printed on the card: a goal that changed with the reader's level
+    /// would be a target a player cannot aim at.
+    pub goal: f32,
+}
+
+impl QuestSpec {
+    /// The effective goal: finite and above zero, or `None` for a declaration that
+    /// asks for nothing.
+    ///
+    /// Total by design, because nothing else validates this number. A goal of zero
+    /// is a quest already complete before it starts, and a negative or `NaN` one is
+    /// a target no count can reach — both read as "no goal", so an interface prints
+    /// no figure rather than a nonsense one.
+    #[must_use]
+    pub fn goal(&self) -> Option<f32> {
+        (self.goal.is_finite() && self.goal > 0.0).then_some(self.goal)
+    }
+}
+
 /// A generic talent.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TalentDescriptor {
@@ -87,6 +129,12 @@ pub struct TalentDescriptor {
     pub grants: Vec<GrantAbility>,
     pub modifiers: Vec<Modifier>,
     pub tags: Vec<TagId>,
+    /// The task this talent sets, if it sets one (stormlight/server#132).
+    ///
+    /// Declaration only — see [`QuestSpec`]. A talent that declares none is an
+    /// ordinary talent and is untouched by any of it, which is almost all of them.
+    #[serde(default)]
+    pub quest: Option<QuestSpec>,
 }
 
 impl TalentDescriptor {

@@ -557,6 +557,11 @@ impl RemapIds for TalentDescriptor {
         self.grants.remap_ids(m)?;
         self.modifiers.remap_ids(m)?;
         remap_tags(&mut self.tags, m)?;
+        // A task names the counter it is counted in (server#132), which is an
+        // interned handle like any other and has to be rewritten with the rest.
+        if let Some(quest) = &mut self.quest {
+            quest.counter = m.stack(quest.counter)?;
+        }
         Ok(())
     }
 }

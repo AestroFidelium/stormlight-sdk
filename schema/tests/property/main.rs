@@ -25,6 +25,7 @@ mod stats;
 mod tags;
 mod talent_card;
 mod talent_focus;
+mod talent_quest;
 mod talent_tree;
 mod ui;
 mod ui_action;

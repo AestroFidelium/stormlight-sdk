@@ -212,6 +212,25 @@ pub enum Shown {
     /// screen. So "while decided" would be a second way to say something already
     /// sayable.
     WhileTierUndecided(u8),
+    /// Only while tier `0` is the decision the player is being *asked for*
+    /// (stormlight/server#114): they have reached it and not answered it.
+    ///
+    /// Two facts, and neither alone is the one a strip has to point at.
+    /// [`Self::WhileTierUndecided`] is true of every tier the player has not reached
+    /// yet, so a mark hung on it lights the whole future of the tree at once; and
+    /// [`Self::WhileTierSelected`] is the page they happen to be *looking* at, which
+    /// moves as they browse. This is neither: it is where the tree is actually
+    /// waiting, and it stays put while they look elsewhere.
+    ///
+    /// A gate rather than a composition of two, for the reason the family gives
+    /// throughout: a client would otherwise have to define what several conditions
+    /// on one widget compose to, and "unlocked" is not a question about a
+    /// coordinate, so there is no `OptionState` for it to be.
+    ///
+    /// With no owner-scoped view at all, nothing is waiting — the opposite of
+    /// [`Self::WhileTierUndecided`], which reads *true* there because a socket must
+    /// still carry the level that opens it.
+    WhileTierWaiting(u8),
     /// Only while one coordinate of one tier is in a given state
     /// (stormlight/server#118).
     ///
@@ -240,6 +259,7 @@ impl Shown {
             Self::Always => None,
             Self::WhileTierSelected(tier)
             | Self::WhileTierUndecided(tier)
+            | Self::WhileTierWaiting(tier)
             | Self::WhileOption { tier, .. } => Some(tier),
         }
     }
@@ -381,7 +401,15 @@ pub struct Layout {
     pub size: [Length; 2],
     /// How this widget arranges its own children (ignored by the leaf kinds).
     pub flow: Flow,
-    /// Pixels between adjacent children.
+    /// Pixels between adjacent children. **May be negative** (server#114): a gap
+    /// is a distance *between* two siblings rather than an extent of either, so
+    /// below zero it means they overlap — which is how real HUD art is authored.
+    /// A column of plates drawn to bleed into each other by a few pixels reads as
+    /// one stack rather than as a run of cards, and a strip of sockets laid along
+    /// a plate is a run of overlapping buttons. Without it a panel with any
+    /// overlap has to abandon the flow and place every element absolutely, which
+    /// gives up the one thing a flow is for: closing the hole where an element was
+    /// not laid out.
     pub gap: f32,
     /// Pixels between this widget's edge and its children.
     pub padding: f32,
@@ -1339,8 +1367,9 @@ pub enum UiError {
     EmptyImagePath { widget: u16 },
     /// A non-finite length, gap, padding, colour, border width or font size.
     NonFinite { widget: u16 },
-    /// A negative size, gap, padding, border width or font size. (An *offset*
-    /// may be negative; an extent may not.)
+    /// A negative size, padding, border width or font size. (An *offset* may be
+    /// negative, and so may a [`Layout::gap`] — both are distances rather than
+    /// extents; an extent may not.)
     NegativeMetric { widget: u16 },
     /// A declared curve that cannot be played (stormlight/server#97).
     BadTrack {
@@ -1432,7 +1461,6 @@ fn is_finite(widget: &Widget) -> bool {
 /// a bottom-anchored widget up the screen is a negative `y` and nothing else.
 fn is_negative(widget: &Widget) -> bool {
     widget.layout.size.iter().any(|v| v.is_negative())
-        || widget.layout.gap < 0.0
         || widget.layout.padding < 0.0
         || widget.style.border.width < 0.0
         || widget.style.font_size < 0.0

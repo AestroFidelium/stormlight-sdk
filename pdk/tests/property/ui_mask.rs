@@ -33,11 +33,8 @@ const MASK: &str = "mod://pack/socket.png";
 fn declaring_a_mask_changes_the_mask_and_nothing_else() {
     check!().with_type::<Scenario>().for_each(|s| {
         let build = |cut: bool| {
-            let mut w = if s.pictured {
-                icon("mod://pack/art.png")
-            } else {
-                ability_slot(Slot(0), "Q")
-            };
+            let mut w =
+                if s.pictured { icon("mod://pack/art.png") } else { ability_slot(Slot(0), "Q") };
             if s.sliced {
                 w = w.sliced(4.0, 4.0, 4.0, 4.0);
             }

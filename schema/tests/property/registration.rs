@@ -132,10 +132,8 @@ impl Gen<'_> {
             tags: self.tags(),
             // Half the talents set a task, so the round trip covers both
             // (server#132).
-            quest: (self.next().is_multiple_of(2)).then(|| QuestSpec {
-                counter: StackId(self.next()),
-                goal: f32::from(self.next()),
-            }),
+            quest: (self.next().is_multiple_of(2))
+                .then(|| QuestSpec { counter: StackId(self.next()), goal: f32::from(self.next()) }),
         }
     }
     fn buff(&mut self) -> BuffSpec {

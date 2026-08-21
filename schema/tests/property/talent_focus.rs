@@ -76,11 +76,7 @@ impl Scenario {
             id: TalentId(7),
             selector: self.selects.selector(),
             patches: if self.patches {
-                vec![ParamPatch {
-                    param: ParamId(1),
-                    op: NumOp::Add,
-                    value: Value::Const(1.0),
-                }]
+                vec![ParamPatch { param: ParamId(1), op: NumOp::Add, value: Value::Const(1.0) }]
             } else {
                 Vec::new()
             },

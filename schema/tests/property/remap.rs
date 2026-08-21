@@ -613,10 +613,10 @@ impl Gen<'_> {
             tags: (0..self.next() % 3).map(|_| TagId(self.next())).collect(),
             // A task names a counter, which is an interned handle like any other —
             // so the walk has to reach it (server#132).
-            quest: self.next().is_multiple_of(2).then(|| QuestSpec {
-                counter: StackId(self.next()),
-                goal: f32::from(self.next()),
-            }),
+            quest: self
+                .next()
+                .is_multiple_of(2)
+                .then(|| QuestSpec { counter: StackId(self.next()), goal: f32::from(self.next()) }),
         }
     }
     fn buff(&mut self) -> BuffSpec {

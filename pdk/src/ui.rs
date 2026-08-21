@@ -363,6 +363,14 @@ pub trait WidgetExt: Sized {
     /// aside with this.
     #[must_use]
     fn shown_while_tier_undecided(self, tier: u8) -> Self;
+    /// Lay it out only while `tier` is the decision the player is being asked for —
+    /// reached and unanswered (stormlight/server#114).
+    ///
+    /// What a strip points at. Not [`WidgetExt::shown_while_tier_undecided`], which
+    /// is true of every tier still ahead of the player, and not
+    /// [`WidgetExt::shown_while_tier`], which is wherever they happen to be looking.
+    #[must_use]
+    fn shown_while_tier_waiting(self, tier: u8) -> Self;
     /// Draw it in front of the siblings that declare a lower layer
     /// (stormlight/server#110) — and for a root, the other roots are its siblings.
     ///
@@ -503,6 +511,10 @@ impl WidgetExt for Widget {
     }
     fn shown_while_tier_undecided(mut self, tier: u8) -> Self {
         self.layout.shown = Shown::WhileTierUndecided(tier);
+        self
+    }
+    fn shown_while_tier_waiting(mut self, tier: u8) -> Self {
+        self.layout.shown = Shown::WhileTierWaiting(tier);
         self
     }
     fn layered(mut self, layer: i32) -> Self {

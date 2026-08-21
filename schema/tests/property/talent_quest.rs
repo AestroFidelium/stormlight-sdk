@@ -86,12 +86,7 @@ fn a_target_no_count_can_reach_reads_as_no_target() {
         let spec = s.spec();
         let goal = spec.goal();
         let reachable = s.goal().is_finite() && s.goal() > 0.0;
-        assert_eq!(
-            goal.is_some(),
-            reachable,
-            "a goal of {} read as {goal:?}",
-            s.goal(),
-        );
+        assert_eq!(goal.is_some(), reachable, "a goal of {} read as {goal:?}", s.goal(),);
         if let Some(read) = goal {
             assert_eq!(read, s.goal(), "a reachable goal was not read back as declared");
         }

@@ -92,7 +92,7 @@ macro_rules! total_but {
     };
 }
 
-total_but!(Identity, |id| Ok(id));
+total_but!(Identity, Ok);
 total_but!(FailTalent, |_| Err(()));
 
 const IDENT: &[u8] = b"abcdefghijklmnopqrstuvwxyz_0123456789/. ";

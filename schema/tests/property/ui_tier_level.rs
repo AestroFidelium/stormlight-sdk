@@ -19,7 +19,7 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, SummonGate, TextSource, UiRoot, UiSubject, ValueBinding,
+    Layout, RootVisibility, Strip, Style, SummonGate, TextSource, UiRoot, UiSubject, ValueBinding,
     ValuePart, Widget, WidgetKind,
 };
 
@@ -62,6 +62,7 @@ fn a_root(s: &Scenario) -> UiRoot {
         when: RootVisibility::Always,
         summon: SummonGate::Ignored,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: Widget {
             name: "strip".into(),
             layout: Layout::default(),

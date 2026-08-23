@@ -23,8 +23,8 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ui::{
-    Layout, MAX_UI_WIDGETS, RootVisibility, Style, SummonGate, TextSource, Tooltip, UiAction,
-    UiError, UiRoot, UiSubject, Widget, WidgetKind,
+    Layout, MAX_UI_WIDGETS, RootVisibility, Strip, Style, SummonGate, TextSource, Tooltip,
+    UiAction, UiError, UiRoot, UiSubject, Widget, WidgetKind,
 };
 
 // Its handles crossing the local→global bridge is pinned where the rest of that
@@ -82,6 +82,7 @@ fn a_root(s: &Scenario) -> UiRoot {
         when: RootVisibility::Always,
         summon: SummonGate::Ignored,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: a_widget("panel", WidgetKind::Panel { children }),
     }
 }
@@ -132,6 +133,7 @@ fn a_tooltip_counts_against_the_widget_budget() {
         when: RootVisibility::Always,
         summon: SummonGate::Ignored,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: a_widget("panel", WidgetKind::Panel { children: vec![row] }),
     };
     assert_eq!(

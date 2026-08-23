@@ -27,10 +27,10 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
-use stormlight_mod_abi::ui::{RootVisibility, SummonGate, UiRoot, UiSubject, Widget};
+use stormlight_mod_abi::ui::{RootVisibility, Strip, SummonGate, UiRoot, UiSubject, Widget};
 use stormlight_mod_abi::visuals::{
     AbilityIcon, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, TalentCard,
-    TalentInfo, VisualDescriptor, VisualModel,
+    TalentInfo, UnitIcon, VisualDescriptor, VisualModel,
 };
 
 use crate::context::table;
@@ -57,6 +57,7 @@ pub struct ClientContext {
     animations: Vec<AnimationDescriptor>,
     named_effects: Vec<NamedEffect>,
     ui: Vec<UiRoot>,
+    unit_icons: Vec<UnitIcon>,
 }
 
 impl ClientContext {
@@ -102,6 +103,26 @@ impl ClientContext {
     pub fn ability_icon(&mut self, ability: &str, image: &str) -> AbilityId {
         let id = self.ability_names.intern(ability);
         self.icons.push(AbilityIcon { ability: id, image: image.into() });
+        id
+    }
+
+    /// Declare the portrait the unit named `unit` wears in an interface
+    /// (server#145) — the flat picture a roster row or a hero panel draws —
+    /// returning the unit's interned handle.
+    ///
+    /// The counterpart of [`ability_icon`](Self::ability_icon) one family along, and
+    /// separate from [`unit_visual`](Self::unit_visual) because a model is not a
+    /// portrait: one is built in the world and the other is authored art, and
+    /// there is no way to derive either from the other. Declared here rather than
+    /// on the interface for the reason the ABI keys it by handle — a roster row is
+    /// instanced per *player*, so an interface mod cannot know which hero any of
+    /// them picked, and a row is drawn for players whose unit the client may never
+    /// receive. `image` is a `mod://<id>/<path>` URL like every other asset.
+    /// Re-declaring a unit's portrait overrides the earlier one at adoption (later
+    /// wins).
+    pub fn unit_icon(&mut self, unit: &str, image: &str) -> UnitId {
+        let id = self.unit_names.intern(unit);
+        self.unit_icons.push(UnitIcon { unit: id, image: image.into() });
         id
     }
 
@@ -211,7 +232,27 @@ impl ClientContext {
         subject: UiSubject,
         root: Widget,
     ) {
-        self.ui.push(UiRoot { name: name.into(), when, summon, subject, root });
+        self.ui_strip(name, when, summon, subject, Strip::default(), root);
+    }
+
+    /// Declare a widget tree instanced once per **player** (stormlight/server#145)
+    /// — [`Self::ui_gated`] with the strip spelled out.
+    ///
+    /// The strip is the one thing a per-player tree needs that a per-unit tree gets
+    /// for free: a nameplate is placed by its own unit's position, while a row of
+    /// players is laid out against the other rows, and only the mod can say whether
+    /// that runs across or down. Every other subject ignores it, which is why every
+    /// other constructor here leaves it at its default.
+    pub fn ui_strip(
+        &mut self,
+        name: &str,
+        when: RootVisibility,
+        summon: SummonGate,
+        subject: UiSubject,
+        strip: Strip,
+        root: Widget,
+    ) {
+        self.ui.push(UiRoot { name: name.into(), when, summon, subject, strip, root });
     }
 
     /// Intern a unit stat by name, returning the handle a
@@ -267,6 +308,7 @@ impl ClientContext {
             animations: self.animations,
             named_effects: self.named_effects,
             ui: self.ui,
+            unit_icons: self.unit_icons,
         }
     }
 }

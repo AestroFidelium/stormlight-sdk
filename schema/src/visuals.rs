@@ -121,6 +121,33 @@ pub struct AbilityIcon {
     pub image: String,
 }
 
+/// The flat picture a unit wears in an interface (stormlight/server#145) — the
+/// portrait a roster row, a nameplate or a hero panel draws.
+///
+/// Keyed by the unit's interned handle for the same reason [`AbilityIcon`] is keyed
+/// by the ability's, and it is the same separation: the mod that lays out a top bar
+/// is not the mod that authored the heroes. A roster row is instanced per *player*,
+/// so the interface cannot name the picture — it does not know who picked what, and
+/// the whole point of the row is that it is drawn for a player whose unit this
+/// client may never receive. The picture travels with the unit and is resolved from
+/// the roster's own unit id.
+///
+/// Distinct from [`VisualDescriptor`], and not derivable from it: that says how the
+/// unit is *built in the world* — a mesh, a scale, a yaw — and there is no way to
+/// turn a model into a portrait without rendering it. A portrait is authored art.
+///
+/// A bare `mod://<id>/<path>` URL, exactly like [`AbilityIcon`]'s, for exactly the
+/// same reason: it is a flat picture in a widget, and how it is *drawn* — tint,
+/// nine-slice, mask, whether it flips — stays the interface's, declared once on the
+/// socket and applied to whatever picture lands in it.
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct UnitIcon {
+    /// The unit this picture is for.
+    pub unit: UnitId,
+    /// The `mod://<id>/<path>` URL of the picture.
+    pub image: String,
+}
+
 /// What a talent is called, what it does in words, and what it looks like
 /// (stormlight/server#95) — everything a panel offering a pending tier needs in
 /// order to say what the choice *means*.
@@ -235,4 +262,9 @@ pub struct ClientRegistration {
     /// travels with the talent so the panel can ask for it *by tier and option*.
     #[serde(default)]
     pub cards: Vec<TalentCard>,
+    /// The portraits this mod declares, one per unit it gives a flat picture to
+    /// (server#145). Read by an interface that knows no hero's name: the picture
+    /// travels with the unit so a roster row can ask for it *by seat*.
+    #[serde(default)]
+    pub unit_icons: Vec<UnitIcon>,
 }

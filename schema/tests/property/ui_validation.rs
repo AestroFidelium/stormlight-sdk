@@ -21,7 +21,7 @@ use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{Slot, StatId};
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, MAX_UI_DEPTH, MAX_UI_WIDGETS,
-    RootVisibility, Shown, Slice, StateStyle, Style, SummonGate, Sweep, TextSource, Tooltip,
+    RootVisibility, Shown, Slice, StateStyle, Strip, Style, SummonGate, Sweep, TextSource, Tooltip,
     UiError, UiRoot, UiSubject, ValueBinding, Widget, WidgetKind,
 };
 
@@ -148,6 +148,7 @@ fn a_root(children: usize) -> UiRoot {
         when: RootVisibility::Always,
         summon: SummonGate::Ignored,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: a_widget("root", WidgetKind::Panel { children: kids }),
     }
 }

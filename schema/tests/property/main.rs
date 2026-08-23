@@ -36,6 +36,7 @@ mod ui_mask;
 mod ui_option_gate;
 mod ui_overlap;
 mod ui_prepick;
+mod ui_roster;
 mod ui_summon;
 mod ui_summon_action;
 mod ui_sweep;

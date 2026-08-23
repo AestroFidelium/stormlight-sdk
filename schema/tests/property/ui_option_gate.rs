@@ -37,8 +37,8 @@
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::remap::RemapIds;
 use stormlight_mod_abi::ui::{
-    Layout, OptionState, RootVisibility, Shown, Style, SummonGate, TextSource, UiRoot, UiSubject,
-    Widget, WidgetKind,
+    Layout, OptionState, RootVisibility, Shown, Strip, Style, SummonGate, TextSource, UiRoot,
+    UiSubject, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -105,6 +105,7 @@ fn a_panel(rows: &[Row]) -> UiRoot {
         when: RootVisibility::Always,
         summon: SummonGate::Held,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: a_widget(WidgetKind::Panel {
             children: rows.iter().copied().map(build).collect::<Vec<_>>(),
         }),

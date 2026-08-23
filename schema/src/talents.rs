@@ -161,7 +161,7 @@ impl TalentDescriptor {
     pub fn changes(&self) -> Option<AbilityFocus> {
         let governed = !self.patches.is_empty() || !self.riders.is_empty();
         let selected = governed
-            .then(|| match self.selector {
+            .then_some(match self.selector {
                 AbilitySelector::Slot(slot) => Some(AbilityFocus::Slot(slot)),
                 AbilitySelector::Ability(id) => Some(AbilityFocus::Ability(id)),
                 // A tag selects a set; "any" and "the unit itself" select no ability
@@ -169,7 +169,7 @@ impl TalentDescriptor {
                 AbilitySelector::Tag(_) | AbilitySelector::Any | AbilitySelector::SelfUnit => None,
             })
             .flatten();
-        selected.or_else(|| match self.grants.as_slice() {
+        selected.or(match self.grants.as_slice() {
             [only] => Some(AbilityFocus::Slot(only.slot)),
             _ => None,
         })

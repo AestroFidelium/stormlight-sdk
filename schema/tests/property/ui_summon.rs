@@ -17,8 +17,8 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, RootVisibility, Shown, Style, SummonGate, TextSource, UiRoot,
-    UiSubject, Widget, WidgetKind,
+    Anchor, Flow, Layout, Length, RootVisibility, Shown, Strip, Style, SummonGate, TextSource,
+    UiRoot, UiSubject, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -107,6 +107,7 @@ fn a_root(s: &Scenario) -> UiRoot {
         // The one subject with a declared partner condition, so the generated
         // pairs include the combination `validate` refuses on its own.
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: a_tree(s.children),
     }
 }

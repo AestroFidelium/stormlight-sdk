@@ -18,7 +18,8 @@
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::Slot;
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, SummonGate, UiRoot, UiSubject, Widget, WidgetKind, WidgetState,
+    Layout, RootVisibility, Strip, Style, SummonGate, UiRoot, UiSubject, Widget, WidgetKind,
+    WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{Ease, Playback, Shape, UiProperty, UiTrack, UiTrigger};
 use stormlight_mod_sdk::ui::{KeyExt, WidgetExt, ability_slot, bar, icon, key, panel, text, track};
@@ -169,6 +170,7 @@ fn what_the_pdk_builds_is_what_the_host_loads() {
             when: RootVisibility::Always,
             summon: SummonGate::Ignored,
             subject: UiSubject::LocalPlayer,
+            strip: Strip::default(),
             root: Widget {
                 name: "root".into(),
                 layout: Layout::default(),

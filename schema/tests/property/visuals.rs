@@ -307,6 +307,10 @@ impl Gen<'_> {
             // Widget trees have their own invariants (see `ui.rs`); this file
             // stays about visuals.
             ui: Vec::new(),
+            // Unit portraits are the *second* place a cosmetic bundle names a unit
+            // (server#145), so leaving them empty here keeps the unit-error
+            // invariant below about the visuals themselves.
+            unit_icons: Vec::new(),
         }
     }
 }

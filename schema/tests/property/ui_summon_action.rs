@@ -22,7 +22,8 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, SummonRequest, UiAction, UiRoot, UiSubject, Widget, WidgetKind,
+    Layout, RootVisibility, Strip, Style, SummonRequest, UiAction, UiRoot, UiSubject, Widget,
+    WidgetKind,
 };
 
 #[derive(Debug, TypeGenerator)]
@@ -59,6 +60,7 @@ fn a_root(s: &Scenario) -> UiRoot {
         when: RootVisibility::Always,
         summon: stormlight_mod_abi::ui::SummonGate::Ignored,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: Widget {
             name: "console".into(),
             layout: Layout::default(),

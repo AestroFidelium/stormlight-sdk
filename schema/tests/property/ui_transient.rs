@@ -30,8 +30,8 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, RootVisibility, Shown, Style, SummonGate, TextSource, UiError,
-    UiRoot, UiSubject, ValueBinding, ValuePart, Widget, WidgetKind,
+    Anchor, Flow, Layout, Length, RootVisibility, Shown, Strip, Style, SummonGate, TextSource,
+    UiError, UiRoot, UiSubject, ValueBinding, ValuePart, Widget, WidgetKind,
 };
 use stormlight_mod_abi::ui_event::{Coalesce, EventQuantity, UiEvent};
 
@@ -166,6 +166,7 @@ fn a_root(s: &Scenario, when: RootVisibility) -> UiRoot {
         // which is why a transient reuses it rather than declaring a subject of
         // its own.
         subject: UiSubject::EachUnit,
+        strip: Strip::default(),
         root: a_tree(s.children),
     }
 }

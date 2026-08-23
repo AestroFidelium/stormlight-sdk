@@ -1103,6 +1103,29 @@ pub enum WidgetKind {
     /// an ability bar, while a talent cell is a picture, a heading and a sentence
     /// inside one button, and only the button is clicked.
     TalentIcon { tier: u8, option: u8 },
+    /// The picture of the unit the subject is driving (stormlight/server#145) — the
+    /// roster counterpart of [`Self::TalentIcon`], and it exists for the same
+    /// reason both of those do.
+    ///
+    /// A [`Self::Icon`]'s picture is the interface's own and must be declared. This
+    /// one's cannot be: a roster row is instanced per *player*, and which hero any
+    /// of them picked is not something an interface mod can know — it ships widget
+    /// trees and dresses nobody. The picture is resolved from the driven unit's
+    /// [`UnitIcon`](crate::visuals::UnitIcon), and [`Style::image`] stays what the
+    /// row wears when the player is driving nothing or their unit was never given a
+    /// picture, exactly as it does on a slot and on a talent cell.
+    ///
+    /// It resolves against **whatever the tree's subject is**, so it is not confined
+    /// to a roster: pointed at [`UiSubject::LocalPlayer`] it is the portrait of your
+    /// own hero, and over a nameplate it is the portrait of that unit. A roster is
+    /// simply the case that could not be authored any other way.
+    ///
+    /// It draws and does not act. A row that should be clickable is a
+    /// [`Self::Button`] with this inside it, which is how every other picture in
+    /// this ABI is made clickable.
+    ///
+    /// **Appended, not inserted.** The variant order is the wire tag.
+    UnitIcon,
 }
 
 impl Widget {
@@ -1133,6 +1156,7 @@ impl WidgetKind {
             | Self::Bar { .. }
             | Self::Icon
             | Self::TalentIcon { .. }
+            | Self::UnitIcon
             | Self::AbilitySlot { .. } => &[],
         }
     }
@@ -1146,6 +1170,7 @@ impl WidgetKind {
             | Self::Bar { .. }
             | Self::Icon
             | Self::TalentIcon { .. }
+            | Self::UnitIcon
             | Self::AbilitySlot { .. } => &mut [],
         }
     }
@@ -1171,7 +1196,8 @@ impl WidgetKind {
             | Self::Text { .. }
             | Self::Bar { .. }
             | Self::Icon
-            | Self::TalentIcon { .. } => None,
+            | Self::TalentIcon { .. }
+            | Self::UnitIcon => None,
         }
     }
 }
@@ -1321,6 +1347,82 @@ pub enum UiSubject {
     /// all — never clamped to the edge, which would fill the border with the
     /// nameplates of things the player cannot see.
     EachUnit,
+    /// Every **player** the match seated, one instance of the tree each, filtered
+    /// by which side they are on (stormlight/server#145).
+    ///
+    /// The one subject that is not a body, and the reason it exists: a body can be
+    /// dead, not yet spawned, or simply outside this client's interest area, and a
+    /// roster answers for all three. That is what a top bar needs — the other half
+    /// of it is a row of opponents nobody has replicated to you.
+    ///
+    /// It also decides placement, like [`Self::EachUnit`] does, but the answer is
+    /// not a point in the world: the copies are laid out against each other in a
+    /// strip, and how that strip runs is [`UiRoot::strip`].
+    ///
+    /// A tree with this subject still reads unit state wherever it can. The row for
+    /// a player whose body this client *does* hold resolves its bindings against
+    /// that body, joined by the player's seat rather than by an entity reference;
+    /// the row for one it does not reads empty, which is honest rather than a
+    /// stand-in.
+    ///
+    /// **Appended, not inserted.** The variant order is the wire tag.
+    EachPlayer(RosterSide),
+}
+
+/// Which of the match's players a per-player tree covers (stormlight/server#145).
+///
+/// Named **relative to the reader**, never by number, and that is what keeps it
+/// content-free: the engine does not know that a match has two sides of five, and a
+/// mod that said "side 1" would be asserting a format the match setup is the only
+/// thing entitled to choose. What a HUD actually wants to say is "my team here,
+/// theirs over there", and that is expressible without either of them knowing how
+/// many sides exist.
+///
+/// A reader with no side of their own — a spectator, or a player seated before
+/// their unit exists — is on nobody's side, so [`Self::Own`] covers nothing and
+/// [`Self::Other`] covers everyone.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum RosterSide {
+    /// Everyone seated, in seat order — the scoreboard case.
+    #[default]
+    Everyone,
+    /// Only players on the reader's own side.
+    Own,
+    /// Only players on any side but the reader's.
+    Other,
+}
+
+/// How the copies of a per-player tree are laid out against each other
+/// (stormlight/server#145).
+///
+/// A per-unit tree needs nothing like this: each copy is pinned to the point its
+/// own unit projects to, and the world decides the arrangement. A roster has no
+/// such answer — the copies are a *strip*, and whether it runs across the top or
+/// down a corner is a design decision only the mod can make.
+///
+/// **Deliberately not taken from the root widget's own [`Layout`].** That widget is
+/// the cell: its `flow` already arranges the cell's own children and its `gap`
+/// already spaces them. Reusing them here would make a column of two-row cells
+/// unexpressible, which is the first thing a real roster wants.
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Strip {
+    /// Which way the copies run. [`Flow::Stack`] puts them all in one place, which
+    /// is not useful for a roster and is not refused either — it is what a mod
+    /// declaring one cell and expecting one cell gets.
+    pub flow: Flow,
+    /// Pixels between adjacent copies. **May be negative**, exactly as
+    /// [`Layout::gap`] may: art authored to bleed into its neighbour is how a real
+    /// row of plates is drawn.
+    pub gap: f32,
+}
+
+impl Default for Strip {
+    /// Across, tight. A roster is a row far more often than it is a column, and the
+    /// only trees that read this field are the ones that asked to be instanced per
+    /// player — every other root ignores it entirely.
+    fn default() -> Self {
+        Self { flow: Flow::Row, gap: 0.0 }
+    }
 }
 
 /// One declared widget tree: what it is called, when it is shown, whose state it
@@ -1338,6 +1440,11 @@ pub struct UiRoot {
     /// Whose state its bindings read — and, for [`UiSubject::EachUnit`], that it
     /// is instanced per unit and anchored to it rather than to the screen.
     pub subject: UiSubject,
+    /// How the copies of a per-player tree are arranged against each other
+    /// (stormlight/server#145). Read only under
+    /// [`UiSubject::EachPlayer`]; every other root ignores it.
+    #[serde(default)]
+    pub strip: Strip,
     /// The tree.
     pub root: Widget,
 }
@@ -1352,8 +1459,13 @@ pub struct UiRoot {
 pub enum UiError {
     /// The root has no name, so nothing can refer to it in a diagnostic.
     EmptyRootName,
-    /// A tree reads the hovered unit but is not gated on a hover, so its
-    /// bindings could never resolve to anything.
+    /// A tree's subject can never resolve where the tree is shown, so its
+    /// bindings could never read anything.
+    ///
+    /// Two ways to declare one: reading the hovered unit without being gated on a
+    /// hover, and being instanced per *player* while waiting for an occurrence —
+    /// a transient is anchored to the unit something happened to, and a roster row
+    /// is not that unit (stormlight/server#145).
     SubjectNeverPresent,
     /// Nested past [`MAX_UI_DEPTH`].
     TooDeep { widget: u16 },
@@ -1385,6 +1497,15 @@ pub enum UiError {
     /// A catch-up with a negative or non-finite duration — not a slower
     /// transition, a break.
     BadTransition { widget: u16 },
+    /// A per-player root whose [`Strip`] cannot be laid out — a non-finite gap
+    /// (stormlight/server#145).
+    ///
+    /// A *negative* gap is legal and deliberate, exactly as [`Layout::gap`]'s is: it
+    /// means the copies overlap. A NaN or an infinity is not a wider gap, it is a
+    /// number that reaches the layout engine and takes the rest of the screen with
+    /// it. Refused at load, where the author can read about it. It is the root's
+    /// rather than a widget's, so it carries no index.
+    BadStrip,
     /// A transient root whose lifetime no clock can run — zero, negative or
     /// non-finite (stormlight/server#93).
     ///
@@ -1400,8 +1521,9 @@ impl fmt::Display for UiError {
         match self {
             Self::EmptyRootName => f.write_str("ui root has no name"),
             Self::SubjectNeverPresent => {
-                f.write_str("ui root reads the hovered unit but is not shown on hover")
+                f.write_str("ui root's subject can never resolve where the root is shown")
             }
+            Self::BadStrip => f.write_str("per-player ui root has an unusable strip gap"),
             Self::TooDeep { widget } => {
                 write!(f, "widget {widget} nests past the {MAX_UI_DEPTH}-level limit")
             }
@@ -1507,6 +1629,19 @@ impl UiRoot {
         }
         if self.subject == UiSubject::HoveredUnit && self.when != RootVisibility::WhileUnitHovered {
             return Err(UiError::SubjectNeverPresent);
+        }
+        // A transient is spawned by an occurrence and is anchored to the unit that
+        // occurrence named — which is why one declares the per-unit subject. A
+        // per-player root has neither: no occurrence names a *seat*, so a tree
+        // declared this way would be built by nothing at all (server#145).
+        if matches!(self.subject, UiSubject::EachPlayer(_)) && self.when.occurrence().is_some() {
+            return Err(UiError::SubjectNeverPresent);
+        }
+        // Only the roots that are actually instanced per player read the strip, so
+        // only they are held to it: a tree that never lays copies out against each
+        // other must not fail to load over a field it ignores.
+        if matches!(self.subject, UiSubject::EachPlayer(_)) && !self.strip.gap.is_finite() {
+            return Err(UiError::BadStrip);
         }
         // A transient's lifetime is the one thing about it that can be unrunnable,
         // and it is checked here rather than clamped at spawn for the reason every
@@ -1642,7 +1777,9 @@ impl RemapIds for WidgetKind {
             // An icon is an asset path; an ability slot's own `Slot` is not
             // interned, and the action it implies carries nothing else. A talent
             // icon carries only a coordinate, like the pick it sits under.
-            Self::Icon | Self::TalentIcon { .. } | Self::AbilitySlot { .. } => {}
+            // A unit icon carries nothing either: which unit it draws is the
+            // subject's, decided at runtime rather than named here (server#145).
+            Self::Icon | Self::TalentIcon { .. } | Self::UnitIcon | Self::AbilitySlot { .. } => {}
             Self::Panel { children } => children.remap_ids(m)?,
             Self::Button { action, children } => {
                 action.remap_ids(m)?;

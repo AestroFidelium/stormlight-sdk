@@ -17,8 +17,8 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ui::{
-    Flow, Layout, Length, RootVisibility, Style, SummonGate, UiError, UiRoot, UiSubject, Widget,
-    WidgetKind,
+    Flow, Layout, Length, RootVisibility, Strip, Style, SummonGate, UiError, UiRoot, UiSubject,
+    Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -87,6 +87,7 @@ fn a_root(scenario: &Scenario) -> UiRoot {
         when: RootVisibility::Always,
         summon: SummonGate::default(),
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: Widget {
             name: "container".to_string(),
             layout,

@@ -37,8 +37,8 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Shown, Style, SummonGate, TextSource, UiAction, UiRoot, UiSubject,
-    Widget, WidgetKind,
+    Layout, RootVisibility, Shown, Strip, Style, SummonGate, TextSource, UiAction, UiRoot,
+    UiSubject, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -135,6 +135,7 @@ fn a_panel(parts: &[Part]) -> UiRoot {
         when: RootVisibility::WhileTalentPending,
         summon: SummonGate::Held,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: a_widget(WidgetKind::Panel {
             children: parts.iter().copied().map(build).collect::<Vec<_>>(),
         }),

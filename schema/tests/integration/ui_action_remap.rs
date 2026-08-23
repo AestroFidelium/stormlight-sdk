@@ -24,7 +24,7 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, SummonGate, Tooltip, UiAction, UiRoot, UiSubject, Widget,
+    Layout, RootVisibility, Strip, Style, SummonGate, Tooltip, UiAction, UiRoot, UiSubject, Widget,
     WidgetKind,
 };
 
@@ -126,6 +126,7 @@ fn a_root(events: &[&str], slot: u8, tier: u8, option: u8) -> UiRoot {
         when: RootVisibility::Always,
         summon: SummonGate::Ignored,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: a_widget(WidgetKind::Panel { children }),
     }
 }
@@ -239,6 +240,7 @@ fn a_trigger_naming_an_event_the_mod_never_declared_is_rejected() {
             when: RootVisibility::Always,
             summon: SummonGate::Ignored,
             subject: UiSubject::LocalPlayer,
+            strip: Strip::default(),
             root: a_button(UiAction::Trigger { event: EventId(u16::from(raw) + 1) }),
         };
         assert_eq!(

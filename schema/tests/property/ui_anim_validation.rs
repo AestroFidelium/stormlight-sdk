@@ -21,7 +21,8 @@
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::Slot;
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Style, SummonGate, UiError, UiRoot, UiSubject, Widget, WidgetKind,
+    Layout, RootVisibility, Strip, Style, SummonGate, UiError, UiRoot, UiSubject, Widget,
+    WidgetKind,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, MAX_UI_KEYS, MAX_UI_TRACKS, Playback, Shape, TrackFault, UiKey, UiProperty, UiTrack,
@@ -53,6 +54,7 @@ fn a_root(style: Style) -> UiRoot {
         when: RootVisibility::Always,
         summon: SummonGate::Ignored,
         subject: UiSubject::LocalPlayer,
+        strip: Strip::default(),
         root: Widget {
             name: "panel".to_string(),
             layout: Layout::default(),

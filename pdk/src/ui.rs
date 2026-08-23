@@ -109,6 +109,19 @@ pub fn talent_icon(tier: u8, option: u8) -> Widget {
     widget(WidgetKind::TalentIcon { tier, option })
 }
 
+/// The portrait of the unit the subject is driving (stormlight/server#145),
+/// falling back to [`WidgetExt::image`] for a subject driving nothing or a unit
+/// nobody gave a picture to.
+///
+/// The roster counterpart of [`talent_icon`], and it names no content for the same
+/// reason: a row is instanced per *player*, and which hero any of them picked is
+/// not something an interface mod can know. It draws and does not act — wrap it in
+/// a [`button`] if the row should be clickable.
+#[must_use]
+pub fn unit_icon() -> Widget {
+    widget(WidgetKind::UnitIcon)
+}
+
 /// The unit level at which tier `tier` of the subject's tree becomes choosable
 /// (stormlight/server#111).
 ///

@@ -121,6 +121,7 @@ fn unit(id: UnitId, respawn: Option<RespawnSpec>) -> UnitDescriptor {
         respawn,
         progression: None,
         turn_rate: None,
+        attack: None,
     }
 }
 

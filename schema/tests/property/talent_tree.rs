@@ -129,6 +129,7 @@ fn unit(id: UnitId, talent_tree: Option<TalentTree>) -> UnitDescriptor {
         respawn: None,
         progression: None,
         turn_rate: None,
+        attack: None,
     }
 }
 

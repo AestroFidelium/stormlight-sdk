@@ -13,6 +13,7 @@ use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
 
+use crate::attacks::AttackDescriptor;
 use crate::ids::{AbilityId, ResourceId, Slot, StatId, TagClassId, TagId, TalentId, UnitId};
 use crate::math::Value;
 use crate::progression::ProgressionSpec;
@@ -80,6 +81,11 @@ pub struct UnitDescriptor {
     /// A `Value` like every other tunable, so a mod can scale it off a stat rather
     /// than fixing it at authoring time.
     pub turn_rate: Option<Value>,
+    /// The unit's basic attack, if it has one (stormlight/server#89). `None` is a
+    /// unit that cannot attack at all — the honest default, because the engine
+    /// ships no weapon of its own and a building or a ward should not acquire one
+    /// by omission. See [`AttackDescriptor`].
+    pub attack: Option<AttackDescriptor>,
 }
 
 /// Well-known capability classes the engine's generic systems consult. These ids

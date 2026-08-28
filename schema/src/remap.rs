@@ -15,6 +15,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use crate::abilities::{AbilityDescriptor, CastSpec, Cost, Params, Targeting};
+use crate::attacks::{AttackDelivery, AttackDescriptor};
 use crate::behaviors::{BuffSpec, Modifier};
 use crate::common::TargetFilter;
 use crate::conditions::Condition;
@@ -615,6 +616,30 @@ impl RemapIds for ResourcePool {
     }
 }
 
+impl RemapIds for AttackDelivery {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        match self {
+            // Melee carries no handle at all — it is the absence of a body.
+            Self::Melee => Ok(()),
+            Self::Ranged { body } => body.remap_ids(m),
+        }
+    }
+}
+
+impl RemapIds for AttackDescriptor {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        self.payload.remap_ids(m)?;
+        self.filter.remap_ids(m)?;
+        self.delivery.remap_ids(m)?;
+        // Every number is a `Value`, and a `Value` may read a stat or a curve.
+        self.windup.remap_ids(m)?;
+        self.recovery.remap_ids(m)?;
+        self.period.remap_ids(m)?;
+        self.range.remap_ids(m)?;
+        Ok(())
+    }
+}
+
 impl RemapIds for UnitDescriptor {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         self.id = m.unit(self.id)?;
@@ -636,6 +661,9 @@ impl RemapIds for UnitDescriptor {
         self.talent_tree.remap_ids(m)?;
         // A `Value` may read a stat, so it carries handles like any other.
         self.turn_rate.remap_ids(m)?;
+        // The basic attack is a full payload tree — every handle in it is the
+        // mod's own local id and must be rewritten like an ability's (server#89).
+        self.attack.remap_ids(m)?;
         // `respawn` is deliberately not walked: a delay and three policy flags
         // hold no interned handle, so there is nothing here to rewrite.
         self.progression.remap_ids(m)?;

@@ -9,6 +9,7 @@ mod aiming;
 mod anim_notify;
 mod animation;
 mod animation_validation;
+mod attacks;
 mod conditions;
 mod interner;
 mod manifest;

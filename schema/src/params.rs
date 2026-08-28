@@ -35,8 +35,18 @@ pub const RADIUS: &str = "radius";
 /// Meaningless (and ignored) for a mode that is not a cone.
 pub const SPREAD: &str = "spread";
 
+/// Seconds into a cast window past which the cast is **committed** — its point of
+/// no return (stormlight/server#90). A new order arriving before this cancels the
+/// cast; one arriving after it is queued behind a cast that will finish.
+///
+/// The descriptor says where the point is; the engine never guesses one. An
+/// ability that declares no `commit` is cancellable for its whole window, which
+/// is the honest default: a cast a player cannot take back is a deliberate design
+/// choice, not something to inherit by omission.
+pub const COMMIT: &str = "commit";
+
 /// Every reserved param name **in id order**: `RESERVED[i]` is `ParamId(i)`.
-pub const RESERVED: [&str; 4] = [COOLDOWN, RANGE, RADIUS, SPREAD];
+pub const RESERVED: [&str; 5] = [COOLDOWN, RANGE, RADIUS, SPREAD, COMMIT];
 
 /// The reserved id `name` occupies, or `None` when it is a mod's own parameter.
 /// The engine interns [`RESERVED`] in order, so this index *is* the `ParamId`.

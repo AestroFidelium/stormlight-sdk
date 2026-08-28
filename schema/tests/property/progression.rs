@@ -192,6 +192,7 @@ fn unit(id: UnitId, progression: Option<ProgressionSpec>) -> UnitDescriptor {
         respawn: None,
         progression,
         turn_rate: None,
+        attack: None,
     }
 }
 

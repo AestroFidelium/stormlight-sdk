@@ -235,10 +235,41 @@ impl ModContext {
     /// Define an ability under `name`; its `id` is set to the minted handle.
     pub fn ability(&mut self, name: &str, mut desc: AbilityDescriptor) -> AbilityId {
         let id = self.ability_names.intern(name);
-        debug_assert_eq!(id.raw() as usize, self.abilities.len(), "ability name reused");
+        // Declaring two abilities under one name is a content mistake worth
+        // catching, and it is caught by *finding* the handle already spoken for
+        // rather than by assuming a name's position in the table is its position
+        // among the descriptors. Those stopped being the same thing when
+        // [`Self::effect_key`] arrived (stormlight/server#152): a key mints a
+        // handle and pushes no descriptor, so every ability declared after one
+        // sits at an index below its own id.
+        debug_assert!(
+            self.abilities.iter().all(|declared| declared.id != id),
+            "ability name reused",
+        );
         desc.id = id;
         self.abilities.push(desc);
         id
+    }
+
+    /// Mint a **cosmetic key** under `name` without declaring an ability
+    /// (stormlight/server#152).
+    ///
+    /// The effect-visual table a cosmetic mod fills is keyed by ability handle,
+    /// because until now everything with a look was cast from a slot. A basic
+    /// attack is not: it occupies no slot, appears in no loadout and has no
+    /// ability descriptor — and so had no way to be dressed at all, which left the
+    /// thing a player fires most often wearing the engine's placeholder while every
+    /// ability in the game could be given a look.
+    ///
+    /// So a key is just a name in that family with nothing hanging off it. Declare
+    /// one here, hand it to the attack's `vfx`, and declare its visuals under the
+    /// same name in the cosmetic half — exactly as an ability's are, and resolved
+    /// by the same name→handle path.
+    ///
+    /// Re-declaring a name returns the handle it already has, so a key and an
+    /// ability may deliberately share a look by sharing a name.
+    pub fn effect_key(&mut self, name: &str) -> AbilityId {
+        self.ability_names.intern(name)
     }
     /// Define a talent under `name`; its `id` is set to the minted handle.
     pub fn talent(&mut self, name: &str, mut desc: TalentDescriptor) -> TalentId {

@@ -94,6 +94,13 @@ pub enum AnimState {
     Cast,
     /// A channel is running.
     Channel,
+    /// A basic attack is being swung — from the moment the swing starts to the
+    /// end of the recovery it owes (stormlight/server#152).
+    ///
+    /// The whole commitment rather than the wind-up alone: the wind-up ends at the
+    /// swing point, which is the middle of the motion, and a character that
+    /// returned to its gait there would be animated for half of every attack.
+    Attack,
     /// Took damage — typically a one-shot on an additive layer.
     Hit,
     /// Died.
@@ -173,9 +180,18 @@ pub enum RateBinding {
         /// The speed the cycle was authored for. Must be non-zero to divide by.
         reference_speed: f32,
     },
-    /// Time-scaled to the cast or channel currently running, so the clip ends
-    /// exactly when the ability resolves however long the declared cast time is.
-    CastDuration,
+    /// Time-scaled to the **declared window of the timed action currently
+    /// running** — a cast's cast time, a swing's whole commitment — so one clip
+    /// fits every length that action can have and always ends when it does.
+    ///
+    /// It is what makes a two-second cast and a half-second cast share a wind-up,
+    /// and what makes a swing animation keep up with an attack-speed buff instead
+    /// of running at its authored rate while the unit attacks twice as often.
+    ///
+    /// Named `ActionWindow` until stormlight/server#152, when the attack state
+    /// arrived and made the old name a lie on half its uses. It has always meant
+    /// the running action's window; only casts could produce one.
+    ActionWindow,
 }
 
 impl RateBinding {
@@ -185,7 +201,7 @@ impl RateBinding {
         match self {
             Self::Fixed(v) => v.is_finite(),
             Self::MoveSpeed { reference_speed } => reference_speed.is_finite(),
-            Self::CastDuration => true,
+            Self::ActionWindow => true,
         }
     }
 }

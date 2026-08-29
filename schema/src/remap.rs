@@ -379,6 +379,8 @@ impl RemapIds for BodyDescriptor {
         self.on_hit.remap_ids(m)?;
         self.on_expire.remap_ids(m)?;
         self.collision.remap_ids(m)?;
+        // A height is a `Value`, and a `Value` may read a stat or a curve.
+        self.height.remap_ids(m)?;
         // `flags` are booleans only.
         Ok(())
     }
@@ -636,6 +638,10 @@ impl RemapIds for AttackDescriptor {
         self.recovery.remap_ids(m)?;
         self.period.remap_ids(m)?;
         self.range.remap_ids(m)?;
+        // The cosmetic key is an interned handle like any other: authored in the
+        // mod's local space, and pointing at another mod's content if it is left
+        // there.
+        self.vfx = m.ability(self.vfx)?;
         Ok(())
     }
 }

@@ -20,6 +20,7 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 use crate::common::TargetFilter;
+use crate::ids::AbilityId;
 use crate::impacts::Impact;
 use crate::math::Value;
 use crate::missiles::BodyDescriptor;
@@ -85,4 +86,16 @@ pub struct AttackDescriptor {
     /// aggregates no `attack_range` stat, exactly as `MoveSpeed` is the fallback
     /// for `move_speed`.
     pub range: Value,
+    /// The **cosmetic key** the swing and its shot are dressed by
+    /// (stormlight/server#152): the handle a cosmetic mod declared its
+    /// `EffectRole::Projectile` / `EffectRole::Impact` visuals under. `0` means
+    /// "no specific look", and the client draws its neutral placeholder.
+    ///
+    /// An attack occupies no slot and names no ability, so unlike a cast it has no
+    /// ability handle to borrow — every attack launched with nothing here, and a
+    /// cosmetic mod had no way at all to dress the thing a player fires most
+    /// often. It is an [`AbilityId`] because that is the family the effect-visual
+    /// table is keyed by; what the gameplay mod interns under that name need not
+    /// be an ability at all, and for an attack it is not.
+    pub vfx: AbilityId,
 }

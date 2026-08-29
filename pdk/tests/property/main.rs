@@ -15,6 +15,7 @@ mod client_summon;
 mod client_tier_view;
 mod client_ui;
 mod context;
+mod effect_key;
 mod ui_anim;
 mod ui_mask;
 mod ui_sweep;

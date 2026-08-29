@@ -253,6 +253,9 @@ impl Gen<'_> {
                 asset: self.string(),
                 scale: self.f32(),
                 yaw_offset: self.f32(),
+                // Generated both ways, so the round trip and the remap walk are
+                // exercised on art that names a socket and art that does not.
+                launch: self.next().is_multiple_of(2).then(|| self.string()),
             },
             _ => VisualModel::Sprite { asset: self.string(), size: [self.f32(), self.f32()] },
         }

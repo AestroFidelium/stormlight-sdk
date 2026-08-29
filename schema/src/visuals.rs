@@ -51,7 +51,18 @@ pub enum VisualModel {
     /// that faces some other axis: rather than the engine guessing, or the author
     /// re-exporting the asset, the mod states which way its own model looks. A
     /// quarter turn is `FRAC_PI_2`.
-    Model { asset: String, scale: f32, yaw_offset: f32 },
+    ///
+    /// `launch` names the **attachment point** shots this unit fires are drawn
+    /// leaving from — an authored socket in the model's own skeleton, such as a
+    /// weapon or a hand (stormlight/server#154). It sits on `Model` and on no other
+    /// variant because it is the only one with a skeleton to have sockets in.
+    ///
+    /// It is a *drawing*, and only a drawing: the shot's authoritative origin is
+    /// the server's, and no socket ever moves a hitbox or a range. `None`, or a
+    /// name the art does not carry, falls back to that origin — which is what every
+    /// shot did before sockets, so the fallback is the old behaviour rather than a
+    /// broken one.
+    Model { asset: String, scale: f32, yaw_offset: f32, launch: Option<String> },
     /// A flat, billboarded sprite from a `mod://` asset, sized in world units.
     Sprite { asset: String, size: [f32; 2] },
 }

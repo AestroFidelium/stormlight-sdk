@@ -197,7 +197,7 @@ impl Gen<'_> {
         match self.next() % 3 {
             0 => RateBinding::Fixed(self.f32()),
             1 => RateBinding::MoveSpeed { reference_speed: self.f32() },
-            _ => RateBinding::CastDuration,
+            _ => RateBinding::ActionWindow,
         }
     }
     fn notify(&mut self) -> NotifyPoint {

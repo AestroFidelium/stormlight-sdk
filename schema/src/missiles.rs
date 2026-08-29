@@ -50,4 +50,17 @@ pub struct BodyDescriptor {
     pub on_expire: Vec<Impact>,
     pub collision: CollisionSpec,
     pub flags: BodyFlags,
+    /// How high above its spawn anchor the body travels, in world units
+    /// (stormlight/server#152).
+    ///
+    /// A unit's `Transform` is its **ground** origin, so a body anchored to one
+    /// and given no height leaves from the floor and skims it for the whole
+    /// flight — passing under the model that fired it and under the one it is
+    /// aimed at. Where a shot leaves a character is a property of the art, so it
+    /// is content: the engine adds this to the anchor and asks nothing else.
+    ///
+    /// Purely a vertical offset. Contact is decided on the ground plane every
+    /// other distance question in the simulation is asked on, so raising a body
+    /// changes what it looks like and never what it hits.
+    pub height: Value,
 }

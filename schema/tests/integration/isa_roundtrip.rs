@@ -174,6 +174,7 @@ impl Gen<'_> {
             on_spawn: self.impacts(depth),
             on_hit: self.impacts(depth),
             on_expire: self.impacts(depth),
+            height: self.value(1),
             collision: CollisionSpec {
                 filter: self.filter(),
                 pierce: self.value(1),

@@ -22,7 +22,7 @@
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::attacks::{AttackDelivery, AttackDescriptor};
 use stormlight_mod_abi::common::{Affiliation, ImpactTarget, TargetFilter};
-use stormlight_mod_abi::ids::{DamageTypeId, StatId, TagId, UnitId};
+use stormlight_mod_abi::ids::{AbilityId, DamageTypeId, StatId, TagId, UnitId};
 use stormlight_mod_abi::impacts::{DamageFlags, Impact};
 use stormlight_mod_abi::math::{Value, Var, Who};
 use stormlight_mod_abi::missiles::{BodyDescriptor, BodyFlags, BodyKind, CollisionSpec};
@@ -80,10 +80,14 @@ impl IdMap for ShiftAll {
 #[derive(Debug, TypeGenerator)]
 enum Delivery {
     Melee,
-    /// A launched body, whose collision filter carries a tag handle of its own.
+    /// A launched body, whose collision filter carries a tag handle of its own
+    /// and which flies at a declared height.
     Ranged {
         speed: u16,
         body_tag: u8,
+        /// The stat the flight height reads, so the body's height carries a
+        /// handle the walk has to reach as well.
+        height_stat: u8,
     },
 }
 
@@ -105,6 +109,9 @@ struct Scenario {
     recovery: u16,
     period: u16,
     range: u16,
+    /// The cosmetic key the swing and its shot are dressed by — an interned
+    /// handle, so adoption has to rewrite it like every other one.
+    vfx: u8,
 }
 
 fn sixty_fourths(v: u16) -> f32 {
@@ -114,7 +121,7 @@ fn sixty_fourths(v: u16) -> f32 {
 fn delivery(s: &Scenario) -> AttackDelivery {
     match s.delivery {
         Delivery::Melee => AttackDelivery::Melee,
-        Delivery::Ranged { speed, body_tag } => AttackDelivery::Ranged {
+        Delivery::Ranged { speed, body_tag, height_stat } => AttackDelivery::Ranged {
             body: BodyDescriptor {
                 kind: BodyKind::Missile {
                     speed: Value::Const(sixty_fourths(speed)),
@@ -136,6 +143,7 @@ fn delivery(s: &Scenario) -> AttackDelivery {
                     through_walls: false,
                 },
                 flags: BodyFlags::default(),
+                height: Value::Read(Var::Stat(StatId(u16::from(height_stat)), Who::Caster)),
             },
         },
     }
@@ -164,6 +172,7 @@ fn attack(s: &Scenario) -> AttackDescriptor {
         recovery: Value::Const(sixty_fourths(s.recovery)),
         period: Value::Const(sixty_fourths(s.period)),
         range: Value::Const(sixty_fourths(s.range)),
+        vfx: AbilityId(u32::from(s.vfx)),
     }
 }
 
@@ -231,8 +240,17 @@ fn every_handle_in_an_attack_is_rewritten_at_adoption() {
             "a stat read by the attack's timeline was left in the mod's local id space",
         );
 
+        // The cosmetic key. Nothing else in the engine reads it, which is exactly
+        // why a walk that skipped it would go unnoticed until a shot was dressed
+        // in whatever another mod happened to intern at that index.
+        assert_eq!(
+            after.vfx,
+            AbilityId(u32::from(s.vfx) + u32::from(SHIFT)),
+            "the attack's cosmetic key was left in the mod's local id space",
+        );
+
         // The launched body, for a ranged attack.
-        if let Delivery::Ranged { body_tag, .. } = s.delivery {
+        if let Delivery::Ranged { body_tag, height_stat, .. } = s.delivery {
             let AttackDelivery::Ranged { body } = &after.delivery else {
                 panic!("the delivery shape changed under the walk");
             };
@@ -240,6 +258,11 @@ fn every_handle_in_an_attack_is_rewritten_at_adoption() {
                 body.collision.filter.require_tags,
                 alloc_vec(TagId(u16::from(body_tag) + SHIFT)),
                 "the launched body's collision filter was left in the local id space",
+            );
+            assert_eq!(
+                body.height,
+                Value::Read(Var::Stat(StatId(u16::from(height_stat) + SHIFT), Who::Caster)),
+                "a stat read by the body's flight height was left in the local id space",
             );
         }
     });

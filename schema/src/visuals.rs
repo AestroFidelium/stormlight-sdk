@@ -62,7 +62,26 @@ pub enum VisualModel {
     /// name the art does not carry, falls back to that origin — which is what every
     /// shot did before sockets, so the fallback is the old behaviour rather than a
     /// broken one.
-    Model { asset: String, scale: f32, yaw_offset: f32, launch: Option<String> },
+    ///
+    /// `impact` is the other end of the same flight (stormlight/server#155): the
+    /// attachment point a shot **aimed at this unit** is drawn arriving on — the
+    /// place on the body the art authored for being hit, rather than the ground
+    /// point the simulation tracks the unit by. Without it a drawn shot keeps the
+    /// authoritative velocity and so flies *parallel* to the real one, passing over
+    /// or under the model by however far the muzzle sits from the shooter's own
+    /// anchor.
+    ///
+    /// Two fields because they are two verbs: a rig may name where its shots leave
+    /// and never be shot at, or be a target that fires nothing at all. Both are
+    /// drawings and neither is ever asked about a hitbox; a missing one leaves the
+    /// server's flight exactly as it was.
+    Model {
+        asset: String,
+        scale: f32,
+        yaw_offset: f32,
+        launch: Option<String>,
+        impact: Option<String>,
+    },
     /// A flat, billboarded sprite from a `mod://` asset, sized in world units.
     Sprite { asset: String, size: [f32; 2] },
 }

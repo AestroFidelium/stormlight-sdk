@@ -122,8 +122,15 @@ macro_rules! register_mod {
 /// use stormlight_mod_sdk::client::ClientContext;
 /// use stormlight_mod_sdk::abi::visuals::{EffectRole, PrimitiveShape, VisualModel};
 /// register_client_mod!(|ctx: &mut ClientContext| {
-///     ctx.unit_visual("skirmisher",
-///         VisualModel::Model { asset: "mod://…".into(), scale: 1.0, yaw_offset: 0.0 });
+///     ctx.unit_visual("skirmisher", VisualModel::Model {
+///         asset: "mod://…".into(),
+///         scale: 1.0,
+///         yaw_offset: 0.0,
+///         // The sockets in this art's own skeleton a shot leaves from and
+///         // arrives on; `None` leaves both ends where the server put them.
+///         launch: None,
+///         impact: None,
+///     });
 ///     ctx.effect_visual("bolt", EffectRole::Projectile,
 ///         VisualModel::Primitive { shape: PrimitiveShape::Sphere, color: [1.0, 0.9, 0.3, 1.0] });
 /// });

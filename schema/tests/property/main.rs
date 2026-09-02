@@ -22,6 +22,7 @@ mod registration;
 mod remap;
 mod respawn;
 mod runtime;
+mod shot_sockets;
 mod stats;
 mod tags;
 mod talent_card;

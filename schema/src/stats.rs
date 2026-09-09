@@ -59,9 +59,37 @@ pub const ATTACK_DAMAGE: &str = "attack_damage";
 /// having any notion of one. A unit that declares none reads as zero.
 pub const TARGET_PRIORITY: &str = "target_priority";
 
+/// How wide a unit's body is, in world units — the distance a shot aimed at it
+/// makes contact within.
+///
+/// The engine had **one** contact distance for every body in the game, so a shot
+/// registered against a siege engine and against a rat at exactly the same range:
+/// a target drawn larger than that distance takes the hit while the shot is still
+/// clear of it, and one drawn smaller is hit from thin air.
+///
+/// A unit that declares none keeps the engine's own default, so this changes
+/// nothing until a mod says how big something is — and it *replaces* that default
+/// rather than adding to it, the same way `move_speed` replaces `MoveSpeed` and
+/// `attack_range` replaces an attack's declared reach.
+///
+/// A **simulation** number, not a drawing. It decides where a shot lands, not how
+/// large the art is; the two should agree, and keeping them separate is what lets
+/// a mod scale art for readability without moving a hitbox. The engine cannot
+/// close that gap itself — it has no skeleton and loads no art, so a mesh or a
+/// socket is not something contact could ever be decided against.
+pub const BODY_RADIUS: &str = "body_radius";
+
 /// Every reserved stat name **in id order**: `RESERVED[i]` is `StatId(i)`.
-pub const RESERVED: [&str; 7] =
-    [MOVE_SPEED, ARMOR, RESIST, ATTACK_SPEED, ATTACK_RANGE, ATTACK_DAMAGE, TARGET_PRIORITY];
+pub const RESERVED: [&str; 8] = [
+    MOVE_SPEED,
+    ARMOR,
+    RESIST,
+    ATTACK_SPEED,
+    ATTACK_RANGE,
+    ATTACK_DAMAGE,
+    TARGET_PRIORITY,
+    BODY_RADIUS,
+];
 
 /// The reserved id `name` occupies, or `None` when it is a mod's own stat. The
 /// engine interns [`RESERVED`] in order, so this index *is* the `StatId`.

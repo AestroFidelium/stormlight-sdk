@@ -76,6 +76,17 @@ pub enum VisualModel {
     /// drawings and neither is ever asked about a hitbox; a missing one leaves the
     /// server's flight exactly as it was.
     ///
+    /// `offset` moves the art within the thing it dresses, in world units, before
+    /// anything else is applied. It exists because **a piece of art is authored
+    /// around the point it was meant to be hung on**, and that point is rarely the
+    /// origin: a converted impact burst puts its emitters more than a unit *below*
+    /// its own origin, because the pipeline it came from attached it to a body's
+    /// volume rather than to its feet. Mounted at the point a hit actually
+    /// happened, such art goes off underground. The offset is the mod's way of
+    /// saying where its art expects to be held — the same job a site operation does
+    /// in the pipeline the art came from — and it costs nothing for art authored
+    /// around its own origin, which is most of it.
+    ///
     /// `clips` is what the art plays on its own (stormlight/server#158): effect
     /// containers ship a birth / live / death cycle rather than a state machine,
     /// and a container mounted without one sits at its **bind pose** — which for a
@@ -91,6 +102,8 @@ pub enum VisualModel {
         impact: Option<String>,
         #[serde(default)]
         clips: ModelClips,
+        #[serde(default)]
+        offset: [f32; 3],
     },
     /// A flat, billboarded sprite from a `mod://` asset, sized in world units.
     Sprite { asset: String, size: [f32; 2] },

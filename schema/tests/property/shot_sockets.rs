@@ -68,6 +68,7 @@ impl Scenario {
             launch,
             impact,
             clips: ModelClips::default(),
+            offset: [0.0; 3],
         }
     }
 }

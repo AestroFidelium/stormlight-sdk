@@ -260,6 +260,9 @@ impl Gen<'_> {
                 // Generated both empty and named, so the round trip covers art
                 // that plays a cycle of its own and art that plays nothing.
                 clips: ModelClips { birth: self.string(), live: self.string() },
+                // Generated non-zero as well, so the round trip covers art that
+                // expects to be held somewhere other than its own origin.
+                offset: [self.f32(), self.f32(), self.f32()],
             },
             _ => VisualModel::Sprite { asset: self.string(), size: [self.f32(), self.f32()] },
         }

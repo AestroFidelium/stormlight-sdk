@@ -54,6 +54,7 @@ fn an_animation(states: &[AnimState], masked: bool) -> AnimationDescriptor {
                         asset: "mod://c/rig.glb".to_string(),
                         clip: format!("clip{i}"),
                     },
+                    window: None,
                     looping: i % 2 == 0,
                     blend_in: 0.1,
                     blend_out: 0.2,

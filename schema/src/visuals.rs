@@ -75,15 +75,51 @@ pub enum VisualModel {
     /// and never be shot at, or be a target that fires nothing at all. Both are
     /// drawings and neither is ever asked about a hitbox; a missing one leaves the
     /// server's flight exactly as it was.
+    ///
+    /// `clips` is what the art plays on its own (stormlight/server#158): effect
+    /// containers ship a birth / live / death cycle rather than a state machine,
+    /// and a container mounted without one sits at its **bind pose** — which for a
+    /// missile whose first frame scales it up from half size means a shot half the
+    /// size it was drawn, with none of its emitters moving. Empty (the default) is
+    /// "this art plays nothing", which is what a unit's model wants: a unit is
+    /// animated by its [`AnimationDescriptor`] instead.
     Model {
         asset: String,
         scale: f32,
         yaw_offset: f32,
         launch: Option<String>,
         impact: Option<String>,
+        #[serde(default)]
+        clips: ModelClips,
     },
     /// A flat, billboarded sprite from a `mod://` asset, sized in world units.
     Sprite { asset: String, size: [f32; 2] },
+}
+
+/// What a mounted model plays **on its own** — the lifecycle a piece of art has
+/// when nothing else is driving it.
+///
+/// A *unit* is animated by an [`AnimationDescriptor`]: layers, masks, and states
+/// chosen every frame from what the unit is doing. This is the other case, and it is
+/// most of the art in a cosmetic package — an effect container with no state machine
+/// and exactly one thing to do: appear, then keep going for as long as it lasts.
+///
+/// Both fields name a clip **inside the same container** the model does, exactly
+/// like a [`ClipRef`](crate::animation::ClipRef)'s `clip`. Empty means "nothing to
+/// play", which is the ordinary case for a unit's model and for a piece of art whose
+/// first frame is already the whole of it.
+///
+/// There is deliberately no "and then it goes away" clip yet: nothing in the engine
+/// defers a despawn to wait for one, and a field that reads well and never fires is
+/// worse than an absent one.
+#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub struct ModelClips {
+    /// Played **once** as the model appears, then handing over to `live`. Empty:
+    /// the model starts live.
+    pub birth: String,
+    /// Looped for as long as the model exists. Empty: whatever `birth` left behind
+    /// is held, or the bind pose if there was no birth either.
+    pub live: String,
 }
 
 /// The cosmetic descriptor a client mod attaches to a unit: how the client draws

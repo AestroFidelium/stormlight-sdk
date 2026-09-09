@@ -129,6 +129,7 @@ fn well_formed(notifies: usize, socketed: bool, triggering: bool) -> AnimationDe
             states: vec![StateClip {
                 state: AnimState::Idle,
                 clip: ClipRef { asset: "mod://m/a.glb".to_string(), clip: "idle".to_string() },
+                window: None,
                 looping: true,
                 blend_in: 0.1,
                 blend_out: 0.1,

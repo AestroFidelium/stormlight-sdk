@@ -21,8 +21,8 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::visuals::{
-    ClientRegistration, EffectRole, EffectVisualDescriptor, ModelClips, NamedEffect, PrimitiveShape,
-    VisualDescriptor, VisualModel,
+    ClientRegistration, EffectRole, EffectVisualDescriptor, ModelClips, NamedEffect,
+    PrimitiveShape, VisualDescriptor, VisualModel,
 };
 
 extern crate alloc;

@@ -21,8 +21,8 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::visuals::{
-    ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, PrimitiveShape,
-    VisualDescriptor, VisualModel,
+    ClientRegistration, EffectRole, EffectVisualDescriptor, ModelClips, NamedEffect,
+    PrimitiveShape, VisualDescriptor, VisualModel,
 };
 
 extern crate alloc;
@@ -257,6 +257,12 @@ impl Gen<'_> {
                 // exercised on art that names a socket and art that does not.
                 launch: self.next().is_multiple_of(2).then(|| self.string()),
                 impact: self.next().is_multiple_of(2).then(|| self.string()),
+                // Generated both empty and named, so the round trip covers art
+                // that plays a cycle of its own and art that plays nothing.
+                clips: ModelClips { birth: self.string(), live: self.string() },
+                // Generated non-zero as well, so the round trip covers art that
+                // expects to be held somewhere other than its own origin.
+                offset: [self.f32(), self.f32(), self.f32()],
             },
             _ => VisualModel::Sprite { asset: self.string(), size: [self.f32(), self.f32()] },
         }

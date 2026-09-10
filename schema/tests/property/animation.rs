@@ -228,6 +228,7 @@ impl Gen<'_> {
         StateClip {
             state: self.state(),
             clip: self.clip(),
+            window: None,
             looping: self.bool(),
             blend_in: self.f32(),
             blend_out: self.f32(),

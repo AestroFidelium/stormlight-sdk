@@ -214,6 +214,31 @@ pub struct StateClip {
     pub state: AnimState,
     /// The clip to play in that state.
     pub clip: ClipRef,
+    /// **Where in that clip this state's motion is**, as `[from, to]` seconds.
+    /// `None` — the ordinary case — is the whole clip.
+    ///
+    /// Art is rarely authored to the length of the action it depicts. A swing clip
+    /// can be two and a half seconds of raise, release and recovery while the
+    /// commitment it plays over is a quarter of one, and the two are not related by
+    /// a scale factor: the *release* has to land on the frame the shot leaves, and
+    /// stretching the whole clip to fit the window puts it wherever the ratio
+    /// happens to fall — usually as a blur, at whatever playback ceiling the runtime
+    /// clamps to. Naming the span lets a mod say "the swing is the quarter-second
+    /// around 1.0s", and the runtime starts the playhead there.
+    ///
+    /// Two effects, and no others: playback **starts** at `from`, and `to - from` is
+    /// the length a [`RateBinding`] is measured against (so `ActionWindow` fits the
+    /// span, not the file, to the action). It does not clip playback at `to` — a
+    /// state whose action outlasts its span simply runs on into whatever the artist
+    /// drew next, which is the same thing that happens today past the end of a
+    /// clip.
+    ///
+    /// A degenerate or out-of-range span (reversed, non-finite, longer than the
+    /// clip) is dropped at build and the state plays the whole clip, because a
+    /// silently mis-seeked character is far harder to diagnose than one that plays
+    /// too much.
+    #[serde(default)]
+    pub window: Option<[f32; 2]>,
     /// Whether the clip repeats (a locomotion cycle) or plays once (a flinch).
     pub looping: bool,
     /// Seconds to fade in when this state takes the layer.
@@ -405,6 +430,7 @@ impl AnimationDescriptor {
                 if !binding.blend_in.is_finite()
                     || !binding.blend_out.is_finite()
                     || !binding.rate.is_finite()
+                    || binding.window.is_some_and(|w| !w[0].is_finite() || !w[1].is_finite())
                 {
                     return Err(AnimationError::NonFinite { layer: index });
                 }

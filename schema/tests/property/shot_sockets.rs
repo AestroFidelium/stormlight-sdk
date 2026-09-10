@@ -15,7 +15,7 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::UnitId;
-use stormlight_mod_abi::visuals::{VisualDescriptor, VisualModel};
+use stormlight_mod_abi::visuals::{ModelClips, VisualDescriptor, VisualModel};
 
 extern crate alloc;
 use alloc::string::{String, ToString};
@@ -67,6 +67,8 @@ impl Scenario {
             yaw_offset: 0.0,
             launch,
             impact,
+            clips: ModelClips::default(),
+            offset: [0.0; 3],
         }
     }
 }

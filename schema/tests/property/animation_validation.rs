@@ -80,6 +80,7 @@ fn a_state_clip(state: AnimState, n: usize) -> StateClip {
     StateClip {
         state,
         clip: a_clip(n),
+        window: None,
         looping: true,
         blend_in: 0.1,
         blend_out: 0.2,

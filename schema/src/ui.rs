@@ -87,13 +87,21 @@ pub const MAX_UI_DEPTH: usize = 16;
 /// than this splits it across several [`UiRoot`]s, which the client can show and
 /// hide independently.
 ///
-/// Raised from 256 when tooltips arrived (server#112). A tooltip is real widgets
-/// counted against this, and it multiplies rather than adds: a paged talent panel
-/// declares every page's rows whether or not that page is open, so putting a
-/// three-line box on each of thirty-five choices is a hundred nodes on its own. The
-/// limit exists to bound the walk, not to make a normal HUD split itself in half,
-/// and a thousand nodes is still a walk that finishes in the frame it starts.
-pub const MAX_UI_WIDGETS: usize = 1024;
+/// Raised from 256 when tooltips arrived (server#112), and from 1024 when a quest's
+/// running count did (server#132). Both raises are the same fact about the same
+/// shape, and it is worth stating once: a paged talent panel declares **every**
+/// page's rows whether or not that page is open, so anything hung on a *choice*
+/// multiplies by every choice in the tree rather than adding. A three-line tooltip
+/// on each of thirty-five rows is a hundred nodes; a single figure on each row and
+/// each strip socket is seventy. The panel reached 1010 on tooltips alone, which
+/// left no room for a one-node addition anywhere.
+///
+/// The limit exists to bound the walk, not to make a normal HUD split itself in
+/// half — and two thousand nodes is still a walk that finishes in the frame it
+/// starts, on a tree that is laid out once and then only re-read. A bundle that
+/// genuinely wants more than this splits it across several [`UiRoot`]s, which the
+/// client shows and hides independently.
+pub const MAX_UI_WIDGETS: usize = 2048;
 
 /// A distance along one axis.
 ///
@@ -339,10 +347,30 @@ pub enum OptionState {
     /// choice. So it is a gate like the four above rather than something a HUD reads
     /// out of the description.
     ///
-    /// The **mark**, not the progress. Counting the task and paying it out are the
-    /// effect system's, and the running count is not on the wire yet; this says only
-    /// that there is a task.
+    /// The **mark**, not the progress: it says only that there is a task, and says
+    /// it the same way before anything has happened as after — which is when a
+    /// player is choosing. What a task is *for* is read with
+    /// [`ValueBinding::TalentQuest`].
     Quest,
+    /// The task at this index has been **finished** (stormlight/server#132).
+    ///
+    /// A quest counts past its goal — the counter behind it is an ordinary reserve
+    /// and a mod may go on adjusting it — so "is it done" is a question no amount of
+    /// staring at the number answers. Without this an interface can draw a count
+    /// climbing forever and never say the thing the player is actually waiting for.
+    ///
+    /// Derived, not replicated: both ends hold the goal (it is content) and the
+    /// count is on the wire, so the answer is the spec's own
+    /// [`complete`](crate::talents::QuestSpec::complete) — the same rule the server
+    /// pays out on, which is what keeps "it says done" and "it paid" from ever
+    /// disagreeing.
+    ///
+    /// False for a coordinate that sets no task, and false for one whose count this
+    /// client has not been told — an opponent's panel says nothing about their
+    /// progress rather than saying they have not finished.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    QuestDone,
 }
 
 /// What a widget says about itself while the pointer rests on it
@@ -860,6 +888,32 @@ pub enum ValueBinding {
     /// beside [`Self::Level`], where it reads better, moved `CastProgress` and
     /// `Event` by one and silently reinterpreted every descriptor already built.
     TierLevel(u8),
+    /// How far the subject has got with the task the talent at one coordinate sets
+    /// (stormlight/server#132).
+    ///
+    /// **A coordinate, not a counter.** Which stack counter a quest is counted in
+    /// is the gameplay mod's declaration
+    /// ([`QuestSpec`](crate::talents::QuestSpec)), so an interface that named it
+    /// would be authoring content — the same reason a
+    /// [`UiAction::PickTalent`] names an option index rather than a talent. The
+    /// client crosses from the one to the other through the tree it already holds.
+    /// A HUD that *does* want a bare counter — a combo meter of its own devising —
+    /// still names one with [`Self::Pool`].
+    ///
+    /// All three [`ValuePart`]s are real and different, which is why this is one
+    /// binding rather than two texts: the current count, the declared goal as its
+    /// ceiling, and the fraction between them for a bar. A coordinate that offers
+    /// nothing, a talent that sets no task, or a subject that is not this player's
+    /// own unit all read **empty** — never zero, which would say "none of it done"
+    /// about a quest that may not exist.
+    ///
+    /// Appended, for the reason [`Self::TierLevel`] above states.
+    TalentQuest {
+        /// Which tier of the subject's tree.
+        tier: u8,
+        /// Which of that tier's options, by the index a pick names it by.
+        option: u8,
+    },
 }
 
 /// Which number of a binding a text reads. A bar always reads the fraction.
@@ -1725,12 +1779,16 @@ impl RemapIds for ValueBinding {
             // does an occurrence's own number, which belongs to no family at all,
             // nor a tier's unlock level — that one names an *index* into the
             // subject's own tree, which is a pure mod convention exactly as a
-            // talent coordinate is (server#111).
+            // talent coordinate is (server#111). A quest's progress names one of
+            // those coordinates too (server#132) — the counter behind it is the
+            // gameplay mod's handle, resolved through the tree at read time, and
+            // never something this declaration carries.
             Self::Health
             | Self::Level
             | Self::CastProgress
             | Self::Event(_)
-            | Self::TierLevel(_) => {}
+            | Self::TierLevel(_)
+            | Self::TalentQuest { .. } => {}
             Self::Pool(pool) => pool.remap_ids(m)?,
             Self::Stat(id) => *id = m.stat(*id)?,
         }

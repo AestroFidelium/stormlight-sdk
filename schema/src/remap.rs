@@ -560,10 +560,14 @@ impl RemapIds for TalentDescriptor {
         self.grants.remap_ids(m)?;
         self.modifiers.remap_ids(m)?;
         remap_tags(&mut self.tags, m)?;
-        // A task names the counter it is counted in (server#132), which is an
-        // interned handle like any other and has to be rewritten with the rest.
+        // A task names the counter it is counted in and the effects completing it
+        // hands over (server#132) — interned handles like any other, and the reward
+        // is a whole `Impact` tree, so it walks rather than being rewritten field by
+        // field. A prize left in local ids would pay out somebody else's buff,
+        // forty minutes into a match.
         if let Some(quest) = &mut self.quest {
             quest.counter = m.stack(quest.counter)?;
+            quest.reward.remap_ids(m)?;
         }
         Ok(())
     }

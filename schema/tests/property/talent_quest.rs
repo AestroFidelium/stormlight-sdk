@@ -50,7 +50,7 @@ impl Scenario {
     }
 
     fn spec(&self) -> QuestSpec {
-        QuestSpec { counter: StackId(self.counter), goal: self.goal() }
+        QuestSpec { counter: StackId(self.counter), goal: self.goal(), reward: Vec::new() }
     }
 
     fn talent(&self, quest: Option<QuestSpec>) -> TalentDescriptor {
@@ -99,11 +99,15 @@ fn a_declared_task_survives_the_wire() {
         let talent = s.talent(Some(s.spec()));
         let bytes = postcard::to_allocvec(&talent).expect("a talent must serialize");
         let back: TalentDescriptor = postcard::from_bytes(&bytes).expect("and deserialize");
-        assert_eq!(back.quest.map(|q| q.counter), Some(StackId(s.counter)), "the counter moved");
+        assert_eq!(
+            back.quest.as_ref().map(|q| q.counter),
+            Some(StackId(s.counter)),
+            "the counter moved"
+        );
         // The goal is compared through the reader, because `NaN != NaN` and the
         // reader is the only thing that ever looks at this number anyway.
         assert_eq!(
-            back.quest.and_then(|q| q.goal()),
+            back.quest.as_ref().and_then(QuestSpec::goal),
             s.spec().goal(),
             "the declared target did not survive the trip",
         );

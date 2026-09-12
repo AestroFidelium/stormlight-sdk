@@ -93,7 +93,51 @@ pub enum QuestPayout {
     ///
     /// The single-goal task is the one-element case.
     Stages(Vec<QuestStage>),
+    /// One reward per counted increment, stopping at a ceiling
+    /// (stormlight/server#138).
+    ///
+    /// *"Every hit adds one, to a maximum of forty-five."* There is no threshold at
+    /// all; the interesting part is where it **stops**.
+    ///
+    /// It is the same machinery as a ladder and not a second engine path, because
+    /// the two only ever disagree about one question — what count reaches rung `i` —
+    /// and here the answer is `i + 1`. So the latch, the payout walk, the wire and
+    /// the interface are unchanged, and the ceiling really is declared in the same
+    /// units the increment is: how many increments pay.
+    ///
+    /// # When this is the wrong tool
+    ///
+    /// If what accrues is a **standing quantity** — a stat bonus that grows with the
+    /// count — a mod should not use a task at all. An ordinary modifier whose value
+    /// reads [`Var::StackCount`](crate::math::Var::StackCount) and clamps expresses
+    /// exactly `min(count × step, ceiling)`, and expresses it *better*: it is
+    /// derived rather than latched, so a count walked backwards walks the bonus back
+    /// with it and no record can drift out of step with the tally.
+    ///
+    /// This is for a per-increment **event** — something that has to happen once per
+    /// count and stay happened. That is precisely what a latch is for, and precisely
+    /// what a derived modifier cannot do.
+    PerCount {
+        /// What each counted increment hands over.
+        reward: Vec<Impact>,
+        /// How many increments pay, at most. Counts past it change nothing —
+        /// without stopping the count, so a player who is capped can still see that
+        /// they are capped rather than watching a frozen counter.
+        ceiling: u32,
+    },
 }
+
+/// The most increments one [`QuestPayout::PerCount`] task may pay for.
+///
+/// A ladder is bounded by its own declaration — a mod that wants a thousand rungs
+/// has to write a thousand of them — while a ceiling is one number, so a slip of the
+/// keyboard is the difference between forty-five payouts and four billion. One jump
+/// past a ceiling that large would ask the simulation to dispatch four billion
+/// effect trees on one tick.
+///
+/// Generous rather than tight: no design writes a thousand steps, and a limit that
+/// argued with content would be worse than the accident it prevents.
+pub const MAX_PER_COUNT_PAYOUTS: u32 = 1024;
 
 /// A way of finishing a task that is not counting to the top of it
 /// (stormlight/server#137).
@@ -201,6 +245,12 @@ pub enum QuestError {
     /// a mod that wrote its ladder out of order meant something, and quietly
     /// reordering it would pay rewards in an order the author never wrote.
     UnorderedStages { stage: u16 },
+    /// A per-increment payout that pays for no increments at all — the ceiling
+    /// equivalent of an empty ladder.
+    ZeroCeiling,
+    /// A ceiling past [`MAX_PER_COUNT_PAYOUTS`]. See that constant for why one
+    /// number needs a limit where a list of rungs does not.
+    CeilingTooHigh { ceiling: u32 },
 }
 
 impl fmt::Display for QuestError {
@@ -212,6 +262,10 @@ impl fmt::Display for QuestError {
             }
             Self::UnorderedStages { stage } => {
                 write!(f, "task stage {stage} does not sit above the stage before it")
+            }
+            Self::ZeroCeiling => f.write_str("task pays per increment but pays for none"),
+            Self::CeilingTooHigh { ceiling } => {
+                write!(f, "task pays for {ceiling} increments, at most {MAX_PER_COUNT_PAYOUTS}")
             }
         }
     }
@@ -269,6 +323,18 @@ impl QuestSpec {
                 }
                 Ok(())
             }
+            QuestPayout::PerCount { ceiling, .. } => {
+                if *ceiling == 0 {
+                    // A shortcut cannot rescue this one the way it rescues an empty
+                    // ladder: "pays per increment, for no increments" is not an
+                    // objective finished another way, it is a contradiction.
+                    return Err(QuestError::ZeroCeiling);
+                }
+                if *ceiling > MAX_PER_COUNT_PAYOUTS {
+                    return Err(QuestError::CeilingTooHigh { ceiling: *ceiling });
+                }
+                Ok(())
+            }
         }
     }
 
@@ -290,6 +356,7 @@ impl QuestSpec {
         }
         match &self.payout {
             QuestPayout::Stages(stages) => u32::try_from(stages.len()).unwrap_or(u32::MAX),
+            QuestPayout::PerCount { ceiling, .. } => *ceiling,
         }
     }
 
@@ -307,6 +374,12 @@ impl QuestSpec {
             QuestPayout::Stages(stages) => {
                 stages.get(usize::try_from(rung).ok()?).map(|stage| stage.threshold)
             }
+            // Rung `i` is the `(i + 1)`th increment, which is the whole of what
+            // makes a per-increment payout the same machinery as a ladder.
+            QuestPayout::PerCount { ceiling, .. } => {
+                #[allow(clippy::cast_precision_loss)] // Bounded by MAX_PER_COUNT_PAYOUTS.
+                (rung < *ceiling).then(|| (rung + 1) as f32)
+            }
         }
     }
 
@@ -322,6 +395,13 @@ impl QuestSpec {
                 .ok()
                 .and_then(|at| stages.get(at))
                 .map_or(&[][..], |stage| &stage.reward),
+            QuestPayout::PerCount { reward, ceiling } => {
+                if rung < *ceiling {
+                    reward
+                } else {
+                    &[]
+                }
+            }
         }
     }
 
@@ -341,14 +421,26 @@ impl QuestSpec {
     /// record here, and the cheap one is the honest one.
     #[must_use]
     pub fn reached(&self, count: f32) -> u32 {
-        if !count.is_finite() {
+        if !count.is_finite() || !self.well_formed() {
             return 0;
         }
-        (0..self.rungs())
-            .take_while(|&rung| self.threshold(rung).is_some_and(|at| count >= at))
-            .count()
-            .try_into()
-            .unwrap_or(u32::MAX)
+        match &self.payout {
+            // A handful of rungs, walked. The `take_while` is the prefix property
+            // stated as code.
+            QuestPayout::Stages(_) => (0..self.rungs())
+                .take_while(|&rung| self.threshold(rung).is_some_and(|at| count >= at))
+                .count()
+                .try_into()
+                .unwrap_or(u32::MAX),
+            // Answered in closed form rather than walked: a ceiling is one number
+            // and a walk would be proportional to it.
+            // Truncated by the cast rather than floored, because `f32::floor` is
+            // std-only and this crate is `no_std` for the guests: the count is
+            // already non-negative here, where the two agree. A saturating cast
+            // also means a count past `u32::MAX` clamps rather than wrapping.
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            QuestPayout::PerCount { ceiling, .. } => (count.max(0.0) as u32).min(*ceiling),
+        }
     }
 
     /// The task's final target — the last rung's threshold, and the figure an
@@ -470,6 +562,9 @@ impl QuestSpec {
                         .map(|stage| QuestStage { threshold: stage.threshold, reward: Vec::new() })
                         .collect(),
                 ),
+                QuestPayout::PerCount { ceiling, .. } => {
+                    QuestPayout::PerCount { reward: Vec::new(), ceiling: *ceiling }
+                }
             },
         }
     }

@@ -31,6 +31,7 @@ mod talent_focus;
 mod talent_quest;
 mod talent_quest_reward;
 mod talent_tree;
+mod task_per_count;
 mod task_shortcut;
 mod task_stages;
 mod ui;

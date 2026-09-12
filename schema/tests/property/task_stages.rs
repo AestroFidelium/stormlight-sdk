@@ -199,6 +199,11 @@ fn a_refusal_names_what_is_wrong_and_where() {
                 let below = thresholds[usize::from(stage) - 1];
                 assert!(at <= below, "an ordered threshold {at} above {below} was refused");
             }
+            // Ceiling faults belong to the other payout schedule, which this file
+            // never builds (server#138).
+            Err(other @ (QuestError::ZeroCeiling | QuestError::CeilingTooHigh { .. })) => {
+                panic!("a ladder was refused for a ceiling fault: {other:?}")
+            }
         }
     });
 }

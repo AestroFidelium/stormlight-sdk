@@ -254,21 +254,63 @@ pub enum Shown {
         /// What has to be true of it.
         is: OptionState,
     },
+    /// Only while the task the talent at one coordinate sets is in a given state
+    /// (stormlight/server#139).
+    ///
+    /// The coordinate is the same `(tier, option)` every other talent widget names,
+    /// so a panel gates a row's progress ring on exactly the row it already declared
+    /// — and still names neither a talent nor a counter.
+    ///
+    /// Never true for a coordinate that offers nothing, for one whose talent sets no
+    /// task, or for a subject whose progress this client has not been told. An
+    /// opponent's panel says nothing about their tasks rather than saying they have
+    /// not started them.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    WhileTalentTask {
+        /// Which tier of the subject's tree.
+        tier: u8,
+        /// Which of that tier's options, by the index a pick names it by.
+        option: u8,
+        /// What has to be true of the task it sets.
+        is: TaskState,
+    },
+    /// Only while one of the subject's **own** tasks is in a given state
+    /// (stormlight/server#139).
+    ///
+    /// A unit carries tasks with nothing chosen — a hero's baseline objective, an
+    /// event's, a map's — and those have no coordinate, which is exactly why this is
+    /// a second gate rather than a second reading of the one above. Addressed by
+    /// position in [`UnitDescriptor::tasks`](crate::units::UnitDescriptor::tasks),
+    /// which is the only key such a task has.
+    ///
+    /// The one gate in this family that is about no tier at all, so
+    /// [`Shown::tier`] answers `None` for it.
+    WhileUnitTask {
+        /// Which of the subject's own tasks, by its position in the descriptor.
+        index: u8,
+        /// What has to be true of it.
+        is: TaskState,
+    },
 }
 
 impl Shown {
-    /// The tier this gate is about, or `None` for [`Self::Always`].
+    /// The tier this gate is about, or `None` for a gate that is about no tier.
     ///
-    /// Every conditional gate names exactly one tier: a widget's condition is always
-    /// a question about one row of one tree.
+    /// Almost every conditional gate names exactly one tier, because a widget's
+    /// condition is almost always a question about one row of one tree. The
+    /// exception is [`Self::WhileUnitTask`] (stormlight/server#139): a unit's own
+    /// task belongs to no tree at all, which is most of the reason it needed a gate
+    /// of its own.
     #[must_use]
     pub fn tier(self) -> Option<u8> {
         match self {
-            Self::Always => None,
+            Self::Always | Self::WhileUnitTask { .. } => None,
             Self::WhileTierSelected(tier)
             | Self::WhileTierUndecided(tier)
             | Self::WhileTierWaiting(tier)
-            | Self::WhileOption { tier, .. } => Some(tier),
+            | Self::WhileOption { tier, .. }
+            | Self::WhileTalentTask { tier, .. } => Some(tier),
         }
     }
 }
@@ -349,28 +391,62 @@ pub enum OptionState {
     ///
     /// The **mark**, not the progress: it says only that there is a task, and says
     /// it the same way before anything has happened as after — which is when a
-    /// player is choosing. What a task is *for* is read with
+    /// player is choosing. How far along it is belongs to a different family
+    /// ([`TaskState`], stormlight/server#139), because that is a question about the
+    /// task rather than about the option; what it is *for* is read with
     /// [`ValueBinding::TalentQuest`].
-    Quest,
-    /// The task at this index has been **finished** (stormlight/server#132).
-    ///
-    /// A quest counts past its goal — the counter behind it is an ordinary reserve
-    /// and a mod may go on adjusting it — so "is it done" is a question no amount of
-    /// staring at the number answers. Without this an interface can draw a count
-    /// climbing forever and never say the thing the player is actually waiting for.
-    ///
-    /// Derived, not replicated: both ends hold the goal (it is content) and the
-    /// count is on the wire, so the answer is the spec's own
-    /// [`complete`](crate::talents::QuestSpec::complete) — the same rule the server
-    /// pays out on, which is what keeps "it says done" and "it paid" from ever
-    /// disagreeing.
-    ///
-    /// False for a coordinate that sets no task, and false for one whose count this
-    /// client has not been told — an opponent's panel says nothing about their
-    /// progress rather than saying they have not finished.
     ///
     /// **Appended, not inserted**: the variant order is the wire tag.
-    QuestDone,
+    Quest,
+}
+
+/// What a widget needs to know about a **task's progress** (stormlight/server#139).
+///
+/// Its own family rather than more [`OptionState`], and the split is the design
+/// decision this issue existed to make: [`OptionState`] answers questions about an
+/// **option** — what the tree offers there, what the player decided, which button it
+/// is about — while these answer questions about a **task**, which is the player's
+/// progress through something and is a different subject entirely.
+///
+/// The practical proof that they are different: a task does not have to belong to an
+/// option at all. A unit carries its own
+/// ([`UnitDescriptor::tasks`](crate::units::UnitDescriptor::tasks)) with nothing
+/// chosen, and an `OptionState` has no coordinate to name it by. Two gates read this
+/// one enum — [`Shown::WhileTalentTask`] and [`Shown::WhileUnitTask`] — so a panel
+/// and a unit frame ask the same question in the same words.
+///
+/// The **mark** stays on [`OptionState::Quest`], and deliberately: "this row sets a
+/// task" is a fact about the option, true before anything has happened, and it is
+/// what a player choosing needs. "How far along it is" is a fact about the task.
+///
+/// # Every one of these is **told**, never worked out
+///
+/// A client that decided for itself whether a rung had been reached would disagree
+/// with the simulation the moment a shortcut fired — a shortcut finishes a task the
+/// count never got to the top of (stormlight/server#137). So all three read the
+/// paid record the server publishes, and the count is only ever a numerator.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum TaskState {
+    /// There is a task here and it is not finished — what a progress ring is drawn
+    /// for, including before anything has been counted.
+    #[default]
+    Running,
+    /// At least one rung has been paid, and the task is not finished.
+    ///
+    /// The state a socket changes into once there is something to show: a ring with
+    /// a mark on it rather than an empty one.
+    ///
+    /// This is a **level**, not a pulse. "A rung was *just* paid" is a different kind
+    /// of fact — it is an occurrence, and a gate that is true for as long as a
+    /// condition holds cannot say "again". A flash per rung belongs to the transient
+    /// mechanism ([`RootVisibility::OnEvent`]) and needs the payout on the wire as an
+    /// event, which is a feature of its own rather than a field here.
+    Underway,
+    /// Every rung has been paid, or the shortcut fired.
+    ///
+    /// Told, for the reason the family docs give: a count that never reached the top
+    /// can still have finished the task.
+    Done,
 }
 
 /// What a widget says about itself while the pointer rests on it
@@ -913,7 +989,62 @@ pub enum ValueBinding {
         tier: u8,
         /// Which of that tier's options, by the index a pick names it by.
         option: u8,
+        /// Whether the numbers are about the whole objective or the rung being
+        /// worked at (stormlight/server#139).
+        span: QuestSpan,
     },
+    /// How far the subject has got with one of its **own** tasks
+    /// (stormlight/server#139).
+    ///
+    /// The same three numbers as [`Self::TalentQuest`], for a task nobody chose. A
+    /// unit carries its own with no coordinate to name them by, so this addresses one
+    /// by its position in
+    /// [`UnitDescriptor::tasks`](crate::units::UnitDescriptor::tasks) — the only key
+    /// such a task has, and the same one the wire uses.
+    ///
+    /// Empty for a unit that declares no task at that index, and for a subject that
+    /// is not this player's own unit.
+    ///
+    /// Appended, for the reason [`Self::TierLevel`] above states.
+    UnitTask {
+        /// Which of the subject's own tasks, by its position in the descriptor.
+        index: u8,
+        /// Whether the numbers are about the whole objective or the rung being
+        /// worked at.
+        span: QuestSpan,
+    },
+}
+
+/// Which of a task's two targets a reading is against (stormlight/server#139).
+///
+/// A staged task has two honest answers to "how far along is this", and a HUD wants
+/// both in different places: a socket's ring fills toward the **next reward**, while
+/// a panel's line reads the whole objective. Neither is derivable from the other
+/// without the client deciding something it should be told, so it is a field rather
+/// than a convention.
+///
+/// Both spans read *absolutely* — the current value is the count itself, capped at
+/// whichever target — so the number a text prints and the fraction a bar fills are
+/// always the same two numbers. A fill measured from the rung below would make
+/// "22 / 30" and a bar at 47% two different claims about one task.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum QuestSpan {
+    /// The whole objective: the count against the task's final target.
+    ///
+    /// The reading a single-goal task always had, and what a task with no stages to
+    /// speak of should be drawn against.
+    #[default]
+    Whole,
+    /// The rung being worked at: the count against the **next unpaid threshold**.
+    ///
+    /// Next by what has been *paid*, not by what has been counted — a shortcut pays
+    /// rungs the count never reached (stormlight/server#137), and a bar drawn against
+    /// a rung already handed over would be filling toward a reward the player
+    /// already has.
+    ///
+    /// With every rung paid there is no next one, and this reads as the whole
+    /// objective, full: the honest end state rather than an empty bar.
+    Stage,
 }
 
 /// Which number of a binding a text reads. A bar always reads the fraction.
@@ -1779,16 +1910,18 @@ impl RemapIds for ValueBinding {
             // does an occurrence's own number, which belongs to no family at all,
             // nor a tier's unlock level — that one names an *index* into the
             // subject's own tree, which is a pure mod convention exactly as a
-            // talent coordinate is (server#111). A quest's progress names one of
-            // those coordinates too (server#132) — the counter behind it is the
-            // gameplay mod's handle, resolved through the tree at read time, and
-            // never something this declaration carries.
+            // talent coordinate is (server#111). A task's progress names one of
+            // those coordinates too (server#132), or a position in the subject's own
+            // list of tasks (server#139) — the counter behind either is the gameplay
+            // mod's handle, resolved at read time, and never something this
+            // declaration carries.
             Self::Health
             | Self::Level
             | Self::CastProgress
             | Self::Event(_)
             | Self::TierLevel(_)
-            | Self::TalentQuest { .. } => {}
+            | Self::TalentQuest { .. }
+            | Self::UnitTask { .. } => {}
             Self::Pool(pool) => pool.remap_ids(m)?,
             Self::Stat(id) => *id = m.stat(*id)?,
         }

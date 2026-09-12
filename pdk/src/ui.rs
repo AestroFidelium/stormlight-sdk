@@ -47,9 +47,9 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, ListBinding, OptionState, Shown, Slice, StateStyle, Style,
-    SummonRequest, Sweep, SweepDirection, TalentText, TextSource, Tooltip, UiAction, ValueBinding,
-    ValuePart, Widget, WidgetKind, WidgetState,
+    Anchor, Flow, Layout, Length, ListBinding, OptionState, QuestSpan, Shown, Slice, StateStyle,
+    Style, SummonRequest, Sweep, SweepDirection, TalentText, TaskState, TextSource, Tooltip,
+    UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -76,6 +76,26 @@ pub fn text(literal: &str) -> Widget {
 #[must_use]
 pub fn bound_text(binding: ValueBinding, part: ValuePart, decimals: u8) -> Widget {
     widget(WidgetKind::Text { text: TextSource::Value { binding, part, decimals } })
+}
+
+/// How far the subject has got with the task the talent at one coordinate sets
+/// (stormlight/server#139).
+///
+/// `span` picks which of a staged task's two honest targets the numbers are against:
+/// the whole objective, or the rung being worked at. A socket's ring usually wants
+/// the second and a panel's line the first, and neither is derivable from the other
+/// without the client deciding something it should be told.
+#[must_use]
+pub fn talent_task(tier: u8, option: u8, span: QuestSpan) -> ValueBinding {
+    ValueBinding::TalentQuest { tier, option, span }
+}
+
+/// How far the subject has got with one of its **own** tasks
+/// (stormlight/server#139) — one nobody chose, addressed by its position in the
+/// unit's descriptor.
+#[must_use]
+pub fn unit_task(index: u8, span: QuestSpan) -> ValueBinding {
+    ValueBinding::UnitTask { index, span }
 }
 
 /// The subject's chosen talents, one per line.
@@ -366,6 +386,23 @@ pub trait WidgetExt: Sized {
     /// holding rows gated on their own coordinate.
     #[must_use]
     fn shown_while_option(self, tier: u8, option: u8, is: OptionState) -> Self;
+    /// Lay it out only while the task the talent at one coordinate sets is in a
+    /// given state (stormlight/server#139).
+    ///
+    /// What a socket's progress ring and its completed mark are gated on. Every one
+    /// of these is **told** by the server: a client never works out whether a rung
+    /// has been paid, because a shortcut finishes a task the count never got to the
+    /// top of.
+    #[must_use]
+    fn shown_while_talent_task(self, tier: u8, option: u8, is: TaskState) -> Self;
+    /// Lay it out only while one of the subject's **own** tasks is in a given state
+    /// (stormlight/server#139).
+    ///
+    /// A unit carries tasks with nothing chosen — a hero's baseline objective, an
+    /// event's, a map's — and those have no coordinate, so one is addressed by its
+    /// position in the unit's descriptor.
+    #[must_use]
+    fn shown_while_unit_task(self, index: u8, is: TaskState) -> Self;
     /// Lay it out only while `tier` is still waiting on a choice
     /// (stormlight/server#120).
     ///
@@ -520,6 +557,14 @@ impl WidgetExt for Widget {
     }
     fn shown_while_option(mut self, tier: u8, option: u8, is: OptionState) -> Self {
         self.layout.shown = Shown::WhileOption { tier, option, is };
+        self
+    }
+    fn shown_while_talent_task(mut self, tier: u8, option: u8, is: TaskState) -> Self {
+        self.layout.shown = Shown::WhileTalentTask { tier, option, is };
+        self
+    }
+    fn shown_while_unit_task(mut self, index: u8, is: TaskState) -> Self {
+        self.layout.shown = Shown::WhileUnitTask { index, is };
         self
     }
     fn shown_while_tier_undecided(mut self, tier: u8) -> Self {

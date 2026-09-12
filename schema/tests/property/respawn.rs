@@ -122,6 +122,7 @@ fn unit(id: UnitId, respawn: Option<RespawnSpec>) -> UnitDescriptor {
         progression: None,
         turn_rate: None,
         attack: None,
+        tasks: Vec::new(),
     }
 }
 

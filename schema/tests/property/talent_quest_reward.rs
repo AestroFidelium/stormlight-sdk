@@ -31,7 +31,8 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::impacts::{Impact, PoolRef};
 use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
-use stormlight_mod_abi::talents::{AbilitySelector, QuestSpec, TalentDescriptor};
+use stormlight_mod_abi::talents::{AbilitySelector, TalentDescriptor};
+use stormlight_mod_abi::tasks::QuestSpec;
 
 extern crate alloc;
 use alloc::vec;
@@ -107,7 +108,7 @@ impl Scenario {
     }
 
     fn spec(&self, reward: Vec<Impact>) -> QuestSpec {
-        QuestSpec { counter: StackId(self.counter), goal: f32::from(self.goal), reward }
+        QuestSpec::single(StackId(self.counter), f32::from(self.goal), reward)
     }
 
     fn talent(&self, quest: Option<QuestSpec>) -> TalentDescriptor {
@@ -131,7 +132,7 @@ impl Scenario {
 fn a_task_may_hand_over_nothing() {
     check!().with_type::<Scenario>().for_each(|s| {
         let spec = s.spec(Vec::new());
-        assert!(spec.reward.is_empty(), "an unrewarded task invented a prize");
+        assert!(spec.reward(0).is_empty(), "an unrewarded task invented a prize");
         assert_eq!(spec.goal(), Some(f32::from(s.goal)), "and it is still a task");
     });
 }
@@ -162,7 +163,7 @@ fn adoption_rewrites_the_handles_inside_a_reward() {
             StackId(s.counter.wrapping_add(s.shift)),
             "the counter was not rewritten",
         );
-        match quest.reward.as_slice() {
+        match quest.reward(0) {
             [
                 Impact::ApplyModifiers { buff, .. },
                 Impact::AdjustPool { pool: PoolRef::Resource(res), .. },

@@ -130,6 +130,7 @@ fn unit(id: UnitId, talent_tree: Option<TalentTree>) -> UnitDescriptor {
         progression: None,
         turn_rate: None,
         attack: None,
+        tasks: Vec::new(),
     }
 }
 

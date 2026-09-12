@@ -190,6 +190,7 @@ fn unit(id: UnitId, attack: Option<AttackDescriptor>) -> UnitDescriptor {
         respawn: None,
         progression: None,
         turn_rate: None,
+        tasks: Vec::new(),
         attack,
     }
 }

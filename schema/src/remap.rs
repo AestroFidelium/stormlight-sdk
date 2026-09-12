@@ -32,6 +32,7 @@ use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
 use crate::progression::{LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpSource};
 use crate::talent_tree::{TalentTier, TalentTree};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
+use crate::tasks::{QuestPayout, QuestSpec};
 use crate::triggers::{EventFilter, EventKind, Reaction};
 use crate::units::{ResourcePool, UnitDescriptor};
 use crate::visuals::{
@@ -566,8 +567,21 @@ impl RemapIds for TalentDescriptor {
         // field. A prize left in local ids would pay out somebody else's buff,
         // forty minutes into a match.
         if let Some(quest) = &mut self.quest {
-            quest.counter = m.stack(quest.counter)?;
-            quest.reward.remap_ids(m)?;
+            quest.remap_ids(m)?;
+        }
+        Ok(())
+    }
+}
+
+impl RemapIds for QuestSpec {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        self.counter = m.stack(self.counter)?;
+        match &mut self.payout {
+            QuestPayout::Stages(stages) => {
+                for stage in stages.iter_mut() {
+                    stage.reward.remap_ids(m)?;
+                }
+            }
         }
         Ok(())
     }
@@ -674,6 +688,11 @@ impl RemapIds for UnitDescriptor {
         // The basic attack is a full payload tree — every handle in it is the
         // mod's own local id and must be rewritten like an ability's (server#89).
         self.attack.remap_ids(m)?;
+        // The unit's own tasks, each a counter handle and a ladder of reward trees
+        // (server#136) — walked exactly as a talent's is.
+        for task in self.tasks.iter_mut() {
+            task.remap_ids(m)?;
+        }
         // `respawn` is deliberately not walked: a delay and three policy flags
         // hold no interned handle, so there is nothing here to rewrite.
         self.progression.remap_ids(m)?;

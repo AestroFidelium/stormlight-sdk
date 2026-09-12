@@ -23,7 +23,8 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{StackId, TalentId};
-use stormlight_mod_abi::talents::{AbilitySelector, QuestSpec, TalentDescriptor};
+use stormlight_mod_abi::talents::{AbilitySelector, TalentDescriptor};
+use stormlight_mod_abi::tasks::QuestSpec;
 
 extern crate alloc;
 use alloc::vec::Vec;
@@ -50,7 +51,7 @@ impl Scenario {
     }
 
     fn spec(&self) -> QuestSpec {
-        QuestSpec { counter: StackId(self.counter), goal: self.goal(), reward: Vec::new() }
+        QuestSpec::single(StackId(self.counter), self.goal(), Vec::new())
     }
 
     fn talent(&self, quest: Option<QuestSpec>) -> TalentDescriptor {

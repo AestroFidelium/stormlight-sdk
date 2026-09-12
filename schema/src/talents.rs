@@ -8,9 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::behaviors::Modifier;
 use crate::common::NumOp;
-use crate::ids::{AbilityId, ParamId, Slot, StackId, TagId, TalentId};
+use crate::ids::{AbilityId, ParamId, Slot, TagId, TalentId};
 use crate::impacts::Impact;
 use crate::math::Value;
+use crate::tasks::QuestSpec;
 use crate::triggers::Reaction;
 
 /// Which abilities a talent applies to — keyed on slot/tag/id, never identity.
@@ -76,121 +77,6 @@ pub enum AbilityFocus {
     Ability(AbilityId),
 }
 
-/// A talent that sets the player a task and pays out when it is done
-/// (stormlight/server#132).
-///
-/// **The whole task in one declaration**: the counter it is counted in, how far it
-/// has to go, and what reaching it hands over. The three are halves of one
-/// sentence — a prize in a field of its own would be a second thing to declare that
-/// means nothing without the first two, and a task with no counter to watch is not
-/// a task at all.
-///
-/// A quest is a real design axis beside the ordinary talent — one is a step, the
-/// other is something a player plays toward — and which of the two a talent is has
-/// to be legible **at the moment of choosing**, before any of it has happened. A row
-/// that looked identical to the ones around it until forty minutes in would be the
-/// panel hiding the single most important thing about that choice. So the
-/// declaration carries what an interface needs to *say* it is a quest, as well as
-/// what the simulation needs to run one.
-///
-/// The counting itself is nothing new: it is an ordinary
-/// [`AdjustPool`](crate::impacts::Impact::AdjustPool) on the named counter, from a
-/// rider, a reaction or any other effect a mod already writes. What the engine adds
-/// is the watch and the latch — see [`reward`](Self::reward).
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub struct QuestSpec {
-    /// The stack counter the task is counted in.
-    pub counter: StackId,
-    /// How many are needed. A plain number rather than a [`Value`], because this is
-    /// the figure printed on the card: a goal that changed with the reader's level
-    /// would be a target a player cannot aim at.
-    pub goal: f32,
-    /// What completing it hands over — the same effect vocabulary everything else
-    /// in the ISA uses, so a quest can pay out anything an ability can.
-    ///
-    /// Fired **once**, by the engine, the first time the counter reaches the goal,
-    /// against the unit holding the talent as caster and target alike. That
-    /// once-ness is the reason it lives here rather than being authored as an
-    /// ordinary rider: a rider past the goal fires on every cast, and every mod
-    /// that wanted a quest would have to invent the same latch — differently.
-    ///
-    /// Empty is the honest default and stays legal: a task with no prize is a
-    /// counter a mod keeps for its own reasons, which is a thing a mod is allowed
-    /// to want.
-    #[serde(default)]
-    pub reward: Vec<Impact>,
-}
-
-impl QuestSpec {
-    /// The effective goal: finite and above zero, or `None` for a declaration that
-    /// asks for nothing.
-    ///
-    /// Total by design, because nothing else validates this number. A goal of zero
-    /// is a quest already complete before it starts, and a negative or `NaN` one is
-    /// a target no count can reach — both read as "no goal", so an interface prints
-    /// no figure rather than a nonsense one.
-    #[must_use]
-    pub fn goal(&self) -> Option<f32> {
-        (self.goal.is_finite() && self.goal > 0.0).then_some(self.goal)
-    }
-
-    /// Whether a count of `count` has finished the task.
-    ///
-    /// The one rule, held here so the server's payout and the interface's progress
-    /// can never disagree about what "done" means. A task whose goal nobody can
-    /// reach ([`goal`](Self::goal)) is never complete, so a malformed declaration
-    /// pays nothing out rather than paying out on the first tick.
-    ///
-    /// The count must be a **number**. `inf >= goal` is arithmetically true and
-    /// means nothing: a counter that has left the finite numbers has lost whatever
-    /// it was counting, and paying a prize out for it — or telling a player they
-    /// have finished — would be rewarding a broken tally. It also keeps this in step
-    /// with [`progress`](Self::progress), which shows such a count as no progress at
-    /// all; a task that reads "0 of 40" and calls itself finished is the one shape
-    /// these two rules must never produce between them.
-    #[must_use]
-    pub fn complete(&self, count: f32) -> bool {
-        self.goal().is_some_and(|goal| count.is_finite() && count >= goal)
-    }
-
-    /// How far along the task a count of `count` is, **capped at the goal** — the
-    /// figure an interface prints.
-    ///
-    /// Capped because the counter is not the task. A stack counter is an ordinary
-    /// reserve and a mod may go on adjusting it long after the goal is passed — the
-    /// same counter may feed two talents, or be spent and re-earned — so the raw
-    /// number climbing past the target says nothing a player wants to read. "40 of
-    /// 40" is the end of a task; "57 of 40" is a bug in the eyes of everyone who
-    /// sees it.
-    ///
-    /// A HUD that genuinely wants the raw tally still has it, by naming the counter
-    /// directly with [`PoolRef::Stacks`](crate::impacts::PoolRef::Stacks). This is
-    /// the *task's* reading, and a task stops at its goal.
-    ///
-    /// Zero for a goal no count can reach, matching [`fraction`](Self::fraction).
-    #[must_use]
-    pub fn progress(&self, count: f32) -> f32 {
-        match self.goal() {
-            Some(goal) if count.is_finite() => count.clamp(0.0, goal),
-            _ => 0.0,
-        }
-    }
-
-    /// How far along a count of `count` is, in `0.0..=1.0` — what a bar fills to.
-    ///
-    /// A task with no reachable target reads **empty** rather than full: there is
-    /// no progress to be made toward a goal no count reaches, and a full bar over
-    /// a quest nobody can finish is the confident wrong answer. Non-finite counts
-    /// collapse the same way.
-    #[must_use]
-    pub fn fraction(&self, count: f32) -> f32 {
-        match self.goal() {
-            Some(goal) if count.is_finite() => (count / goal).clamp(0.0, 1.0),
-            _ => 0.0,
-        }
-    }
-}
-
 /// A generic talent.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TalentDescriptor {
@@ -206,6 +92,12 @@ pub struct TalentDescriptor {
     ///
     /// Declaration only — see [`QuestSpec`]. A talent that declares none is an
     /// ordinary talent and is untouched by any of it, which is almost all of them.
+    ///
+    /// A talent carrying one is the *ordinary* case of a task rather than the only
+    /// one: a unit declares its own the same way ([`UnitDescriptor::tasks`]), and
+    /// neither is a different kind of task to the simulation.
+    ///
+    /// [`UnitDescriptor::tasks`]: crate::units::UnitDescriptor::tasks
     #[serde(default)]
     pub quest: Option<QuestSpec>,
 }

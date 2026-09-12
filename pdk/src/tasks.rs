@@ -30,9 +30,11 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use stormlight_mod_abi::conditions::{CmpOp, Condition};
 use stormlight_mod_abi::ids::StackId;
 use stormlight_mod_abi::impacts::Impact;
-use stormlight_mod_abi::tasks::{QuestPayout, QuestSpec, QuestStage};
+use stormlight_mod_abi::math::{Value, Var, Who};
+use stormlight_mod_abi::tasks::{QuestPayout, QuestShortcut, QuestSpec, QuestStage};
 
 /// One rung: the count that reaches it, and what reaching it hands over.
 ///
@@ -50,7 +52,7 @@ pub fn rung(threshold: f32, reward: Vec<Impact>) -> QuestStage {
 /// of order meant something.
 #[must_use]
 pub fn ladder(counter: StackId, stages: Vec<QuestStage>) -> QuestSpec {
-    QuestSpec { counter, payout: QuestPayout::Stages(stages) }
+    QuestSpec { counter, payout: QuestPayout::Stages(stages), shortcut: None }
 }
 
 /// A task with a single target: reach `goal` in `counter`, get `reward`.
@@ -59,4 +61,24 @@ pub fn ladder(counter: StackId, stages: Vec<QuestStage>) -> QuestSpec {
 #[must_use]
 pub fn goal(counter: StackId, goal: f32, reward: Vec<Impact>) -> QuestSpec {
     ladder(counter, vec![rung(goal, reward)])
+}
+
+/// The other way of finishing a task: a condition worth the whole ladder, plus what
+/// firing it hands over on top of the rungs it completes.
+///
+/// A task may carry one with no rungs at all — an objective only ever finished the
+/// interesting way.
+#[must_use]
+pub fn shortcut(quest: QuestSpec, when: Condition, reward: Vec<Impact>) -> QuestSpec {
+    QuestSpec { shortcut: Some(QuestShortcut { when, reward }), ..quest }
+}
+
+/// A condition reading *"at least `many` of this counter arrived on one tick"* — the
+/// shape a "several at once" shortcut is written with.
+///
+/// It reads the tick's **gain**, not the running total, which is what makes it a
+/// question about a moment rather than about a match.
+#[must_use]
+pub fn gained_at_once(counter: StackId, many: f32) -> Condition {
+    Condition::Cmp(CmpOp::Ge, Value::Read(Var::StackGain(counter, Who::Caster)), Value::Const(many))
 }

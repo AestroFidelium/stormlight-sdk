@@ -42,6 +42,9 @@ impl ValueCtx for Ctx {
     fn stack_count(&self, _: StackId, _: Who) -> f32 {
         1.0
     }
+    fn stack_gain(&self, _: StackId, _: Who) -> f32 {
+        1.0
+    }
     fn buff_stacks(&self, _: BuffId, _: Who) -> f32 {
         1.0
     }

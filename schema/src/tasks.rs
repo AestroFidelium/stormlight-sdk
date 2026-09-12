@@ -46,6 +46,7 @@ use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
+use crate::conditions::Condition;
 use crate::ids::StackId;
 use crate::impacts::Impact;
 
@@ -94,6 +95,66 @@ pub enum QuestPayout {
     Stages(Vec<QuestStage>),
 }
 
+/// A way of finishing a task that is not counting to the top of it
+/// (stormlight/server#137).
+///
+/// Real designs offer a **shortcut**: one moment of play worth the whole ladder.
+/// *"Hit four enemy heroes at once"* finishes every remaining rung immediately and
+/// grants something extra on top.
+///
+/// That is deliberately not a big increment. A shortcut and a count are different
+/// questions — one asks *how many times*, the other asks *did this ever happen* —
+/// and collapsing the second into the first ("+45 to the counter") is wrong twice
+/// over: it pays the same as grinding when the design says it should pay more, and
+/// it lies to anything reading the count.
+///
+/// # What the condition sees
+///
+/// The world at the tick the count moved, **plus this tick's gain to the task's own
+/// counter** ([`Var::StackGain`](crate::math::Var::StackGain)). That last read is
+/// what makes an event-shaped question askable at all: a rider that adds one per
+/// hit turns *"four at once"* into a gain of four in one tick, which is a fact the
+/// condition vocabulary can state.
+///
+/// The alternative — evaluating against the single effect application that did the
+/// counting — was weighed and refused. It would tie a shortcut to one hook, need a
+/// read for "how many targets did that impact find" that the ISA does not have, and
+/// leave a shortcut about anything else (a health threshold, a buff) unable to
+/// express itself at all.
+///
+/// The honest edge: a tick is the resolution. Two separate applications landing on
+/// the same tick read as one gain, which is what "at once" means at this timescale.
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct QuestShortcut {
+    /// When it fires, in the same condition vocabulary effects already use.
+    pub when: Condition,
+    /// What firing it hands over — **on top of** every rung it completes, and after
+    /// them.
+    #[serde(default)]
+    pub reward: Vec<Impact>,
+}
+
+/// How far a task has been **paid**.
+///
+/// Two facts, because a task can be finished two ways and they are not the same
+/// record: how many rungs have been handed over, and whether the shortcut has
+/// fired. Neither is derivable from the other — a shortcut pays the rungs it skips,
+/// so a full ladder says nothing about whether the shortcut went off, and a
+/// shortcut-only task has no rungs to count at all.
+///
+/// Lives in the ABI rather than in the engine because both ends need it: the
+/// simulation decides it and an interface is **told** it. A client that worked out
+/// for itself whether a task was finished would disagree with the simulation the
+/// moment a shortcut fired.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub struct TaskProgress {
+    /// How many rungs have been handed over. Always a prefix — see
+    /// [`QuestSpec::reached`].
+    pub rungs: u32,
+    /// Whether the shortcut has fired. Once, ever.
+    pub shortcut: bool,
+}
+
 /// A task: a counter, and what the counts in it buy.
 ///
 /// **The whole objective in one declaration.** The counter and the schedule are
@@ -113,6 +174,13 @@ pub struct QuestSpec {
     pub counter: StackId,
     /// What the counts buy, and when.
     pub payout: QuestPayout,
+    /// A way of finishing it that is not counting (stormlight/server#137).
+    ///
+    /// `None` is the ordinary task: the only way to finish it is to do the thing
+    /// enough times. A task with a shortcut and **no rungs** is legal and is an
+    /// objective that is only ever finished the interesting way.
+    #[serde(default)]
+    pub shortcut: Option<QuestShortcut>,
 }
 
 /// Why a [`QuestSpec`] cannot be run as declared.
@@ -160,6 +228,7 @@ impl QuestSpec {
         Self {
             counter,
             payout: QuestPayout::Stages(alloc::vec![QuestStage { threshold: goal, reward }]),
+            shortcut: None,
         }
     }
 
@@ -177,8 +246,15 @@ impl QuestSpec {
     pub fn validate(&self) -> Result<(), QuestError> {
         match &self.payout {
             QuestPayout::Stages(stages) => {
+                // A ladder with no rungs *and* no shortcut is an objective that can
+                // never be finished. With a shortcut it is a legal and deliberate
+                // shape: an objective only ever finished the interesting way.
                 if stages.is_empty() {
-                    return Err(QuestError::NoStages);
+                    return if self.shortcut.is_some() {
+                        Ok(())
+                    } else {
+                        Err(QuestError::NoStages)
+                    };
                 }
                 let mut previous = 0.0_f32;
                 for (index, stage) in stages.iter().enumerate() {
@@ -288,12 +364,53 @@ impl QuestSpec {
     /// Whether a count of `count` has reached every rung.
     ///
     /// The *count's* answer, which is what both ends can derive from content alone.
-    /// It is not the same question as "has this task been paid out in full" once a
-    /// shortcut can finish a task early (stormlight/server#137) — that one is a fact
-    /// about the simulation and has to be told rather than derived.
+    /// It is not the same question as [`done`](Self::done) — that one is a fact
+    /// about the simulation, because a shortcut can finish a task the count never
+    /// got to the top of.
     #[must_use]
     pub fn complete(&self, count: f32) -> bool {
         self.rungs() > 0 && self.reached(count) == self.rungs()
+    }
+
+    /// Whether this task is **finished**, given what has been paid.
+    ///
+    /// The simulation's answer, and the one an interface is told rather than works
+    /// out. Two ways to be finished, and they are deliberately not the same test:
+    ///
+    ///   - the shortcut fired. That finishes a task whatever the count says, which
+    ///     is the whole point of a shortcut;
+    ///   - every rung has been paid. Which is why a **shortcut-only** task (no
+    ///     rungs at all) is *not* finished at tick zero: an empty ladder would
+    ///     otherwise be vacuously complete, and the one thing that objective is
+    ///     waiting for would never be allowed to happen.
+    #[must_use]
+    pub fn done(&self, progress: TaskProgress) -> bool {
+        progress.shortcut || (self.rungs() > 0 && progress.rungs >= self.rungs())
+    }
+
+    /// Whether the shortcut may fire, given what has been paid.
+    ///
+    /// Three things, and the third is the rule this issue existed to settle:
+    ///
+    ///   - the task **declares** one;
+    ///   - it has **not fired**. Like a rung, once ever;
+    ///   - the task is **not already finished**. A shortcut is payment for
+    ///     *skipping*, and once nothing is left to skip there is nothing it is
+    ///     paying for — a bonus for doing the interesting thing after the grind is
+    ///     already done would make finishing the ladder strictly worse than
+    ///     stopping one rung short. Stated here as a rule rather than left to fall
+    ///     out of the order systems happen to run in.
+    ///
+    /// The condition itself is **not** asked here: it reads world state, which this
+    /// crate has no access to. The caller evaluates it and this says whether the
+    /// answer matters — and the caller adds one gate of its own, which this crate
+    /// has no clock to express: a shortcut is asked only on a tick the task's
+    /// counter actually moved. A shortcut is a second way of *doing the task*, so it
+    /// belongs to a moment when the task was worked at; asked on every tick, one
+    /// phrased about ambient state would fire for standing still.
+    #[must_use]
+    pub fn shortcut_open(&self, progress: TaskProgress) -> bool {
+        self.shortcut.is_some() && !progress.shortcut && !self.done(progress)
     }
 
     /// How far along the task a count of `count` is, **capped at the final target**
@@ -339,6 +456,13 @@ impl QuestSpec {
     pub fn stripped(&self) -> Self {
         Self {
             counter: self.counter,
+            // The condition survives and the bonus does not, for the same reason a
+            // rung's reward does not: a client never fires a shortcut, but it may
+            // well want to say what one asks for.
+            shortcut: self
+                .shortcut
+                .as_ref()
+                .map(|shortcut| QuestShortcut { when: shortcut.when.clone(), reward: Vec::new() }),
             payout: match &self.payout {
                 QuestPayout::Stages(stages) => QuestPayout::Stages(
                     stages

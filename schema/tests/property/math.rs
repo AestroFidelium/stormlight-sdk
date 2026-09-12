@@ -58,6 +58,9 @@ impl ValueCtx for MockCtx {
     fn stack_count(&self, s: StackId, who: Who) -> f32 {
         self.read(40 + u32::from(s.0) + who as u32)
     }
+    fn stack_gain(&self, s: StackId, who: Who) -> f32 {
+        self.read(45 + u32::from(s.0) + who as u32)
+    }
     fn buff_stacks(&self, b: BuffId, who: Who) -> f32 {
         self.read(50 + u32::from(b.0) + who as u32)
     }

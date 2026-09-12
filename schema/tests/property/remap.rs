@@ -36,8 +36,9 @@ use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::placement::UnitPlacement;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::talents::{
-    AbilityHook, AbilitySelector, GrantAbility, ParamPatch, QuestSpec, Rider, TalentDescriptor,
+    AbilityHook, AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor,
 };
+use stormlight_mod_abi::tasks::QuestSpec;
 use stormlight_mod_abi::triggers::{EventFilter, EventKind, Reaction};
 use stormlight_mod_abi::units::{ResourcePool, UnitDescriptor};
 
@@ -615,10 +616,8 @@ impl Gen<'_> {
             // A task names a counter and the effects completing it hands over,
             // both interned handles like any other — so the walk has to reach the
             // whole of it (server#132).
-            quest: self.next().is_multiple_of(2).then(|| QuestSpec {
-                counter: StackId(self.next()),
-                goal: f32::from(self.next()),
-                reward: self.impacts(2),
+            quest: self.next().is_multiple_of(2).then(|| {
+                QuestSpec::single(StackId(self.next()), f32::from(self.next()), self.impacts(2))
             }),
         }
     }
@@ -690,6 +689,7 @@ impl Gen<'_> {
             progression: None,
             turn_rate: None,
             attack: None,
+            tasks: Vec::new(),
         }
     }
     fn registration(&mut self) -> Registration {

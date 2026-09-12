@@ -16,6 +16,7 @@ pub mod client;
 pub mod context;
 pub mod macros;
 pub mod runtime;
+pub mod tasks;
 pub mod types;
 pub mod ui;
 

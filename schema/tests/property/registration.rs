@@ -28,7 +28,8 @@ use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::placement::UnitPlacement;
-use stormlight_mod_abi::talents::{AbilitySelector, ParamPatch, QuestSpec, TalentDescriptor};
+use stormlight_mod_abi::talents::{AbilitySelector, ParamPatch, TalentDescriptor};
+use stormlight_mod_abi::tasks::QuestSpec;
 use stormlight_mod_abi::units::{ResourcePool, UnitDescriptor};
 
 extern crate alloc;
@@ -132,10 +133,8 @@ impl Gen<'_> {
             tags: self.tags(),
             // Half the talents set a task, so the round trip covers both
             // (server#132).
-            quest: (self.next().is_multiple_of(2)).then(|| QuestSpec {
-                counter: StackId(self.next()),
-                goal: f32::from(self.next()),
-                reward: Vec::new(),
+            quest: (self.next().is_multiple_of(2)).then(|| {
+                QuestSpec::single(StackId(self.next()), f32::from(self.next()), Vec::new())
             }),
         }
     }
@@ -219,6 +218,7 @@ impl Gen<'_> {
             progression: None,
             turn_rate: None,
             attack: None,
+            tasks: Vec::new(),
         }
     }
     fn names(&mut self) -> Names {

@@ -19,6 +19,7 @@ use crate::math::Value;
 use crate::progression::ProgressionSpec;
 use crate::respawn::RespawnSpec;
 use crate::talent_tree::TalentTree;
+use crate::tasks::QuestSpec;
 
 /// One resource pool a unit carries — a bounded numeric reserve (energy,
 /// mana-like, a fury meter, …) that ability costs draw from and that refills over
@@ -81,6 +82,25 @@ pub struct UnitDescriptor {
     /// A `Value` like every other tunable, so a mod can scale it off a stat rather
     /// than fixing it at authoring time.
     pub turn_rate: Option<Value>,
+    /// The tasks this unit carries of its own, with nothing chosen
+    /// (stormlight/server#136).
+    ///
+    /// A task is a **rider, not a kind of thing**: a hero's own baseline objective,
+    /// an event's, a map's are the same declaration a talent carries, minus the
+    /// choice. Building it as a talent feature would have meant building it twice —
+    /// and would have left a mod with no way at all to set an objective that is not
+    /// a choice.
+    ///
+    /// Indexed: rung 0 of the unit's first task is a different thing from rung 0 of
+    /// its second, so the *position* in this list is the task's identity for the
+    /// latch that remembers what has been paid. Which makes this list append-only in
+    /// the same sense a wire tag is — reordering it hands a player a prize they
+    /// already have and withholds one they earned.
+    ///
+    /// Empty for almost every unit, which is the honest default: a creep sets
+    /// nobody an objective.
+    #[serde(default)]
+    pub tasks: Vec<QuestSpec>,
     /// The unit's basic attack, if it has one (stormlight/server#89). `None` is a
     /// unit that cannot attack at all — the honest default, because the engine
     /// ships no weapon of its own and a building or a ward should not acquire one

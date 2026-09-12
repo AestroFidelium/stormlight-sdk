@@ -34,6 +34,7 @@ pub mod runtime;
 pub mod stats;
 pub mod talent_tree;
 pub mod talents;
+pub mod tasks;
 pub mod triggers;
 pub mod ui;
 pub mod ui_anim;

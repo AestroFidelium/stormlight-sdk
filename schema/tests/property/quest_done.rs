@@ -23,7 +23,7 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::StackId;
-use stormlight_mod_abi::talents::QuestSpec;
+use stormlight_mod_abi::tasks::QuestSpec;
 
 extern crate alloc;
 use alloc::vec::Vec;
@@ -78,7 +78,7 @@ struct Scenario {
 }
 
 fn spec(s: &Scenario) -> QuestSpec {
-    QuestSpec { counter: StackId(0), goal: s.goal.value(), reward: Vec::new() }
+    QuestSpec::single(StackId(0), s.goal.value(), Vec::new())
 }
 
 /// The figure a player reads. It never runs past what was asked, whatever the

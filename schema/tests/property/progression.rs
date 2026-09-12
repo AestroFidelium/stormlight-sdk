@@ -193,6 +193,7 @@ fn unit(id: UnitId, progression: Option<ProgressionSpec>) -> UnitDescriptor {
         progression,
         turn_rate: None,
         attack: None,
+        tasks: Vec::new(),
     }
 }
 

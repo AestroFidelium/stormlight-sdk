@@ -589,6 +589,7 @@ impl RemapIds for QuestSpec {
                     stage.reward.remap_ids(m)?;
                 }
             }
+            QuestPayout::PerCount { reward, .. } => reward.remap_ids(m)?,
         }
         Ok(())
     }

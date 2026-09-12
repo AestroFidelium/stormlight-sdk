@@ -63,6 +63,37 @@ pub fn goal(counter: StackId, goal: f32, reward: Vec<Impact>) -> QuestSpec {
     ladder(counter, vec![rung(goal, reward)])
 }
 
+/// A task that pays `reward` once per counted increment, stopping after `ceiling`
+/// of them (stormlight/server#138).
+///
+/// *"Every hit adds one, to a maximum of forty-five."* The ceiling is declared in
+/// the same units the increment is: how many increments pay.
+///
+/// **Reach for this only when what accrues is an event.** If it is a standing
+/// quantity — a stat bonus that grows with the count — write an ordinary modifier
+/// whose value reads the counter and clamps:
+///
+/// ```ignore
+/// Modifier {
+///     stat: attack_damage,
+///     op: ModOp::AddFlat,
+///     value: Value::Clamp {
+///         v: Box::new(Value::Read(Var::StackCount(hits, Who::Caster))),
+///         lo: Box::new(Value::Const(0.0)),
+///         hi: Box::new(Value::Const(45.0)),
+///     },
+/// }
+/// ```
+///
+/// That is the same `min(count × step, ceiling)` and it is *derived*: a count walked
+/// backwards walks the bonus back with it, and no record can drift out of step with
+/// the tally. A task is the right tool when something has to **happen** once per
+/// count and stay happened.
+#[must_use]
+pub fn per_count(counter: StackId, reward: Vec<Impact>, ceiling: u32) -> QuestSpec {
+    QuestSpec { counter, payout: QuestPayout::PerCount { reward, ceiling }, shortcut: None }
+}
+
 /// The other way of finishing a task: a condition worth the whole ladder, plus what
 /// firing it hands over on top of the rungs it completes.
 ///

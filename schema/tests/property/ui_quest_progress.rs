@@ -19,8 +19,8 @@ use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{StackId, StatId};
 use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Strip, Style, SummonGate, TextSource, UiRoot, UiSubject, ValueBinding,
-    ValuePart, Widget, WidgetKind,
+    Layout, QuestSpan, RootVisibility, Strip, Style, SummonGate, TextSource, UiRoot, UiSubject,
+    ValueBinding, ValuePart, Widget, WidgetKind,
 };
 
 #[derive(Debug, TypeGenerator)]
@@ -49,7 +49,7 @@ fn a_root(s: &Scenario) -> UiRoot {
             style: Style::default(),
             kind: WidgetKind::Text {
                 text: TextSource::Value {
-                    binding: ValueBinding::TalentQuest { tier, option },
+                    binding: ValueBinding::TalentQuest { tier, option, span: QuestSpan::Whole },
                     part: part(s.part),
                     decimals: 0,
                 },
@@ -112,8 +112,12 @@ fn it_took_the_tag_after_the_ones_that_existed() {
     }
     let tier = postcard::to_allocvec(&ValueBinding::TierLevel(0)).expect("serialize");
     assert_eq!(tier.first(), Some(&6), "the tier level is not the seventh tag");
-    let quest = postcard::to_allocvec(&ValueBinding::TalentQuest { tier: 0, option: 0 })
-        .expect("serialize");
+    let quest = postcard::to_allocvec(&ValueBinding::TalentQuest {
+        tier: 0,
+        option: 0,
+        span: QuestSpan::Whole,
+    })
+    .expect("serialize");
     assert_eq!(quest.first(), Some(&7), "the quest count is not the eighth tag");
 }
 
@@ -126,6 +130,6 @@ fn it_took_the_tag_after_the_ones_that_existed() {
 #[test]
 fn a_bare_counter_is_still_reachable_and_is_a_different_question() {
     let mine = ValueBinding::Pool(PoolRef::Stacks(StackId(3)));
-    let theirs = ValueBinding::TalentQuest { tier: 1, option: 2 };
+    let theirs = ValueBinding::TalentQuest { tier: 1, option: 2, span: QuestSpan::Whole };
     assert_ne!(mine, theirs, "the two ways to read a counter collapsed into one");
 }

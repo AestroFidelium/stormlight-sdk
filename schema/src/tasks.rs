@@ -47,7 +47,7 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::conditions::Condition;
-use crate::ids::StackId;
+use crate::ids::{StackId, TalentId};
 use crate::impacts::Impact;
 
 /// One rung of a task's ladder: the count that reaches it, and what reaching it
@@ -176,6 +176,26 @@ pub struct QuestShortcut {
     /// them.
     #[serde(default)]
     pub reward: Vec<Impact>,
+}
+
+/// Which task of a unit's a record is about (stormlight/server#136).
+///
+/// Two arms because a task reaches a unit two ways, and the difference is real: a
+/// talent's is keyed by the talent, which is stable however the tree is rearranged,
+/// while a unit's own is keyed by its **position** in
+/// [`UnitDescriptor::tasks`](crate::units::UnitDescriptor::tasks) — there is nothing
+/// else to key it by, which is what makes that list append-only in the same sense a
+/// wire tag is.
+///
+/// In the ABI rather than in the engine because it addresses a task **on the wire**
+/// (stormlight/server#139): an interface is told what has been paid, and it has to
+/// be told *which* task that was.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
+pub enum TaskKey {
+    /// The task the talent with this handle sets.
+    Talent(TalentId),
+    /// The unit's own task at this index in its descriptor.
+    Unit(u32),
 }
 
 /// How far a task has been **paid**.

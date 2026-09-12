@@ -86,6 +86,7 @@ impl Scenario {
     fn spec(&self) -> QuestSpec {
         QuestSpec {
             counter: StackId(7),
+            shortcut: None,
             payout: QuestPayout::Stages(
                 self.thresholds()
                     .into_iter()

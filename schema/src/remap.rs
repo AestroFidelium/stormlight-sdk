@@ -114,7 +114,7 @@ impl RemapIds for Var {
             | Var::Rand01 => {}
             Var::Stat(id, _) => *id = m.stat(*id)?,
             Var::Resource(id, _) => *id = m.resource(*id)?,
-            Var::StackCount(id, _) => *id = m.stack(*id)?,
+            Var::StackCount(id, _) | Var::StackGain(id, _) => *id = m.stack(*id)?,
             Var::BuffStacks(id, _) => *id = m.buff(*id)?,
         }
         Ok(())
@@ -576,6 +576,13 @@ impl RemapIds for TalentDescriptor {
 impl RemapIds for QuestSpec {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         self.counter = m.stack(self.counter)?;
+        // A shortcut is a condition full of handles and a reward tree full of more
+        // (server#137). A bonus left in local ids would hand over somebody else's
+        // buff at the one moment a player most notices.
+        if let Some(shortcut) = &mut self.shortcut {
+            shortcut.when.remap_ids(m)?;
+            shortcut.reward.remap_ids(m)?;
+        }
         match &mut self.payout {
             QuestPayout::Stages(stages) => {
                 for stage in stages.iter_mut() {

@@ -59,6 +59,21 @@ pub enum Var {
     ChannelProgress,
     /// A seeded, deterministic PRNG read in `[0, 1]` (fair rolls, "% chance").
     Rand01,
+    /// How much a stack counter has gained **this tick** (stormlight/server#137).
+    ///
+    /// [`Self::StackCount`] answers *how many times, ever*; this answers *how many
+    /// just now*, which is a different question and the only one that can express a
+    /// burst. A rider adding one per hit turns "four enemy heroes at once" into a
+    /// gain of four on one tick — a fact about an event, stated with an ordinary
+    /// read rather than with a new condition kind tied to one hook.
+    ///
+    /// Counters are folded **once** per tick, so this is zero before that fold and
+    /// the tick's whole gain after it, and it is cleared at the end of the tick. A
+    /// decrease reads as a negative number: a mod that spends a counter is doing
+    /// something, and rounding that to zero would hide it.
+    ///
+    /// **Appended, never inserted**: the variant order is the wire tag.
+    StackGain(StackId, Who),
 }
 
 /// A numeric expression. Composed of a fixed operator vocabulary over [`Var`]
@@ -89,6 +104,9 @@ pub trait ValueCtx {
     fn stat(&self, stat: StatId, who: Who) -> f32;
     fn resource(&self, resource: ResourceId, who: Who) -> f32;
     fn stack_count(&self, stack: StackId, who: Who) -> f32;
+    /// What `stack` gained this tick. Zero before the tick's fold — see
+    /// [`Var::StackGain`].
+    fn stack_gain(&self, stack: StackId, who: Who) -> f32;
     fn buff_stacks(&self, buff: BuffId, who: Who) -> f32;
     fn charges_of(&self, slot: Slot, who: Who) -> f32;
     fn cooldown_of(&self, slot: Slot, who: Who) -> f32;
@@ -158,6 +176,7 @@ fn eval_var<C: ValueCtx + ?Sized>(var: &Var, ctx: &C) -> f32 {
         Var::Stat(s, w) => ctx.stat(*s, *w),
         Var::Resource(r, w) => ctx.resource(*r, *w),
         Var::StackCount(s, w) => ctx.stack_count(*s, *w),
+        Var::StackGain(s, w) => ctx.stack_gain(*s, *w),
         Var::BuffStacks(b, w) => ctx.buff_stacks(*b, *w),
         Var::ChargesOf(sl, w) => ctx.charges_of(*sl, *w),
         Var::CooldownOf(sl, w) => ctx.cooldown_of(*sl, *w),

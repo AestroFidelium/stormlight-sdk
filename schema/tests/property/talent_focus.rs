@@ -74,14 +74,19 @@ impl Scenario {
     fn talent(&self) -> TalentDescriptor {
         TalentDescriptor {
             id: TalentId(7),
-            selector: self.selects.selector(),
+            selector: vec![self.selects.selector()],
             patches: if self.patches {
-                vec![ParamPatch { param: ParamId(1), op: NumOp::Add, value: Value::Const(1.0) }]
+                vec![ParamPatch {
+                    param: ParamId(1),
+                    op: NumOp::Add,
+                    value: Value::Const(1.0),
+                    selector: None,
+                }]
             } else {
                 Vec::new()
             },
             riders: if self.rides {
-                vec![Rider { hook: AbilityHook::OnCast, effects: Vec::new() }]
+                vec![Rider { hook: AbilityHook::OnCast, effects: Vec::new(), selector: None }]
             } else {
                 Vec::new()
             },

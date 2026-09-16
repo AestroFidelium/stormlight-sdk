@@ -25,6 +25,28 @@ pub enum Who {
     Source,
 }
 
+/// Whose *doing* an effect was — the origin half of a membership question
+/// (stormlight/server#150).
+///
+/// [`Var::BuffStacks`] and [`HasBuff`] ask a deliberately global question: does
+/// this unit carry that effect, whoever put it there. Often right — a cleanse does
+/// not care whose slow it is — and sometimes precisely wrong: a talent paying out
+/// on "the target carrying *my* mark" should not fire on an ally's identical mark.
+///
+/// Closed by construction, which is the point: the only actors an origin can name
+/// are the ones the resolution already names ([`Who`]), so a predicate gains
+/// "mine" without the ISA gaining a general comparison of arbitrary entities.
+///
+/// [`HasBuff`]: crate::conditions::Condition::HasBuff
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+pub enum Origin {
+    /// Anyone at all — the same question the unsourced form asks. The evaluator
+    /// routes it to the unsourced context read, so the two spellings cannot drift.
+    Anyone,
+    /// Applied by this resolution's caster, target or source.
+    By(Who),
+}
+
 /// The fixed set of binary operators. Division is guarded (see [`Value::eval`]).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum BinOp {
@@ -74,6 +96,46 @@ pub enum Var {
     ///
     /// **Appended, never inserted**: the variant order is the wire tag.
     StackGain(StackId, Who),
+    /// Stacks of a buff on `who`, counting only the ones [`Origin`] applied
+    /// (stormlight/server#150).
+    ///
+    /// The sourced twin of [`Self::BuffStacks`], and a strict superset of it:
+    /// [`Origin::Anyone`] evaluates to the very same context read, so "how many
+    /// marks are on them" and "how many of my marks are on them" are one
+    /// instruction with one axis of difference rather than two vocabularies.
+    ///
+    /// The holder and the origin are **separate** axes. `(Target, By(Caster))` is
+    /// the mark I put on them; `(Caster, By(Target))` is the one they put on me.
+    ///
+    /// **Appended, never inserted**: the variant order is the wire tag.
+    BuffStacksFrom(BuffId, Who, Origin),
+    /// The magnitude of the event a reaction is running from — the number that
+    /// caused it (stormlight/server#150).
+    ///
+    /// The damage just dealt, the healing just done, the shield just lost: "deal a
+    /// further half of that", "restore resource for a share of it" are the
+    /// commonest shape a reaction has, and without this they are inexpressible —
+    /// the event says *that* it happened and never *how much*.
+    ///
+    /// Zero outside a reaction, which is the honest reading: an ability's own
+    /// payload is not running from an event, so there is no magnitude to quote.
+    ///
+    /// **Appended, never inserted**: the variant order is the wire tag.
+    EventMagnitude,
+    /// Which pass of the innermost enclosing [`Loop`] is running, counting from
+    /// zero (stormlight/server#150).
+    ///
+    /// "Each following wave hits harder than the last" is a formula over this —
+    /// and, crucially, a talent can *add* the ramp to an ability that never had
+    /// one, which an unrolled table of constants can never be patched into.
+    ///
+    /// Zero outside any loop, and zero on a loop's first pass: the first wave is
+    /// the unramped one.
+    ///
+    /// **Appended, never inserted**: the variant order is the wire tag.
+    ///
+    /// [`Loop`]: crate::impacts::Impact::Loop
+    LoopIndex,
 }
 
 /// A numeric expression. Composed of a fixed operator vocabulary over [`Var`]
@@ -108,6 +170,10 @@ pub trait ValueCtx {
     /// [`Var::StackGain`].
     fn stack_gain(&self, stack: StackId, who: Who) -> f32;
     fn buff_stacks(&self, buff: BuffId, who: Who) -> f32;
+    /// Stacks of `buff` on `who` that `from` applied. Only ever asked with a
+    /// concrete origin — [`Origin::Anyone`] is answered by [`Self::buff_stacks`]
+    /// in the evaluator, so an impl cannot make the two disagree.
+    fn buff_stacks_from(&self, buff: BuffId, who: Who, from: Who) -> f32;
     fn charges_of(&self, slot: Slot, who: Who) -> f32;
     fn cooldown_of(&self, slot: Slot, who: Who) -> f32;
     fn ally_count(&self) -> f32;
@@ -115,6 +181,12 @@ pub trait ValueCtx {
     fn distance_to_target(&self) -> f32;
     fn channel_progress(&self) -> f32;
     fn rand01(&self) -> f32;
+    /// The magnitude of the event this resolution is reacting to — see
+    /// [`Var::EventMagnitude`]. Zero when there is no event behind it.
+    fn event_magnitude(&self) -> f32;
+    /// The zero-based pass of the innermost enclosing loop — see
+    /// [`Var::LoopIndex`]. Zero outside any loop.
+    fn loop_index(&self) -> f32;
     /// The ambient `value_scale` for `ScaleCtx`.
     fn scale(&self) -> f32;
     /// Evaluate curve `curve` at `x`.
@@ -178,6 +250,11 @@ fn eval_var<C: ValueCtx + ?Sized>(var: &Var, ctx: &C) -> f32 {
         Var::StackCount(s, w) => ctx.stack_count(*s, *w),
         Var::StackGain(s, w) => ctx.stack_gain(*s, *w),
         Var::BuffStacks(b, w) => ctx.buff_stacks(*b, *w),
+        // `Anyone` is the unsourced question, answered by the unsourced read: the
+        // two spellings are one instruction, so no context impl can make the
+        // global form mean something different from `BuffStacks`.
+        Var::BuffStacksFrom(b, w, Origin::Anyone) => ctx.buff_stacks(*b, *w),
+        Var::BuffStacksFrom(b, w, Origin::By(from)) => ctx.buff_stacks_from(*b, *w, *from),
         Var::ChargesOf(sl, w) => ctx.charges_of(*sl, *w),
         Var::CooldownOf(sl, w) => ctx.cooldown_of(*sl, *w),
         Var::AllyCount => ctx.ally_count(),
@@ -185,5 +262,7 @@ fn eval_var<C: ValueCtx + ?Sized>(var: &Var, ctx: &C) -> f32 {
         Var::DistanceToTarget => ctx.distance_to_target(),
         Var::ChannelProgress => ctx.channel_progress(),
         Var::Rand01 => ctx.rand01(),
+        Var::EventMagnitude => ctx.event_magnitude(),
+        Var::LoopIndex => ctx.loop_index(),
     }
 }

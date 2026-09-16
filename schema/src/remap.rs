@@ -29,6 +29,7 @@ use crate::impacts::{
 };
 use crate::math::{Value, Var};
 use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
+use crate::params::ParamOverride;
 use crate::progression::{LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpSource};
 use crate::talent_tree::{TalentTier, TalentTree};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
@@ -111,11 +112,13 @@ impl RemapIds for Var {
             | Var::EnemyCount
             | Var::DistanceToTarget
             | Var::ChannelProgress
-            | Var::Rand01 => {}
+            | Var::Rand01
+            | Var::EventMagnitude
+            | Var::LoopIndex => {}
             Var::Stat(id, _) => *id = m.stat(*id)?,
             Var::Resource(id, _) => *id = m.resource(*id)?,
             Var::StackCount(id, _) | Var::StackGain(id, _) => *id = m.stack(*id)?,
-            Var::BuffStacks(id, _) => *id = m.buff(*id)?,
+            Var::BuffStacks(id, _) | Var::BuffStacksFrom(id, _, _) => *id = m.buff(*id)?,
         }
         Ok(())
     }
@@ -153,7 +156,7 @@ impl RemapIds for Condition {
                 b.remap_ids(m)?;
             }
             Condition::HasTag(id, _) => *id = m.tag(*id)?,
-            Condition::HasBuff(id, _) => *id = m.buff(*id)?,
+            Condition::HasBuff(id, _) | Condition::HasBuffFrom(id, _, _) => *id = m.buff(*id)?,
             Condition::HasTalent(id) => *id = m.talent(*id)?,
             Condition::And(cs) | Condition::Or(cs) => cs.remap_ids(m)?,
             Condition::Not(c) => c.remap_ids(m)?,
@@ -328,8 +331,11 @@ impl RemapIds for Impact {
                 count.remap_ids(m)?;
                 pattern.remap_ids(m)?;
             }
-            Impact::CastAbility { slot: _, target: _, value_scale, cost: _ } => {
+            Impact::CastAbility { slot: _, target: _, value_scale, cost: _, params } => {
                 value_scale.remap_ids(m)?;
+                // A sub-cast's overrides name a param and carry a value tree; left
+                // local, they would restate somebody else's parameter.
+                params.remap_ids(m)?;
             }
             Impact::Interrupt { target: _ } => {}
             Impact::ResolvePending { filter } => filter.remap_ids(m)?,
@@ -515,13 +521,24 @@ impl RemapIds for ParamPatch {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         self.param = m.param(self.param)?;
         self.value.remap_ids(m)?;
+        // A part's own selector is a selector like any other (server#150): left
+        // local, a talent would patch whatever ability that id means globally.
+        self.selector.remap_ids(m)?;
         Ok(())
+    }
+}
+
+impl RemapIds for ParamOverride {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        self.param = m.param(self.param)?;
+        self.value.remap_ids(m)
     }
 }
 
 impl RemapIds for Rider {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
-        self.effects.remap_ids(m)
+        self.effects.remap_ids(m)?;
+        self.selector.remap_ids(m)
     }
 }
 

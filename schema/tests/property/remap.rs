@@ -414,6 +414,7 @@ impl Gen<'_> {
                 target: self.abilitytarget(),
                 value_scale: self.value(1),
                 cost: if self.next().is_multiple_of(2) { CostMode::Normal } else { CostMode::Free },
+                params: Vec::new(),
             },
             14 => Impact::Interrupt { target: self.target() },
             15 => Impact::ResolvePending { filter: self.pending() },
@@ -593,16 +594,21 @@ impl Gen<'_> {
         };
         TalentDescriptor {
             id: TalentId(u32::from(self.next())),
-            selector,
+            selector: vec![selector],
             patches: (0..self.next() % 3)
                 .map(|_| ParamPatch {
                     param: ParamId(self.next()),
                     op: self.numop(),
                     value: self.value(1),
+                    selector: None,
                 })
                 .collect(),
             riders: (0..self.next() % 2)
-                .map(|_| Rider { hook: hook(self.next()), effects: self.impacts(2) })
+                .map(|_| Rider {
+                    hook: hook(self.next()),
+                    effects: self.impacts(2),
+                    selector: None,
+                })
                 .collect(),
             add_reactions: (0..self.next() % 2).map(|_| self.reaction()).collect(),
             grants: (0..self.next() % 2)

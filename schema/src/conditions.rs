@@ -14,7 +14,7 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 use crate::ids::{BuffId, TagId, TalentId};
-use crate::math::{Value, ValueCtx, Who};
+use crate::math::{Origin, Value, ValueCtx, Who};
 
 /// Total order comparison operators for [`Condition::Cmp`].
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
@@ -37,6 +37,23 @@ pub enum Condition {
     And(Vec<Condition>),
     Or(Vec<Condition>),
     Not(Box<Condition>),
+    /// Whether `who` carries the buff **and** [`Origin`] is who applied it
+    /// (stormlight/server#150).
+    ///
+    /// The sourced twin of [`Self::HasBuff`], with the same relationship to it
+    /// that [`Var::BuffStacksFrom`] has to [`Var::BuffStacks`]:
+    /// [`Origin::Anyone`] is routed to the unsourced read, so the global question
+    /// has one meaning however it is spelled.
+    ///
+    /// A tag convention is the workaround this replaces, and it has the hole one
+    /// level down — another unit's identically-tagged debuff satisfies it too.
+    /// Tags stay global on purpose: a tag records no origin, a buff instance does.
+    ///
+    /// **Appended, never inserted**: the variant order is the wire tag.
+    ///
+    /// [`Var::BuffStacks`]: crate::math::Var::BuffStacks
+    /// [`Var::BuffStacksFrom`]: crate::math::Var::BuffStacksFrom
+    HasBuffFrom(BuffId, Who, Origin),
 }
 
 /// The context conditions read. Extends [`ValueCtx`] with the membership queries
@@ -44,6 +61,9 @@ pub enum Condition {
 pub trait ConditionCtx: ValueCtx {
     fn has_tag(&self, tag: TagId, who: Who) -> bool;
     fn has_buff(&self, buff: BuffId, who: Who) -> bool;
+    /// Whether `who` carries `buff` applied by `from`. Only ever asked with a
+    /// concrete origin — [`Origin::Anyone`] is answered by [`Self::has_buff`].
+    fn has_buff_from(&self, buff: BuffId, who: Who, from: Who) -> bool;
     fn has_talent(&self, talent: TalentId) -> bool;
 }
 
@@ -69,6 +89,11 @@ impl Condition {
             Condition::And(cs) => cs.iter().all(|c| c.eval(ctx)),
             Condition::Or(cs) => cs.iter().any(|c| c.eval(ctx)),
             Condition::Not(c) => !c.eval(ctx),
+            // `Anyone` is the unsourced question (see the variant's docs).
+            Condition::HasBuffFrom(buff, who, Origin::Anyone) => ctx.has_buff(*buff, *who),
+            Condition::HasBuffFrom(buff, who, Origin::By(from)) => {
+                ctx.has_buff_from(*buff, *who, *from)
+            }
         }
     }
 }

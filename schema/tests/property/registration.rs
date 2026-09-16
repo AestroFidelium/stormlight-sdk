@@ -120,11 +120,12 @@ impl Gen<'_> {
                 param: ParamId(self.next()),
                 op: self.numop(),
                 value: self.value(),
+                selector: None,
             })
             .collect();
         TalentDescriptor {
             id: TalentId(u32::from(self.next())),
-            selector: AbilitySelector::Any,
+            selector: vec![AbilitySelector::Any],
             patches,
             riders: Vec::new(),
             add_reactions: Vec::new(),

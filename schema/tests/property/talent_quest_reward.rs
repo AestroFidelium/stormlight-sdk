@@ -114,7 +114,7 @@ impl Scenario {
     fn talent(&self, quest: Option<QuestSpec>) -> TalentDescriptor {
         TalentDescriptor {
             id: TalentId(1),
-            selector: AbilitySelector::Any,
+            selector: vec![AbilitySelector::Any],
             patches: Vec::new(),
             riders: Vec::new(),
             add_reactions: Vec::new(),

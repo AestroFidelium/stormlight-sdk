@@ -123,6 +123,15 @@ impl ValueCtx for CountingCtx {
     fn stack_count(&self, _: StackId, _: Who) -> f32 {
         self.0
     }
+    fn buff_stacks_from(&self, _: stormlight_mod_abi::ids::BuffId, _: Who, _: Who) -> f32 {
+        0.0
+    }
+    fn event_magnitude(&self) -> f32 {
+        0.0
+    }
+    fn loop_index(&self) -> f32 {
+        0.0
+    }
     fn stack_gain(&self, _: StackId, _: Who) -> f32 {
         0.0
     }

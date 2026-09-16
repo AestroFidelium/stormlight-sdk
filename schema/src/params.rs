@@ -20,6 +20,12 @@
 //! `RESERVED[i]` is `ParamId(i)`. Inserting or reordering a name silently
 //! re-points every already-authored mod's parameters — append only.
 
+use serde::{Deserialize, Serialize};
+
+use crate::common::NumOp;
+use crate::ids::ParamId;
+use crate::math::Value;
+
 /// Seconds before the slot the ability was cast from can be cast again.
 pub const COOLDOWN: &str = "cooldown";
 
@@ -53,4 +59,29 @@ pub const RESERVED: [&str; 5] = [COOLDOWN, RANGE, RADIUS, SPREAD, COMMIT];
 #[must_use]
 pub fn reserved_index(name: &str) -> Option<usize> {
     RESERVED.iter().position(|n| *n == name)
+}
+
+/// A one-off change to an ability parameter, carried by the effect that casts it
+/// (stormlight/server#150).
+///
+/// The sibling of [`ParamPatch`], and deliberately not the same type. A patch is a
+/// *talent's*, so it names the abilities it lands on and stays for as long as the
+/// talent is chosen; an override is one **sub-cast's**, so it names nothing — the
+/// cast it rides on already says which slot — and is gone the moment that cast
+/// resolves.
+///
+/// What it buys: a talent that re-fires an ability over a different area had to
+/// hand-author the whole second payload, which pins it to one hero's mechanic. With
+/// an override it re-casts the ability it already has, restated.
+///
+/// Applied **after** the slot's talent patches: the ability's own tuning shapes it
+/// first, then the caller has the last word — which is what makes it an override
+/// rather than another patch in the pile.
+///
+/// [`ParamPatch`]: crate::talents::ParamPatch
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct ParamOverride {
+    pub param: ParamId,
+    pub op: NumOp,
+    pub value: Value,
 }

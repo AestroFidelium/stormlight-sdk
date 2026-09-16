@@ -18,6 +18,7 @@ use crate::ids::{
 };
 use crate::math::Value;
 use crate::missiles::BodyDescriptor;
+use crate::params::ParamOverride;
 
 /// The geometric target set a `Retarget` resolves; params live inside the shape.
 ///
@@ -222,6 +223,14 @@ pub enum Impact {
         target: AbilityTarget,
         value_scale: Value,
         cost: CostMode,
+        /// Parameters this sub-cast restates — "the same ability, over a wider
+        /// area" (stormlight/server#150). Empty is the ordinary case: the nested
+        /// cast runs exactly as the caster's own would.
+        ///
+        /// Folded on top of the slot's talent patches, so the caller has the last
+        /// word over what a talent shaped ([`ParamOverride`]).
+        #[serde(default)]
+        params: Vec<ParamOverride>,
     },
     Interrupt {
         target: ImpactTarget,

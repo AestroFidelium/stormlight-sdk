@@ -264,6 +264,7 @@ impl Gen<'_> {
                 target: self.abilitytarget(),
                 value_scale: self.value(1),
                 cost: if self.next().is_multiple_of(2) { CostMode::Normal } else { CostMode::Free },
+                params: Vec::new(),
             },
             14 => Impact::Interrupt { target: self.target() },
             15 => Impact::ResolvePending { filter: self.pending() },

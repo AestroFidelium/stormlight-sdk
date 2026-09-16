@@ -9,7 +9,7 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{BuffId, CurveId, ResourceId, Slot, StackId, StatId};
-use stormlight_mod_abi::math::{BinOp, Value, ValueCtx, Var, Who};
+use stormlight_mod_abi::math::{BinOp, Origin, Value, ValueCtx, Var, Who};
 
 fn frac(seed: u16) -> f32 {
     f32::from(seed) / f32::from(u16::MAX) // [0, 1]
@@ -63,6 +63,15 @@ impl ValueCtx for MockCtx {
     }
     fn buff_stacks(&self, b: BuffId, who: Who) -> f32 {
         self.read(50 + u32::from(b.0) + who as u32)
+    }
+    fn buff_stacks_from(&self, b: BuffId, who: Who, from: Who) -> f32 {
+        self.read(55 + u32::from(b.0) + who as u32 + from as u32)
+    }
+    fn event_magnitude(&self) -> f32 {
+        self.read(83)
+    }
+    fn loop_index(&self) -> f32 {
+        self.read(84)
     }
     fn charges_of(&self, sl: Slot, who: Who) -> f32 {
         self.read(60 + u32::from(sl.0) + who as u32)
@@ -126,9 +135,15 @@ impl Builder<'_> {
             _ => Who::Source,
         }
     }
+    fn origin(&mut self) -> Origin {
+        match self.next() % 4 {
+            0 => Origin::Anyone,
+            _ => Origin::By(self.who()),
+        }
+    }
     fn var(&mut self) -> Var {
         let w = self.who();
-        match self.next() % 17 {
+        match self.next() % 20 {
             0 => Var::Level,
             1 => Var::MaxHp(w),
             2 => Var::CurHp(w),
@@ -145,6 +160,10 @@ impl Builder<'_> {
             13 => Var::EnemyCount,
             14 => Var::DistanceToTarget,
             15 => Var::ChannelProgress,
+            16 => Var::StackGain(StackId(self.next()), w),
+            17 => Var::BuffStacksFrom(BuffId(self.next()), w, self.origin()),
+            18 => Var::EventMagnitude,
+            19 => Var::LoopIndex,
             _ => Var::Rand01,
         }
     }

@@ -48,6 +48,15 @@ impl ValueCtx for Ctx {
     fn buff_stacks(&self, _: BuffId, _: Who) -> f32 {
         1.0
     }
+    fn buff_stacks_from(&self, _: BuffId, _: Who, _: Who) -> f32 {
+        1.0
+    }
+    fn event_magnitude(&self) -> f32 {
+        1.0
+    }
+    fn loop_index(&self) -> f32 {
+        0.0
+    }
     fn charges_of(&self, _: Slot, _: Who) -> f32 {
         1.0
     }
@@ -83,6 +92,11 @@ impl ConditionCtx for Ctx {
     }
     fn has_buff(&self, buff: BuffId, _: Who) -> bool {
         bit(self.buffs, buff.0)
+    }
+    fn has_buff_from(&self, buff: BuffId, _: Who, from: Who) -> bool {
+        // Sourced membership varies with the origin, so a gate that dropped its
+        // origin would answer the unsourced question here and be spotted.
+        bit(self.buffs, buff.0.wrapping_add(from as u16))
     }
     fn has_talent(&self, talent: TalentId) -> bool {
         bit(self.talents, talent.0 as u16)

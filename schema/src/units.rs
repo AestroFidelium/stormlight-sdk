@@ -196,6 +196,17 @@ impl TagSet {
         self.tags.iter().any(|t| reg.classes_of(*t).contains(&class))
     }
 
+    /// Every active tag, in ascending id order.
+    ///
+    /// Ascending because the set is ordered underneath and the engine reads this
+    /// where the answer has to be the same on every replay — the tag list carried
+    /// on a fired event, which a reaction's filter is matched against
+    /// (stormlight/server#186). An unordered iteration would make two runs of the
+    /// same match disagree about nothing.
+    pub fn iter(&self) -> impl Iterator<Item = TagId> + '_ {
+        self.tags.iter().copied()
+    }
+
     /// Number of active tags.
     #[must_use]
     pub fn len(&self) -> usize {

@@ -25,6 +25,8 @@ mod remap;
 mod respawn;
 mod runtime;
 mod shot_sockets;
+mod slot_bind;
+mod slot_ref;
 mod stats;
 mod tags;
 mod talent_card;

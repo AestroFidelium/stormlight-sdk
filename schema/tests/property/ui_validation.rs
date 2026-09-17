@@ -19,10 +19,12 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{Slot, StatId};
+use stormlight_mod_abi::impacts::PoolRef;
+use stormlight_mod_abi::slot_ref::SlotRef;
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, MAX_UI_DEPTH, MAX_UI_WIDGETS,
     RootVisibility, Shown, Slice, StateStyle, Strip, Style, SummonGate, Sweep, TextSource, Tooltip,
-    UiError, UiRoot, UiSubject, ValueBinding, Widget, WidgetKind,
+    UiError, UiRoot, UiSubject, ValueBinding, ValuePart, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -57,6 +59,13 @@ enum Break {
     NonFinite,
     /// Ask for a negative font size.
     NegativeMetric,
+    /// A bar bound to "the slot I am running from" — a spelling that has no
+    /// meaning in a *read* of a unit's state, so it is refused rather than left to
+    /// draw empty forever (server#187).
+    RelativeSlotBinding,
+    /// The same spelling inside a text's number, which is the other place an author
+    /// reaches for it.
+    RelativeSlotText,
     /// A nine-slice inset that is negative — an extent like any other, and the
     /// one a stretched frame's corners depend on.
     NegativeSlice,
@@ -189,6 +198,24 @@ fn apply(brk: Break, root: &mut UiRoot) {
             root.root.style.slice =
                 Some(Slice { left: 0.0, top: f32::NAN, right: 0.0, bottom: 0.0 });
         }
+        Break::RelativeSlotBinding => {
+            root.root = a_widget(
+                "bar",
+                WidgetKind::Bar { value: ValueBinding::Pool(PoolRef::Cooldown(SlotRef::This)) },
+            );
+        }
+        Break::RelativeSlotText => {
+            root.root = a_widget(
+                "text",
+                WidgetKind::Text {
+                    text: TextSource::Value {
+                        binding: ValueBinding::Pool(PoolRef::Charges(SlotRef::This)),
+                        part: ValuePart::Current,
+                        decimals: 0,
+                    },
+                },
+            );
+        }
     }
 }
 
@@ -223,6 +250,9 @@ fn a_well_formed_root_validates_and_each_break_is_classified() {
             }
             Break::NonFiniteSlice => {
                 assert_eq!(result, Err(UiError::NonFinite { widget: 0 }));
+            }
+            Break::RelativeSlotBinding | Break::RelativeSlotText => {
+                assert_eq!(result, Err(UiError::UnboundSlot { widget: 0 }));
             }
         }
     });

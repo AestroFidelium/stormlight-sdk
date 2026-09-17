@@ -87,6 +87,9 @@ impl ValueCtx for MockCtx {
     fn cooldown_of(&self, _slot: Slot, _who: Who) -> f32 {
         0.0
     }
+    fn source_slot(&self) -> Option<Slot> {
+        None
+    }
     fn ally_count(&self) -> f32 {
         0.0
     }

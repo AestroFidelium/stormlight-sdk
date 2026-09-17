@@ -35,6 +35,7 @@ use stormlight_mod_abi::missiles::{BodyDescriptor, BodyFlags, BodyKind, Collisio
 use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::placement::UnitPlacement;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
+use stormlight_mod_abi::slot_ref::SlotRef;
 use stormlight_mod_abi::talents::{
     AbilityHook, AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor,
 };
@@ -193,6 +194,13 @@ impl Gen<'_> {
     fn slot(&mut self) -> Slot {
         Slot(self.next() as u8)
     }
+    /// A slot in *effect* position (server#187). Generates both forms, so the
+    /// identity-remap test also pins that a local→global translation leaves a
+    /// relative reference alone — binding it there would silently freeze "whichever
+    /// slot I run from" into whatever the author's example happened to be.
+    fn slot_ref(&mut self) -> SlotRef {
+        if self.next().is_multiple_of(3) { SlotRef::This } else { SlotRef::At(self.slot()) }
+    }
     fn var(&mut self) -> Var {
         let w = self.who();
         match self.next() % 17 {
@@ -206,8 +214,8 @@ impl Gen<'_> {
             7 => Var::Resource(ResourceId(self.next()), w),
             8 => Var::StackCount(StackId(self.next()), w),
             9 => Var::BuffStacks(BuffId(self.next()), w),
-            10 => Var::ChargesOf(self.slot(), w),
-            11 => Var::CooldownOf(self.slot(), w),
+            10 => Var::ChargesOf(self.slot_ref(), w),
+            11 => Var::CooldownOf(self.slot_ref(), w),
             12 => Var::AllyCount,
             13 => Var::EnemyCount,
             14 => Var::DistanceToTarget,
@@ -410,7 +418,7 @@ impl Gen<'_> {
                 pattern: self.pattern(),
             },
             13 => Impact::CastAbility {
-                slot: self.slot(),
+                slot: self.slot_ref(),
                 target: self.abilitytarget(),
                 value_scale: self.value(1),
                 cost: if self.next().is_multiple_of(2) { CostMode::Normal } else { CostMode::Free },
@@ -453,8 +461,8 @@ impl Gen<'_> {
             0 => PoolRef::Shield,
             1 => PoolRef::Resource(ResourceId(self.next())),
             2 => PoolRef::Stacks(StackId(self.next())),
-            3 => PoolRef::Cooldown(self.slot()),
-            _ => PoolRef::Charges(self.slot()),
+            3 => PoolRef::Cooldown(self.slot_ref()),
+            _ => PoolRef::Charges(self.slot_ref()),
         }
     }
     fn numop(&mut self) -> NumOp {
@@ -530,7 +538,7 @@ impl Gen<'_> {
         Reaction {
             on: self.event_kind(),
             filter: EventFilter {
-                source_slot: self.next().is_multiple_of(2).then(|| self.slot()),
+                source_slot: self.next().is_multiple_of(2).then(|| self.slot_ref()),
                 every_nth: self.next().is_multiple_of(2).then(|| self.next()),
                 require_tag_on_target: self.next().is_multiple_of(2).then(|| TagId(self.next())),
             },

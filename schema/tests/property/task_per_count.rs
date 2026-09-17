@@ -144,6 +144,9 @@ impl ValueCtx for CountingCtx {
     fn cooldown_of(&self, _: stormlight_mod_abi::ids::Slot, _: Who) -> f32 {
         0.0
     }
+    fn source_slot(&self) -> Option<stormlight_mod_abi::ids::Slot> {
+        None
+    }
     fn ally_count(&self) -> f32 {
         0.0
     }

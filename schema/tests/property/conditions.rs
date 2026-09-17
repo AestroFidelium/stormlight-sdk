@@ -63,6 +63,9 @@ impl ValueCtx for Ctx {
     fn cooldown_of(&self, _: Slot, _: Who) -> f32 {
         1.0
     }
+    fn source_slot(&self) -> Option<Slot> {
+        None
+    }
     fn ally_count(&self) -> f32 {
         1.0
     }

@@ -37,7 +37,7 @@ use stormlight_mod_abi::placement::UnitPlacement;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::slot_ref::SlotRef;
 use stormlight_mod_abi::talents::{
-    AbilityHook, AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor,
+    AbilityHook, AbilitySelector, GrantAbility, GrantTarget, ParamPatch, Rider, TalentDescriptor,
 };
 use stormlight_mod_abi::tasks::QuestSpec;
 use stormlight_mod_abi::triggers::{EventFilter, EventKind, Reaction};
@@ -621,8 +621,8 @@ impl Gen<'_> {
             add_reactions: (0..self.next() % 2).map(|_| self.reaction()).collect(),
             grants: (0..self.next() % 2)
                 .map(|_| GrantAbility {
-                    slot: self.slot(),
                     ability: AbilityId(u32::from(self.next())),
+                    into: GrantTarget::Exact(self.slot()),
                 })
                 .collect(),
             modifiers: (0..self.next() % 3).map(|_| self.modifier()).collect(),
@@ -683,6 +683,7 @@ impl Gen<'_> {
     }
     fn unit(&mut self) -> UnitDescriptor {
         UnitDescriptor {
+            grant_slots: Vec::new(),
             id: UnitId(u32::from(self.next())),
             health: self.value(1),
             stats: (0..self.next() % 3).map(|_| (StatId(self.next()), self.value(1))).collect(),

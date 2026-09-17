@@ -27,7 +27,8 @@ use stormlight_mod_abi::common::NumOp;
 use stormlight_mod_abi::ids::{AbilityId, ParamId, Slot, TagId, TalentId};
 use stormlight_mod_abi::math::Value;
 use stormlight_mod_abi::talents::{
-    AbilityFocus, AbilityHook, AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor,
+    AbilityFocus, AbilityHook, AbilitySelector, GrantAbility, GrantTarget, ParamPatch, Rider,
+    TalentDescriptor,
 };
 
 extern crate alloc;
@@ -96,7 +97,10 @@ fn talent(s: &Scenario) -> TalentDescriptor {
             .grants
             .iter()
             .take(3)
-            .map(|slot| GrantAbility { slot: Slot(*slot), ability: AbilityId(9) })
+            .map(|slot| GrantAbility {
+                ability: AbilityId(9),
+                into: GrantTarget::Exact(Slot(*slot)),
+            })
             .collect(),
         modifiers: Vec::new(),
         tags: Vec::new(),

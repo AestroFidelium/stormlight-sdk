@@ -43,8 +43,9 @@ use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{AbilityId, CurveId, Slot, TagId};
+use crate::ids::{CurveId, TagId};
 use crate::math::Value;
+use crate::talents::GrantAbility;
 
 /// How much total XP standing at a given level requires.
 ///
@@ -69,9 +70,15 @@ pub enum XpCurve {
 pub struct LevelGrants {
     /// Tags the unit carries from this level on.
     pub tags: Vec<TagId>,
-    /// Abilities that appear in a slot at this level. Bound like a talent's grant:
-    /// into a free slot, never over an existing binding.
-    pub abilities: Vec<(Slot, AbilityId)>,
+    /// Abilities that appear on the unit's bar at this level.
+    ///
+    /// The same [`GrantAbility`] a talent hands over (stormlight/server#188), and
+    /// deliberately the same type rather than a parallel `(slot, ability)` pair: a
+    /// level handing a unit its ultimate, a level replacing a starter ability, and a
+    /// level adding a button wherever there is room are the same three intents a
+    /// talent has, answered in the same one place. A pair could only ever spell the
+    /// first of them, and spelled it silently.
+    pub abilities: Vec<GrantAbility>,
 }
 
 /// How a kill's XP is divided among the living.

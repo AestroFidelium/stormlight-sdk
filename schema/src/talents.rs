@@ -2,13 +2,15 @@
 //! never unit identity) plus generic patches/riders/reactions/grants. This is
 //! what delivers "any talent on any ability, any ability on any unit".
 
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
 use crate::behaviors::Modifier;
 use crate::common::NumOp;
-use crate::ids::{AbilityId, ParamId, Slot, TagId, TalentId};
+use crate::ids::{AbilityId, Handle, ParamId, Slot, TagId, TalentId};
 use crate::impacts::Impact;
 use crate::math::Value;
 use crate::tasks::QuestSpec;
@@ -61,11 +63,129 @@ pub struct Rider {
     pub selector: Option<AbilitySelector>,
 }
 
-/// Grant a new ability into a free slot.
+/// Where a granted ability binds (stormlight/server#188).
+///
+/// Three spellings because handing a unit an ability is three different intents,
+/// and they used to share one — "bind if that slot happens to be free", which is
+/// the right answer for none of them and silently wrong for two.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+pub enum GrantTarget {
+    /// **This slot, which is expected to be empty.** The authored position — an
+    /// ultimate on the key the mod put it on. An occupied slot is an authoring
+    /// mistake and is refused by name rather than absorbed.
+    Exact(Slot),
+    /// **This slot, whatever is in it.** The kit that swaps one of its own
+    /// abilities for another. Always binds: an empty slot is simply bound, because
+    /// refusing "replace nothing" would be pedantry rather than a diagnostic.
+    ///
+    /// What the slot already carries in the way of talent patches and riders stays
+    /// with the *slot*, not with the ability that left it — [`AbilitySelector::Slot`]
+    /// keys those, and the replacement inherits every one of them. A selector
+    /// naming the displaced ability by id stops matching, which is the same rule
+    /// read from the other end.
+    ///
+    /// The slot's **live** state goes the other way, because it belongs to the
+    /// ability rather than to the key: the arriving ability is ready if it has never
+    /// been cast, the departing one keeps recovering (and keeps counting down) while
+    /// it is off the bar, and a cast already in flight completes as the ability that
+    /// started it — its program was frozen when it began. Charges are a single
+    /// per-unit balance and are not a slot's to hand over at all. That is the rule a
+    /// stance change needs, and the only one a *pure* fold can implement: the talent
+    /// resolution re-runs on every change to the selection or the bindings, so
+    /// anything it did to live state would happen again on each rebuild.
+    Replace(Slot),
+    /// **A button, anywhere.** The grant with no opinion about position: it takes
+    /// the first slot the *unit* offers to grants that nothing is bound in.
+    ///
+    /// Where it may look is the unit's declaration
+    /// ([`UnitDescriptor::grant_slots`]), never the engine's idea of a bar. That is
+    /// what lets a unit with an unusual layout receive the same talent unmodified,
+    /// and what stops two positional grants on one unit from fighting over a number
+    /// the author had to guess.
+    ///
+    /// [`UnitDescriptor::grant_slots`]: crate::units::UnitDescriptor::grant_slots
+    FirstFree,
+}
+
+/// Why a grant could not bind (stormlight/server#188).
+///
+/// Every variant names the thing the author has to change. Silence was the defect:
+/// a grant that bound nothing used to leave the talent picked, the tier spent, and
+/// the player's bar unchanged, with nothing written down anywhere.
+///
+/// Not serializable, like [`QuestError`](crate::tasks::QuestError): this is a
+/// verdict on a declaration, reached on whichever side is holding it, and never
+/// something that crosses the wire.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum GrantError {
+    /// An [`Exact`](GrantTarget::Exact) grant named a slot that is already bound.
+    /// `held` is what is in the way, so the report is actionable without the reader
+    /// having to reconstruct the loadout.
+    Occupied { slot: Slot, held: AbilityId },
+    /// A [`FirstFree`](GrantTarget::FirstFree) grant on a unit that offers no slots
+    /// to grants at all. Knowable before the match starts, and refused there.
+    NoGrantSlots,
+    /// A [`FirstFree`](GrantTarget::FirstFree) grant where every slot the unit
+    /// offers is already taken — the unit ran out of bar.
+    PoolFull,
+}
+
+impl fmt::Display for GrantError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Occupied { slot, held } => {
+                write!(f, "slot {} is already bound to ability {}", slot.0, held.raw())
+            }
+            Self::NoGrantSlots => f.write_str("the unit offers no slots to grants"),
+            Self::PoolFull => f.write_str("every slot the unit offers to grants is taken"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for GrantError {}
+
+/// Grant an ability into a slot — see [`GrantTarget`] for which one.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub struct GrantAbility {
-    pub slot: Slot,
     pub ability: AbilityId,
+    pub into: GrantTarget,
+}
+
+impl GrantAbility {
+    /// Which slot this grant binds into, given what the unit currently has `bound`
+    /// and the ordered slots it offers to grants.
+    ///
+    /// The one place any of the three targets is answered. The talent fold, a
+    /// level's grants, a unit spawning at a declared level and the loader's own
+    /// check all come through here, so none of them can drift into a fourth
+    /// meaning — and a refusal is a value the caller has to do something with
+    /// rather than a branch it can forget to write.
+    ///
+    /// `bound` is the loadout **as it stands**, which is what makes a sequence of
+    /// grants fold: each one sees what the ones before it took.
+    pub fn resolve(
+        &self,
+        bound: &BTreeMap<Slot, AbilityId>,
+        pool: &[Slot],
+    ) -> Result<Slot, GrantError> {
+        match self.into {
+            GrantTarget::Exact(slot) => match bound.get(&slot) {
+                Some(&held) => Err(GrantError::Occupied { slot, held }),
+                None => Ok(slot),
+            },
+            GrantTarget::Replace(slot) => Ok(slot),
+            GrantTarget::FirstFree => {
+                if pool.is_empty() {
+                    return Err(GrantError::NoGrantSlots);
+                }
+                pool.iter()
+                    .copied()
+                    .find(|slot| !bound.contains_key(slot))
+                    .ok_or(GrantError::PoolFull)
+            }
+        }
+    }
 }
 
 /// Which single ability of the caster's a talent is *about*, when there is one
@@ -138,9 +258,13 @@ impl TalentDescriptor {
     ///     selector where it declares one and with the talent's list otherwise
     ///     (server#150), so the set to read from is the union of what actually
     ///     governs something;
-    ///   - a **lone grant** is about the slot its new ability appears in, which
+    ///   - a **lone grant** is about the button its new ability appears on, which
     ///     covers the case a selector cannot: a talent whose whole point is a new
-    ///     button.
+    ///     button. Which of the two focus shapes answers depends on what the grant
+    ///     knows: an authored slot ([`GrantTarget::Exact`] / [`GrantTarget::Replace`])
+    ///     *is* the position, while a positional grant ([`GrantTarget::FirstFree`])
+    ///     does not know its slot until a unit resolves it — so it answers with the
+    ///     ability, which is looked up in whatever loadout the caster is carrying.
     ///
     /// `None` when the honest answer is nothing. A talent selecting by tag, one
     /// selecting nothing at all, one reaching two abilities, or one granting two is
@@ -160,7 +284,10 @@ impl TalentDescriptor {
             _ => None,
         };
         selected.or(match self.grants.as_slice() {
-            [only] => Some(AbilityFocus::Slot(only.slot)),
+            [only] => Some(match only.into {
+                GrantTarget::Exact(slot) | GrantTarget::Replace(slot) => AbilityFocus::Slot(slot),
+                GrantTarget::FirstFree => AbilityFocus::Ability(only.ability),
+            }),
             _ => None,
         })
     }

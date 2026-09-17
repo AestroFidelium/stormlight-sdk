@@ -207,6 +207,7 @@ impl Gen<'_> {
             .collect();
         let talents = (0..self.count(3)).map(|_| TalentId(u32::from(self.next()))).collect();
         UnitDescriptor {
+            grant_slots: Vec::new(),
             id: UnitId(u32::from(self.next())),
             health: self.value(),
             stats,

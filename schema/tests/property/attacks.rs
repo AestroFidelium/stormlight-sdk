@@ -179,6 +179,7 @@ fn attack(s: &Scenario) -> AttackDescriptor {
 /// A unit descriptor carrying `attack`, otherwise as bare as one can be.
 fn unit(id: UnitId, attack: Option<AttackDescriptor>) -> UnitDescriptor {
     UnitDescriptor {
+        grant_slots: Vec::new(),
         id,
         health: Value::Const(100.0),
         stats: Vec::new(),

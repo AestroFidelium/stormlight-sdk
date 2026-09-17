@@ -27,6 +27,7 @@ use stormlight_mod_abi::progression::{
     LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpShare, XpSource, XpTrigger,
 };
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
+use stormlight_mod_abi::talents::{GrantAbility, GrantTarget};
 use stormlight_mod_abi::units::UnitDescriptor;
 
 mod ids {
@@ -154,7 +155,10 @@ fn spec(s: &Scenario) -> ProgressionSpec {
             s.grant_level,
             LevelGrants {
                 tags: vec![TagId(s.tag)],
-                abilities: vec![(Slot(s.slot), AbilityId(s.ability))],
+                abilities: vec![GrantAbility {
+                    ability: AbilityId(s.ability),
+                    into: GrantTarget::Exact(Slot(s.slot)),
+                }],
             },
         )],
         sources: vec![XpSource {
@@ -181,6 +185,7 @@ fn spec(s: &Scenario) -> ProgressionSpec {
 /// A unit descriptor carrying `progression`, otherwise as bare as one can be.
 fn unit(id: UnitId, progression: Option<ProgressionSpec>) -> UnitDescriptor {
     UnitDescriptor {
+        grant_slots: Vec::new(),
         id,
         health: Value::Const(100.0),
         stats: Vec::new(),
@@ -261,7 +266,10 @@ fn the_remap_walk_rewrites_every_handle_a_declaration_carries() {
         );
         assert_eq!(
             grants.abilities,
-            vec![(Slot(s.slot), AbilityId(s.ability.wrapping_add(1)))],
+            vec![GrantAbility {
+                ability: AbilityId(s.ability.wrapping_add(1)),
+                into: GrantTarget::Exact(Slot(s.slot)),
+            }],
             "a granted ability was not remapped (or its slot was rewritten)",
         );
         // And so is every handle inside an amount expression, on both directions

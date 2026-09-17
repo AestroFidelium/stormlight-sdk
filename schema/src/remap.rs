@@ -579,6 +579,9 @@ impl RemapIds for Rider {
 
 impl RemapIds for GrantAbility {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // The target is a slot number (or nothing at all, for a positional grant),
+        // and a slot is mod convention rather than an interned handle — so only the
+        // ability crosses the local→global boundary.
         self.ability = m.ability(self.ability)?;
         Ok(())
     }
@@ -650,10 +653,7 @@ impl RemapIds for QuestSpec {
 impl RemapIds for LevelGrants {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         remap_tags(&mut self.tags, m)?;
-        for (_slot, ability) in self.abilities.iter_mut() {
-            *ability = m.ability(*ability)?;
-        }
-        Ok(())
+        self.abilities.remap_ids(m)
     }
 }
 

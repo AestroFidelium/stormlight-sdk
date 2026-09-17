@@ -101,6 +101,26 @@ pub struct UnitDescriptor {
     /// nobody an objective.
     #[serde(default)]
     pub tasks: Vec<QuestSpec>,
+    /// The slots this unit opens to **positional** grants, in the order it wants
+    /// them filled (stormlight/server#188).
+    ///
+    /// A [`GrantTarget::FirstFree`] grant — "give me a button, anywhere" — takes the
+    /// first of these nothing is bound in. The list lives on the unit rather than in
+    /// the engine so that a slot convention is never engine knowledge: a unit with
+    /// an unusual bar declares its own order and receives the same talents
+    /// unmodified, and the engine never learns that "1 through 4" means anything.
+    ///
+    /// Empty is the honest default and means the unit accepts no positional grants
+    /// at all — a creep, a ward, a building. A talent that would need one on such a
+    /// unit is refused by name at load rather than binding nothing.
+    ///
+    /// Order is the whole of the determinism: two talents both asking for a button
+    /// fill this list front to back, in the fold's own sorted order, so the same
+    /// picks always produce the same bar.
+    ///
+    /// [`GrantTarget::FirstFree`]: crate::talents::GrantTarget::FirstFree
+    #[serde(default)]
+    pub grant_slots: Vec<Slot>,
     /// The unit's basic attack, if it has one (stormlight/server#89). `None` is a
     /// unit that cannot attack at all — the honest default, because the engine
     /// ships no weapon of its own and a building or a ward should not acquire one

@@ -118,6 +118,7 @@ fn tree(s: &Scenario) -> TalentTree {
 /// A unit descriptor carrying `talent_tree`, otherwise as bare as one can be.
 fn unit(id: UnitId, talent_tree: Option<TalentTree>) -> UnitDescriptor {
     UnitDescriptor {
+        grant_slots: Vec::new(),
         id,
         health: Value::Const(100.0),
         stats: Vec::new(),

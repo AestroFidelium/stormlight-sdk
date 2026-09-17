@@ -110,6 +110,7 @@ fn spec(s: &Scenario) -> RespawnSpec {
 /// A unit descriptor carrying `respawn`, otherwise as bare as one can be.
 fn unit(id: UnitId, respawn: Option<RespawnSpec>) -> UnitDescriptor {
     UnitDescriptor {
+        grant_slots: Vec::new(),
         id,
         health: Value::Const(100.0),
         stats: Vec::new(),

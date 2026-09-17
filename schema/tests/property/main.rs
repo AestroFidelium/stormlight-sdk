@@ -12,6 +12,7 @@ mod animation_validation;
 mod attacks;
 mod conditions;
 mod effect_origin;
+mod grant_into;
 mod interner;
 mod manifest;
 mod math;

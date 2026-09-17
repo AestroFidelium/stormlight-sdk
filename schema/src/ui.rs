@@ -1691,6 +1691,20 @@ pub enum UiError {
     /// it. Refused at load, where the author can read about it. It is the root's
     /// rather than a widget's, so it carries no index.
     BadStrip,
+    /// A binding that says "the slot I am running from" (stormlight/server#187).
+    ///
+    /// A widget is a *read* of a unit's state, not an effect running from one of its
+    /// buttons, so there is nothing for a relative slot reference to resolve
+    /// against — here and only here, [`SlotRef::This`] has no meaning at all rather
+    /// than a meaning that sometimes fails. Refused at load for the reason every
+    /// break in this walk is: the alternative is a bar that reads empty forever and
+    /// an author with nothing to read.
+    ///
+    /// A socket already names its slot ([`WidgetKind::AbilitySlot::slot`]), which is
+    /// where the answer would have had to come from.
+    ///
+    /// [`SlotRef::This`]: crate::slot_ref::SlotRef::This
+    UnboundSlot { widget: u16 },
     /// A transient root whose lifetime no clock can run — zero, negative or
     /// non-finite (stormlight/server#93).
     ///
@@ -1729,6 +1743,9 @@ impl fmt::Display for UiError {
             }
             Self::BadTransition { widget } => {
                 write!(f, "widget {widget} carries a catch-up no clock can run")
+            }
+            Self::UnboundSlot { widget } => {
+                write!(f, "widget {widget} binds a pool to a slot it is not running from")
             }
             Self::BadEventLifetime => {
                 f.write_str("ui root is spawned by an occurrence but lives no time")
@@ -1779,6 +1796,26 @@ fn is_negative(widget: &Widget) -> bool {
 /// Separate from [`is_finite`] and [`is_negative`] because it answers with the
 /// track at fault rather than with a yes or no: a widget may declare four curves,
 /// and "one of them has a NaN in it" is not something an author can act on.
+/// Whether `widget` reads a pool through a slot reference it cannot resolve
+/// (stormlight/server#187).
+///
+/// Both binding positions on a widget, because an author reaches for the same
+/// spelling in either: a bar's fill and a text's number.
+fn binds_relative_slot(widget: &Widget) -> bool {
+    let relative = |binding: &ValueBinding| {
+        matches!(
+            binding,
+            ValueBinding::Pool(PoolRef::Cooldown(slot) | PoolRef::Charges(slot))
+                if slot.is_relative()
+        )
+    };
+    match &widget.kind {
+        WidgetKind::Bar { value } => relative(value),
+        WidgetKind::Text { text: TextSource::Value { binding, .. } } => relative(binding),
+        _ => false,
+    }
+}
+
 fn animation_fault(widget: &Widget, index: u16) -> Result<(), UiError> {
     if widget.style.anim.len() > MAX_UI_TRACKS {
         return Err(UiError::TooManyTracks { widget: index });
@@ -1881,6 +1918,13 @@ impl UiRoot {
             // the worst possible time to discover it.
             if widget.style.states.has_empty_image() {
                 return Err(UiError::EmptyImagePath { widget: index });
+            }
+            // A binding naming a slot it cannot have (server#187). Checked beside
+            // the rest: an unresolvable one draws the widget's empty form, which is
+            // exactly what a bar for a unit the client cannot see yet draws, so the
+            // symptom of the typo is indistinguishable from an ordinary frame.
+            if binds_relative_slot(widget) {
+                return Err(UiError::UnboundSlot { widget: index });
             }
             // And the same for the time axis (server#97): a curve is checked here
             // rather than left to the interpreter, because a track that only

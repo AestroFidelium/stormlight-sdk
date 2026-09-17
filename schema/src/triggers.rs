@@ -40,9 +40,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::common::ImpactTarget;
 use crate::conditions::Condition;
-use crate::ids::{EventId, Slot, TagId};
+use crate::ids::{EventId, TagId};
 use crate::impacts::Impact;
 use crate::math::Value;
+use crate::slot_ref::SlotRef;
 
 /// The bounded lifecycle-event set. `Custom` carries a mod-defined [`EventId`]
 /// for `Emit`, so mods hook novel moments without extending this enum.
@@ -136,6 +137,28 @@ pub enum EventKind {
     Custom(EventId),
 }
 
+impl EventKind {
+    /// Whether an announcement of this kind names the ability slot behind it
+    /// (stormlight/server#187).
+    ///
+    /// True for exactly the four the caster's own bar produces — the two halves of
+    /// a cast, a channel's tick, a slot coming back up — because the field means
+    /// *the listener's own slot*, and only those four have one. A blow does not:
+    /// the victim hears `OnDamageTaken` about someone else's button, and putting a
+    /// number there would be a slot the reacting unit does not own.
+    ///
+    /// The engine's own answer to it, so a declaration that could never resolve a
+    /// [`SlotRef::This`] is a named refusal at adoption rather than a reaction that
+    /// quietly never fires.
+    #[must_use]
+    pub const fn carries_slot(self) -> bool {
+        matches!(
+            self,
+            Self::OnCastStart | Self::OnCast | Self::OnChannelProgress | Self::OnAbilityReady
+        )
+    }
+}
+
 /// Cheap structural narrowing applied before the (more expensive) [`Condition`].
 #[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
 pub struct EventFilter {
@@ -143,7 +166,13 @@ pub struct EventFilter {
     /// tick, the slot that came off cooldown. `None` hears every slot, and an
     /// event that names no slot (a hit, a death, the heartbeat) is never matched
     /// by a filter that names one.
-    pub source_slot: Option<Slot>,
+    ///
+    /// All three states say something different (stormlight/server#187):
+    /// `None` hears everything; [`SlotRef::At`] hears one slot;
+    /// [`SlotRef::This`] hears **whichever** slot, as long as the event named one —
+    /// which is how a reaction guarantees that a `This` in its own effects has
+    /// something to resolve against.
+    pub source_slot: Option<SlotRef>,
     /// Fire only every Nth matching event (e.g. "every 3rd attack").
     ///
     /// Counted over the events that got past **both** this filter and the

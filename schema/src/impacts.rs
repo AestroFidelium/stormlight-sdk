@@ -14,11 +14,12 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Direction, ImpactTarget, NumOp, Point3, TargetFilter};
 use crate::conditions::Condition;
 use crate::ids::{
-    BuffId, DamageTypeId, EventId, HandlerId, ResourceId, Slot, StackId, TagClassId, TagId,
+    BuffId, DamageTypeId, EventId, HandlerId, ResourceId, StackId, TagClassId, TagId,
 };
 use crate::math::Value;
 use crate::missiles::BodyDescriptor;
 use crate::params::ParamOverride;
+use crate::slot_ref::SlotRef;
 
 /// The geometric target set a `Retarget` resolves; params live inside the shape.
 ///
@@ -55,8 +56,12 @@ pub enum PoolRef {
     Shield,
     Resource(ResourceId),
     Stacks(StackId),
-    Cooldown(Slot),
-    Charges(Slot),
+    /// A slot's remaining cooldown. The slot is a [`SlotRef`], so a talent can pay
+    /// back "the one I just used" as easily as a written-down one
+    /// (stormlight/server#187).
+    Cooldown(SlotRef),
+    /// A slot's charge balance — the same reference rule as [`Self::Cooldown`].
+    Charges(SlotRef),
     /// Accumulated experience (stormlight/server#62). Granting XP is an adjust of
     /// a bounded numeric reserve, not a new structural verb, so it is a pool ref
     /// rather than a leaf of its own (§3 governance). That is also what lets a mod
@@ -219,7 +224,10 @@ pub enum Impact {
         pattern: SpawnPattern,
     },
     CastAbility {
-        slot: Slot,
+        /// Which slot re-fires. [`SlotRef::This`] is the enclosing resolution's own
+        /// slot, which is the only way an ability granted into a slot chosen at
+        /// runtime can re-cast *itself* (stormlight/server#187).
+        slot: SlotRef,
         target: AbilityTarget,
         value_scale: Value,
         cost: CostMode,

@@ -10,6 +10,14 @@
 //! numeric/geometry data are pure mod convention or coordinates and pass through
 //! untouched. The walk is fallible: a dangling local handle surfaces as the map's
 //! error rather than a panic (see [`IdMap::Error`]).
+//!
+//! One thing that is *not* an interned handle rides the same walk anyway: a
+//! [`SlotRef`] (stormlight/server#187). Rewriting one relative reference everywhere
+//! it hides in a tree is the same traversal problem as rewriting one id, and the
+//! shapes it hides in are the same shapes — so it is [`IdMap::slot_ref`] here
+//! rather than a second exhaustive match that could silently disagree about where a
+//! `CastAbility` lives. A local→global translation leaves it alone (the method's
+//! default); [`bind_slots`](crate::slot_ref::bind_slots) is the map that does not.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -31,6 +39,7 @@ use crate::math::{Value, Var};
 use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
 use crate::params::ParamOverride;
 use crate::progression::{LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpSource};
+use crate::slot_ref::SlotRef;
 use crate::talent_tree::{TalentTier, TalentTree};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
 use crate::tasks::{QuestPayout, QuestSpec};
@@ -63,6 +72,17 @@ pub trait IdMap {
     fn unit(&self, id: UnitId) -> Result<UnitId, Self::Error>;
     fn navmesh(&self, id: NavMeshId) -> Result<NavMeshId, Self::Error>;
     fn anim_state(&self, id: AnimStateId) -> Result<AnimStateId, Self::Error>;
+
+    /// Translate a slot reference. **Not** a change of id space — a
+    /// [`Slot`](crate::ids::Slot) is mod convention, not an interned name — so the
+    /// default is the identity, and a local→global map wants exactly that.
+    ///
+    /// It is here because the *question* is the walk's: rewrite one leaf reference
+    /// wherever it occurs in a descriptor tree. The maps that answer it differently
+    /// live in [`crate::slot_ref`].
+    fn slot_ref(&self, slot: SlotRef) -> Result<SlotRef, Self::Error> {
+        Ok(slot)
+    }
 }
 
 /// In-place translation of every interned handle inside `self` through `m`.
@@ -72,12 +92,18 @@ pub trait RemapIds {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error>;
 }
 
-impl<T: RemapIds> RemapIds for Vec<T> {
+impl<T: RemapIds> RemapIds for [T] {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         for x in self.iter_mut() {
             x.remap_ids(m)?;
         }
         Ok(())
+    }
+}
+
+impl<T: RemapIds> RemapIds for Vec<T> {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        self.as_mut_slice().remap_ids(m)
     }
 }
 
@@ -106,8 +132,6 @@ impl RemapIds for Var {
             | Var::MissingHp(_)
             | Var::HpRatio(_)
             | Var::MissingHpRatio(_)
-            | Var::ChargesOf(_, _)
-            | Var::CooldownOf(_, _)
             | Var::AllyCount
             | Var::EnemyCount
             | Var::DistanceToTarget
@@ -119,6 +143,8 @@ impl RemapIds for Var {
             Var::Resource(id, _) => *id = m.resource(*id)?,
             Var::StackCount(id, _) | Var::StackGain(id, _) => *id = m.stack(*id)?,
             Var::BuffStacks(id, _) | Var::BuffStacksFrom(id, _, _) => *id = m.buff(*id)?,
+            // Not an id: the slot a cooldown/charge read names (server#187).
+            Var::ChargesOf(slot, _) | Var::CooldownOf(slot, _) => *slot = m.slot_ref(*slot)?,
         }
         Ok(())
     }
@@ -224,11 +250,12 @@ impl RemapIds for LoopKind {
 impl RemapIds for PoolRef {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
-            // `Shield`/`Xp` have no id; `Cooldown`/`Charges` key on a
-            // non-interned `Slot`.
-            PoolRef::Shield | PoolRef::Xp | PoolRef::Cooldown(_) | PoolRef::Charges(_) => {}
+            // `Shield`/`Xp` have no id at all.
+            PoolRef::Shield | PoolRef::Xp => {}
             PoolRef::Resource(id) => *id = m.resource(*id)?,
             PoolRef::Stacks(id) => *id = m.stack(*id)?,
+            // Not an id either, but a reference the walk does rewrite (server#187).
+            PoolRef::Cooldown(slot) | PoolRef::Charges(slot) => *slot = m.slot_ref(*slot)?,
         }
         Ok(())
     }
@@ -281,9 +308,9 @@ impl RemapIds for PendingFilter {
 
 impl RemapIds for Impact {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
-        // `target`/`flags`/`dir`/`at`/`slot`/`cost` fields below carry no interned
-        // handle (a resolved-target selector, switches, a coordinate direction, a
-        // spawn anchor, a non-interned `Slot`, or a cost mode) and are skipped.
+        // `target`/`flags`/`dir`/`at`/`cost` fields below carry no interned handle
+        // (a resolved-target selector, switches, a coordinate direction, a spawn
+        // anchor, or a cost mode) and are skipped.
         match self {
             Impact::Retarget { shape, filter, max_targets, exclude_primary: _, inner } => {
                 shape.remap_ids(m)?;
@@ -331,7 +358,10 @@ impl RemapIds for Impact {
                 count.remap_ids(m)?;
                 pattern.remap_ids(m)?;
             }
-            Impact::CastAbility { slot: _, target: _, value_scale, cost: _, params } => {
+            Impact::CastAbility { slot, target: _, value_scale, cost: _, params } => {
+                // Which slot re-fires: absolute as written, or the one the enclosing
+                // resolution is running from (server#187).
+                *slot = m.slot_ref(*slot)?;
                 value_scale.remap_ids(m)?;
                 // A sub-cast's overrides name a param and carry a value tree; left
                 // local, they would restate somebody else's parameter.
@@ -428,6 +458,11 @@ impl RemapIds for EventFilter {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         if let Some(t) = &mut self.require_tag_on_target {
             *t = m.tag(*t)?;
+        }
+        // The slot a reaction narrows to — an absolute one, or "whichever slot this
+        // event came from, as long as it came from one" (server#187).
+        if let Some(slot) = &mut self.source_slot {
+            *slot = m.slot_ref(*slot)?;
         }
         Ok(())
     }

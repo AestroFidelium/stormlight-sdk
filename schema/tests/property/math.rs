@@ -10,6 +10,7 @@
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::{BuffId, CurveId, ResourceId, Slot, StackId, StatId};
 use stormlight_mod_abi::math::{BinOp, Origin, Value, ValueCtx, Var, Who};
+use stormlight_mod_abi::slot_ref::SlotRef;
 
 fn frac(seed: u16) -> f32 {
     f32::from(seed) / f32::from(u16::MAX) // [0, 1]
@@ -21,6 +22,10 @@ struct MockCtx {
     scale: f32,
     base: f32,
     rand: f32,
+    /// The slot the resolution is running from — what a relative slot reference
+    /// resolves to (server#187). Derived from a seed so both "there is one" and
+    /// "there is none" occur across a campaign.
+    source_slot: Option<Slot>,
 }
 
 impl MockCtx {
@@ -29,6 +34,7 @@ impl MockCtx {
             scale: frac(scale) * 4.0,       // [0, 4]
             base: frac(base) * 100.0 + 1.0, // [1, 101], nonzero for ratios
             rand: frac(rand),               // [0, 1]
+            source_slot: (!base.is_multiple_of(5)).then_some(Slot((base % 7) as u8)),
         }
     }
     /// A deterministic finite value that varies a little per id/who so distinct
@@ -78,6 +84,9 @@ impl ValueCtx for MockCtx {
     }
     fn cooldown_of(&self, sl: Slot, who: Who) -> f32 {
         self.read(70 + u32::from(sl.0) + who as u32)
+    }
+    fn source_slot(&self) -> Option<Slot> {
+        self.source_slot
     }
     fn ally_count(&self) -> f32 {
         self.read(80)
@@ -135,6 +144,14 @@ impl Builder<'_> {
             _ => Who::Source,
         }
     }
+    /// A slot in effect position, in both forms (server#187).
+    fn slot_ref(&mut self) -> SlotRef {
+        if self.next().is_multiple_of(3) {
+            SlotRef::This
+        } else {
+            SlotRef::At(Slot(self.next() as u8))
+        }
+    }
     fn origin(&mut self) -> Origin {
         match self.next() % 4 {
             0 => Origin::Anyone,
@@ -154,8 +171,8 @@ impl Builder<'_> {
             7 => Var::Resource(ResourceId(self.next()), w),
             8 => Var::StackCount(StackId(self.next()), w),
             9 => Var::BuffStacks(BuffId(self.next()), w),
-            10 => Var::ChargesOf(Slot(self.next() as u8), w),
-            11 => Var::CooldownOf(Slot(self.next() as u8), w),
+            10 => Var::ChargesOf(self.slot_ref(), w),
+            11 => Var::CooldownOf(self.slot_ref(), w),
             12 => Var::AllyCount,
             13 => Var::EnemyCount,
             14 => Var::DistanceToTarget,

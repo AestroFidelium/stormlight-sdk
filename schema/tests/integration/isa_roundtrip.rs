@@ -18,6 +18,7 @@ use stormlight_mod_abi::impacts::{
 };
 use stormlight_mod_abi::math::{BinOp, Value, Var, Who};
 use stormlight_mod_abi::missiles::{BodyDescriptor, BodyFlags, BodyKind, CollisionSpec};
+use stormlight_mod_abi::slot_ref::SlotRef;
 
 struct Gen<'a> {
     ops: &'a [u16],
@@ -32,6 +33,15 @@ impl Gen<'_> {
     }
     fn f32(&mut self) -> f32 {
         f32::from(self.next()) / f32::from(u16::MAX) * 200.0 - 100.0
+    }
+    /// A slot in effect position — both forms, so the round trip covers the
+    /// relative one too (server#187).
+    fn slot_ref(&mut self) -> SlotRef {
+        if self.next().is_multiple_of(3) {
+            SlotRef::This
+        } else {
+            SlotRef::At(Slot(self.next() as u8))
+        }
     }
     fn who(&mut self) -> Who {
         match self.next() % 3 {
@@ -94,8 +104,8 @@ impl Gen<'_> {
             7 => Var::Resource(ResourceId(self.next()), w),
             8 => Var::StackCount(StackId(self.next()), w),
             9 => Var::BuffStacks(BuffId(self.next()), w),
-            10 => Var::ChargesOf(Slot(self.next() as u8), w),
-            11 => Var::CooldownOf(Slot(self.next() as u8), w),
+            10 => Var::ChargesOf(self.slot_ref(), w),
+            11 => Var::CooldownOf(self.slot_ref(), w),
             12 => Var::AllyCount,
             13 => Var::EnemyCount,
             14 => Var::DistanceToTarget,
@@ -260,7 +270,7 @@ impl Gen<'_> {
                 pattern: self.pattern(),
             },
             13 => Impact::CastAbility {
-                slot: Slot(self.next() as u8),
+                slot: self.slot_ref(),
                 target: self.abilitytarget(),
                 value_scale: self.value(1),
                 cost: if self.next().is_multiple_of(2) { CostMode::Normal } else { CostMode::Free },
@@ -303,8 +313,8 @@ impl Gen<'_> {
             0 => PoolRef::Shield,
             1 => PoolRef::Resource(ResourceId(self.next())),
             2 => PoolRef::Stacks(StackId(self.next())),
-            3 => PoolRef::Cooldown(Slot(self.next() as u8)),
-            _ => PoolRef::Charges(Slot(self.next() as u8)),
+            3 => PoolRef::Cooldown(self.slot_ref()),
+            _ => PoolRef::Charges(self.slot_ref()),
         }
     }
     fn numop(&mut self) -> NumOp {

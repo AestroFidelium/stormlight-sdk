@@ -15,6 +15,7 @@ use alloc::boxed::Box;
 use serde::{Deserialize, Serialize};
 
 use crate::ids::{BuffId, CurveId, ResourceId, Slot, StackId, StatId};
+use crate::slot_ref::SlotRef;
 
 /// Whose state a [`Var`] projects. `Source` is the effect origin (e.g. the owner
 /// of an in-flight missile), distinct from the immediate caster.
@@ -72,8 +73,11 @@ pub enum Var {
     Resource(ResourceId, Who),
     StackCount(StackId, Who),
     BuffStacks(BuffId, Who),
-    ChargesOf(Slot, Who),
-    CooldownOf(Slot, Who),
+    /// Charges left on a slot. The slot is a [`SlotRef`], so a rider copied onto
+    /// several slots reads *its own* (stormlight/server#187).
+    ChargesOf(SlotRef, Who),
+    /// Cooldown remaining on a slot — the same reference rule as [`Self::ChargesOf`].
+    CooldownOf(SlotRef, Who),
     AllyCount,
     EnemyCount,
     DistanceToTarget,
@@ -174,8 +178,18 @@ pub trait ValueCtx {
     /// concrete origin — [`Origin::Anyone`] is answered by [`Self::buff_stacks`]
     /// in the evaluator, so an impl cannot make the two disagree.
     fn buff_stacks_from(&self, buff: BuffId, who: Who, from: Who) -> f32;
+    /// Charges on `slot`. Only ever asked with a slot that [resolved]: a relative
+    /// reference is answered by the evaluator, so no impl can invent a slot for one
+    /// that did not.
+    ///
+    /// [resolved]: SlotRef::resolve
     fn charges_of(&self, slot: Slot, who: Who) -> f32;
+    /// Cooldown remaining on `slot` — the same rule as [`Self::charges_of`].
     fn cooldown_of(&self, slot: Slot, who: Who) -> f32;
+    /// The ability slot this resolution is running from, which is what
+    /// [`SlotRef::This`] resolves to. `None` outside any cast or event that names
+    /// one — a unit-level fold, a buff's own lifecycle program.
+    fn source_slot(&self) -> Option<Slot>;
     fn ally_count(&self) -> f32;
     fn enemy_count(&self) -> f32;
     fn distance_to_target(&self) -> f32;
@@ -255,8 +269,17 @@ fn eval_var<C: ValueCtx + ?Sized>(var: &Var, ctx: &C) -> f32 {
         // global form mean something different from `BuffStacks`.
         Var::BuffStacksFrom(b, w, Origin::Anyone) => ctx.buff_stacks(*b, *w),
         Var::BuffStacksFrom(b, w, Origin::By(from)) => ctx.buff_stacks_from(*b, *w, *from),
-        Var::ChargesOf(sl, w) => ctx.charges_of(*sl, *w),
-        Var::CooldownOf(sl, w) => ctx.cooldown_of(*sl, *w),
+        // A relative slot reference is resolved **here**, against the slot the
+        // resolution is running from, so the rule lives in one place and no context
+        // impl can make `This` mean something of its own (server#187). Nothing to
+        // resolve against reads zero — the same documented zero `EventMagnitude`
+        // gives outside a reaction, and never a quiet read of slot 0.
+        Var::ChargesOf(sl, w) => {
+            sl.resolve(ctx.source_slot()).map_or(0.0, |s| ctx.charges_of(s, *w))
+        }
+        Var::CooldownOf(sl, w) => {
+            sl.resolve(ctx.source_slot()).map_or(0.0, |s| ctx.cooldown_of(s, *w))
+        }
         Var::AllyCount => ctx.ally_count(),
         Var::EnemyCount => ctx.enemy_count(),
         Var::DistanceToTarget => ctx.distance_to_target(),

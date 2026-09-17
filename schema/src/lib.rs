@@ -31,6 +31,7 @@ pub mod progression;
 pub mod remap;
 pub mod respawn;
 pub mod runtime;
+pub mod slot_ref;
 pub mod stats;
 pub mod talent_tree;
 pub mod talents;

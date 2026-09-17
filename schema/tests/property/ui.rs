@@ -23,6 +23,7 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::impacts::PoolRef;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
+use stormlight_mod_abi::slot_ref::SlotRef;
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Shown,
     Slice, StateStyle, Strip, Style, SummonGate, Sweep, SweepDirection, TextSource, Tooltip,
@@ -356,8 +357,8 @@ impl Gen<'_> {
             0 => PoolRef::Shield,
             1 => PoolRef::Resource(ResourceId(self.next())),
             2 => PoolRef::Stacks(StackId(self.next())),
-            3 => PoolRef::Cooldown(Slot(self.next() as u8)),
-            4 => PoolRef::Charges(Slot(self.next() as u8)),
+            3 => PoolRef::Cooldown(SlotRef::At(Slot(self.next() as u8))),
+            4 => PoolRef::Charges(SlotRef::At(Slot(self.next() as u8))),
             _ => PoolRef::Xp,
         }
     }

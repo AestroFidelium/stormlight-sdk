@@ -11,8 +11,10 @@ talents and interface layouts all arrive as serialisable descriptors that a
 WebAssembly mod registers at load. This repository defines those descriptors,
 and it depends on nothing in the engine.
 
-> Development happens in a private upstream that this repository is kept in
-> sync with. Issues and pull requests are welcome here.
+> This repository is a read-only mirror of a private upstream, where development
+> and planning happen. Bug reports and feedback are welcome as
+> [issues](https://github.com/AestroFidelium/stormlight-sdk/issues); pull requests
+> are disabled.
 
 | Crate | Path | For |
 | --- | --- | --- |

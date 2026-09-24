@@ -5,6 +5,7 @@
 //! Keep invariants directional/structural, never magnitude-only.
 
 mod aim_params;
+mod balance;
 mod bridge;
 mod client_animation;
 mod client_context;

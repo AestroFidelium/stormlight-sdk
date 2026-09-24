@@ -53,6 +53,12 @@ so a mod is a plain `no_std` cdylib that builds on **stable** Rust.
   engine remaps every handle in the descriptor tree to a global id when it
   adopts the mod (`schema/src/remap.rs`). Reserved names such as `move_speed` or
   `cooldown` collapse onto the engine's own ids.
+- **Numbers are shares of a baseline.** `pdk::balance` lets a mod declare, as
+  level curves, what an average unit has, and then write `base.health(pct(90))`
+  or `base.damage(pct(18))` ("about six hits against an average unit") instead
+  of literals. A share expands to `fraction × curve(level)` in the same `Value`
+  tree, so it keeps its meaning as units level, and the host needs nothing new.
+  The SDK ships the mechanism only; every baseline number is the mod's.
 - **Guests are stateless.** Every runtime entry re-runs the builder in a fresh
   store, so no guest state can outlive a call or go stale on rewind.
 
@@ -61,7 +67,7 @@ so a mod is a plain `no_std` cdylib that builds on **stable** Rust.
 - `unsafe_code = "forbid"` in the ABI. The guest SDK uses `deny`, with an
   explicit `#[allow]` on its FFI shim: one slice view plus the generated
   `#[unsafe(no_mangle)]` exports.
-- 313 [bolero](https://github.com/camshaft/bolero) property, fuzz and
+- 321 [bolero](https://github.com/camshaft/bolero) property, fuzz and
   integration tests. For example, any generated `Impact` tree survives a
   postcard round trip unchanged, and the id-remap walk is total: it returns
   `Err` on a missing id and never panics.

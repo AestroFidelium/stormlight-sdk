@@ -39,7 +39,7 @@ struct Scenario {
 }
 
 fn socket(seed: u8, tag: &str) -> String {
-    let mut s = "Ref_".to_string();
+    let mut s = "socket_".to_string();
     s.push_str(tag);
     s.push((b'A' + seed % 26) as char);
     s

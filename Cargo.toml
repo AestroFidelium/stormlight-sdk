@@ -10,7 +10,7 @@ members = ["schema", "pdk"]
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "https://gitlab.com/stormlight/sdk"
+repository = "https://github.com/AestroFidelium/stormlight-sdk"
 
 [workspace.dependencies]
 # no_std + alloc so guest wasm mods can depend on these; `std` is a feature.

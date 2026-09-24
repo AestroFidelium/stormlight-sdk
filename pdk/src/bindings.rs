@@ -5,10 +5,11 @@
 //! the bytes to [`emit`], and returns the packed `(ptr, len)`. The host reads
 //! those bytes out of the guest's linear memory and decodes them.
 //!
-//! The buffer is intentionally leaked: registration is one-shot, the host reads
-//! it immediately, and M3 has no runtime free path (there is no `mod_tick`). No
-//! host imports and no `unsafe` are needed here — only the export attribute
-//! itself is unsafe, and that lives on the macro-generated function.
+//! The buffer is intentionally leaked: the host reads it immediately, and every
+//! call runs in a fresh store whose whole linear memory is dropped afterwards, so
+//! there is nothing a free path would reclaim. No host imports are needed; the
+//! only `unsafe` is the export attribute on the macro-generated functions and the
+//! slice view in `input`, each behind an explicit `#[allow(unsafe_code)]`.
 
 use alloc::vec::Vec;
 

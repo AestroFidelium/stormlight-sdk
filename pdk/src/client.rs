@@ -22,11 +22,13 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::animation::{AnimState, AnimationDescriptor};
 use stormlight_mod_abi::descriptors::Names;
+use stormlight_mod_abi::environment::Environment;
 use stormlight_mod_abi::ids::{
     AbilityId, AnimStateId, EventId, ResourceId, StackId, StatId, TalentId, UnitId,
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
+use stormlight_mod_abi::scenery::{HeightField, SceneryPiece};
 use stormlight_mod_abi::ui::{RootVisibility, Strip, SummonGate, UiRoot, UiSubject, Widget};
 use stormlight_mod_abi::visuals::{
     AbilityIcon, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, TalentCard,
@@ -58,6 +60,9 @@ pub struct ClientContext {
     named_effects: Vec<NamedEffect>,
     ui: Vec<UiRoot>,
     unit_icons: Vec<UnitIcon>,
+    scenery: Vec<SceneryPiece>,
+    ground: Option<HeightField>,
+    environment: Option<Environment>,
 }
 
 impl ClientContext {
@@ -277,6 +282,28 @@ impl ClientContext {
         self.stack_names.intern(name)
     }
 
+    /// Dress the map in a piece of static art (see
+    /// [`scenery`](stormlight_mod_abi::scenery)): an asset drawn at each of its
+    /// placements. Interns nothing — scenery is never looked up, only drawn — and
+    /// pieces are kept in declaration order.
+    pub fn scenery(&mut self, piece: SceneryPiece) {
+        self.scenery.push(piece);
+    }
+
+    /// Declare the height the map's units are drawn standing at (see
+    /// [`HeightField`](stormlight_mod_abi::scenery::HeightField)). A later call
+    /// replaces an earlier one.
+    pub fn ground(&mut self, field: HeightField) {
+        self.ground = Some(field);
+    }
+
+    /// Declare the light the map is seen in and what lies past its edge (see
+    /// [`environment`](stormlight_mod_abi::environment)). A later call replaces an
+    /// earlier one.
+    pub fn environment(&mut self, environment: Environment) {
+        self.environment = Some(environment);
+    }
+
     /// The ABI version this context targets (always the SDK's [`ABI_VERSION`]).
     #[must_use]
     pub fn abi(&self) -> Version {
@@ -309,6 +336,9 @@ impl ClientContext {
             named_effects: self.named_effects,
             ui: self.ui,
             unit_icons: self.unit_icons,
+            scenery: self.scenery,
+            ground: self.ground,
+            environment: self.environment,
         }
     }
 }

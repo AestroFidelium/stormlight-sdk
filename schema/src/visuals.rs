@@ -21,8 +21,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::animation::AnimationDescriptor;
 use crate::descriptors::Names;
+use crate::environment::Environment;
 use crate::ids::{AbilityId, TalentId, UnitId};
 use crate::manifest::Version;
+use crate::scenery::{HeightField, SceneryPiece};
 use crate::ui::UiRoot;
 
 /// A procedural primitive the client can draw with no asset. The graceful
@@ -346,4 +348,17 @@ pub struct ClientRegistration {
     /// travels with the unit so a roster row can ask for it *by seat*.
     #[serde(default)]
     pub unit_icons: Vec<UnitIcon>,
+    /// The static art this mod dresses a map in — ground, merged props and the
+    /// models that animate in place (see [`crate::scenery`]). Carries no handle:
+    /// scenery is drawn where it is put and is never looked up by anything.
+    #[serde(default)]
+    pub scenery: Vec<SceneryPiece>,
+    /// The height the map's units are drawn standing at (see
+    /// [`HeightField`]). `None`: everything is drawn on `y = 0`.
+    #[serde(default)]
+    pub ground: Option<HeightField>,
+    /// The light the map is seen in and what lies past its edge (see
+    /// [`crate::environment`]). `None`: the engine's neutral default.
+    #[serde(default)]
+    pub environment: Option<Environment>,
 }

@@ -321,6 +321,9 @@ impl Gen<'_> {
             // (server#145), so leaving them empty here keeps the unit-error
             // invariant below about the visuals themselves.
             unit_icons: Vec::new(),
+            scenery: Vec::new(),
+            ground: None,
+            environment: None,
         }
     }
 }

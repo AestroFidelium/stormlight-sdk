@@ -286,6 +286,9 @@ impl Gen<'_> {
             icons: Vec::new(),
             cards: Vec::new(),
             unit_icons: Vec::new(),
+            scenery: Vec::new(),
+            ground: None,
+            environment: None,
             named_effects: Vec::new(),
             // Widget trees have their own invariants (see `ui.rs`); this file
             // stays about animations.

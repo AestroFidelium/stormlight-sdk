@@ -83,6 +83,19 @@ pub enum Coalesce {
     /// one number per unit per kind, for a HUD that wants a damage *readout* rather
     /// than combat text.
     PerUnit,
+    /// [`Self::PerCause`], but only while the reports keep coming: an occurrence
+    /// joins a live instance of its cause only if that instance absorbed its last
+    /// report at most `millis` milliseconds ago (stormlight/server#182).
+    ///
+    /// What tells a beam from a string of separate blows without a "periodic" flag.
+    /// A beam's ticks arrive faster than any sensible window and climb one number;
+    /// attacks spaced wider than it each rise and fade on their own, so three hits
+    /// read as three numbers. Under plain [`Self::PerCause`] a steady attack stream
+    /// kept restarting one popup, which then sat still and changed in place.
+    ///
+    /// Milliseconds rather than seconds so the rule stays `Eq`. Appended last, so the
+    /// rules mods already ship keep their wire tags.
+    PerCauseWithin { millis: u16 },
 }
 
 /// Which of a live popup's numbers a binding reads.

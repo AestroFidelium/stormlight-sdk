@@ -20,6 +20,7 @@ mod manifest;
 mod math;
 mod modifiers;
 mod navmesh;
+mod passive_cast;
 mod placement;
 mod progression;
 mod quest_done;

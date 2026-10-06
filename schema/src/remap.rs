@@ -501,7 +501,7 @@ impl RemapIds for Targeting {
 impl RemapIds for CastSpec {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
-            CastSpec::Instant => {}
+            CastSpec::Instant | CastSpec::Passive => {}
             CastSpec::Cast { time, movable: _ } => time.remap_ids(m)?,
             CastSpec::Channel { time, movable: _, tick } => {
                 time.remap_ids(m)?;

@@ -82,12 +82,37 @@ impl Targeting {
     }
 }
 
-/// The cast/channel window.
+/// The cast/channel window — or, for a passive, that there is none.
+///
+/// New shapes are only ever **appended**: the variant index is the wire tag, and
+/// a mod built against an older ABI must keep decoding.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum CastSpec {
     Instant,
-    Cast { time: Value, movable: bool },
-    Channel { time: Value, movable: bool, tick: Option<Value> },
+    Cast {
+        time: Value,
+        movable: bool,
+    },
+    Channel {
+        time: Value,
+        movable: bool,
+        tick: Option<Value>,
+    },
+    /// Carried in a slot but never pressed (stormlight/server#189): a trait whose
+    /// effect lives in its reactions, modifiers or riders. The cast path refuses
+    /// it, an interface draws it without a key, and a tooltip still describes it.
+    ///
+    /// A shape of the cast rather than a flag beside it, so a passive cannot also
+    /// declare a cast time it will never spend.
+    Passive,
+}
+
+impl CastSpec {
+    /// Whether this ability is carried rather than pressed.
+    #[must_use]
+    pub const fn is_passive(&self) -> bool {
+        matches!(self, Self::Passive)
+    }
 }
 
 /// A resource the cast consumes.

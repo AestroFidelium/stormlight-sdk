@@ -32,6 +32,7 @@ use stormlight_mod_abi::impacts::{
 use stormlight_mod_abi::manifest::ABI_VERSION;
 use stormlight_mod_abi::math::{BinOp, Value, Var, Who};
 use stormlight_mod_abi::missiles::{BodyDescriptor, BodyFlags, BodyKind, CollisionSpec};
+use stormlight_mod_abi::motion::{Leg, Motion, Repeat};
 use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::placement::UnitPlacement;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
@@ -279,6 +280,32 @@ impl Gen<'_> {
             _ => Condition::Not(Box::new(self.cond(depth - 1))),
         }
     }
+    /// A motion whose every number is a generated value, so a remap or a round
+    /// trip that skips any of them is seen (stormlight/server#213).
+    fn motion(&mut self, depth: u8) -> Motion {
+        let legs = (0..self.next() % 4)
+            .map(|_| match self.next() % 4 {
+                0 => Leg::Straight { turn: self.value(1), dist: self.value(1) },
+                1 => Leg::Arc { turn: self.value(1), dist: self.value(1), bend: self.value(1) },
+                2 => Leg::Back,
+                _ => Leg::ToTarget,
+            })
+            .collect();
+        Motion {
+            dir: self.direction(),
+            legs,
+            speed: self.value(1),
+            repeat: match self.next() % 3 {
+                0 => Repeat::Once,
+                1 => Repeat::Times(self.value(1)),
+                _ => Repeat::UntilEnded,
+            },
+            max_secs: self.next().is_multiple_of(2).then(|| self.value(1)),
+            on_collision: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
+            on_end: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
+        }
+    }
+
     fn direction(&mut self) -> Direction {
         match self.next() % 7 {
             0 => Direction::Forward,
@@ -395,13 +422,7 @@ impl Gen<'_> {
                 target: self.target(),
             },
             8 => Impact::RemoveModifiers { sel: self.selector(), target: self.target() },
-            9 => Impact::Dash {
-                dir: self.direction(),
-                dist: self.value(1),
-                speed: self.next().is_multiple_of(2).then(|| self.value(1)),
-                on_collision: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
-                target: self.target(),
-            },
+            9 => Impact::Dash { motion: self.motion(depth), target: self.target() },
             10 => Impact::Knockback {
                 dir: self.direction(),
                 force: self.value(1),

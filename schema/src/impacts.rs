@@ -19,6 +19,7 @@ use crate::ids::{
 };
 use crate::math::Value;
 use crate::missiles::BodyDescriptor;
+use crate::motion::Motion;
 use crate::params::ParamOverride;
 use crate::slot_ref::SlotRef;
 
@@ -224,11 +225,10 @@ pub enum Impact {
         sel: BuffSelector,
         target: ImpactTarget,
     },
+    /// The target moves *itself* along a declared path, over time
+    /// (stormlight/server#213). A root stops it starting.
     Dash {
-        dir: Direction,
-        dist: Value,
-        speed: Option<Value>,
-        on_collision: Vec<Impact>,
+        motion: Motion,
         target: ImpactTarget,
     },
     Knockback {

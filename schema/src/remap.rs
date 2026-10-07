@@ -37,6 +37,7 @@ use crate::impacts::{
 };
 use crate::math::{Value, Var};
 use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
+use crate::motion::{Leg, Motion, Repeat};
 use crate::params::ParamOverride;
 use crate::progression::{LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpSource};
 use crate::slot_ref::SlotRef;
@@ -353,11 +354,7 @@ impl RemapIds for Impact {
                 duration_override.remap_ids(m)?;
             }
             Impact::RemoveModifiers { sel, target: _ } => sel.remap_ids(m)?,
-            Impact::Dash { dir: _, dist, speed, on_collision, target: _ } => {
-                dist.remap_ids(m)?;
-                speed.remap_ids(m)?;
-                on_collision.remap_ids(m)?;
-            }
+            Impact::Dash { motion, target: _ } => motion.remap_ids(m)?,
             Impact::Knockback { dir: _, force, target: _ } => force.remap_ids(m)?,
             Impact::Teleport { dest, target: _, record: _ } => dest.remap_ids(m)?,
             Impact::Spawn { body, at: _, count, pattern } => {
@@ -842,5 +839,32 @@ impl RemapIds for Registration {
         self.units.remap_ids(m)?;
         self.navmeshes.remap_ids(m)?;
         Ok(())
+    }
+}
+
+impl RemapIds for Motion {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        let Motion { dir: _, legs, speed, repeat, max_secs, on_collision, on_end } = self;
+        for leg in legs {
+            match leg {
+                Leg::Straight { turn, dist } => {
+                    turn.remap_ids(m)?;
+                    dist.remap_ids(m)?;
+                }
+                Leg::Arc { turn, dist, bend } => {
+                    turn.remap_ids(m)?;
+                    dist.remap_ids(m)?;
+                    bend.remap_ids(m)?;
+                }
+                Leg::Back | Leg::ToTarget => {}
+            }
+        }
+        speed.remap_ids(m)?;
+        if let Repeat::Times(times) = repeat {
+            times.remap_ids(m)?;
+        }
+        max_secs.remap_ids(m)?;
+        on_collision.remap_ids(m)?;
+        on_end.remap_ids(m)
     }
 }

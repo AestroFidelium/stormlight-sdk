@@ -179,7 +179,7 @@ fn sub_programs(impact: &mut Impact) -> Vec<&mut Vec<Impact>> {
             alloc::vec![inner]
         }
         Impact::If { then, els, .. } => alloc::vec![then, els],
-        Impact::Dash { on_collision, .. } => alloc::vec![on_collision],
+        Impact::Dash { motion, .. } => alloc::vec![&mut motion.on_collision, &mut motion.on_end],
         _ => Vec::new(),
     }
 }

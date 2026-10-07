@@ -24,6 +24,7 @@ pub mod interner;
 pub mod manifest;
 pub mod math;
 pub mod missiles;
+pub mod motion;
 pub mod navmesh;
 pub mod notify;
 pub mod params;

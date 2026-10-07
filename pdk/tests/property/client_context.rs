@@ -15,10 +15,11 @@ use stormlight_mod_sdk::bindings::to_bytes_client;
 use stormlight_mod_sdk::client::ClientContext;
 
 fn role_of(sel: u8) -> EffectRole {
-    match sel % 3 {
+    match sel % 4 {
         0 => EffectRole::Projectile,
         1 => EffectRole::Impact,
-        _ => EffectRole::CastIndicator,
+        2 => EffectRole::CastIndicator,
+        _ => EffectRole::Miss,
     }
 }
 

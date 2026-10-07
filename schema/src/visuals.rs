@@ -159,6 +159,12 @@ pub enum EffectRole {
     Impact,
     /// The indicator shown on the caster while a timed cast / channel is running.
     CastIndicator,
+    /// The burst played where a shot ended its flight **without striking anyone**
+    /// (stormlight/server#168) — a miss reads differently from a hit. An ability
+    /// that dresses no miss plays its [`Self::Impact`] burst there instead.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Miss,
 }
 
 /// The cosmetic descriptor a client mod attaches to an *ability's feedback*: how

@@ -395,10 +395,16 @@ impl RemapIds for BodyKind {
                 health.remap_ids(m)?;
                 duration.remap_ids(m)?;
             }
-            BodyKind::Zone { radius, duration, tick } => {
+            BodyKind::Zone { radius, duration, tick, on_enter } => {
                 radius.remap_ids(m)?;
                 duration.remap_ids(m)?;
                 tick.remap_ids(m)?;
+                on_enter.remap_ids(m)?;
+            }
+            BodyKind::Pickup { radius, charges, duration } => {
+                radius.remap_ids(m)?;
+                charges.remap_ids(m)?;
+                duration.remap_ids(m)?;
             }
         }
         Ok(())

@@ -87,7 +87,8 @@ pub enum EventKind {
     OnCcApplied,
     /// **No occasion yet** — see [`EventKind::OnCcApplied`].
     OnCcEnded,
-    /// **No occasion yet.** Nothing in the simulation can be picked up.
+    /// A unit collected an item from the ground (stormlight/server#200). Heard by
+    /// the unit that collected it, about the item.
     OnPickup,
     /// The heartbeat: announced once per tick to every **living** unit that holds a
     /// reaction at all, about itself. `every_nth` and [`Reaction::internal_cd`] are

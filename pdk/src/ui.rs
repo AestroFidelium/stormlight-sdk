@@ -48,8 +48,8 @@ use alloc::vec::Vec;
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
     Anchor, Flow, Layout, Length, ListBinding, OptionState, QuestSpan, Shown, Slice, StateStyle,
-    Style, SummonRequest, Sweep, SweepDirection, TalentText, TaskState, TextSource, Tooltip,
-    UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+    Style, SummonRequest, Sweep, SweepCountdown, SweepDirection, TalentText, TaskState, TextSource,
+    Tooltip, UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -351,6 +351,11 @@ pub trait WidgetExt: Sized {
     /// prints its cooldowns instead says so.
     #[must_use]
     fn sweep(self, rgba: [f32; 4], direction: SweepDirection) -> Self;
+    /// Say whether the seconds left on the cooldown are printed over the icon
+    /// (stormlight/server#143). Printed unless a HUD says otherwise; inert on
+    /// anything but an [`ability_slot`].
+    #[must_use]
+    fn countdown(self, countdown: SweepCountdown) -> Self;
     /// Give it a curve to play (stormlight/server#97). Called again for another
     /// property — one track each, and the last one declared for a property is the
     /// one that drives it.
@@ -540,7 +545,11 @@ impl WidgetExt for Widget {
         self
     }
     fn sweep(mut self, rgba: [f32; 4], direction: SweepDirection) -> Self {
-        self.style.sweep = Sweep { color: rgba, direction };
+        self.style.sweep = Sweep { color: rgba, direction, ..self.style.sweep };
+        self
+    }
+    fn countdown(mut self, countdown: SweepCountdown) -> Self {
+        self.style.sweep.countdown = countdown;
         self
     }
     fn animated(mut self, track: UiTrack) -> Self {

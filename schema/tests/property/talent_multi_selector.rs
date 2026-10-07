@@ -105,6 +105,7 @@ fn talent(s: &Scenario) -> TalentDescriptor {
         modifiers: Vec::new(),
         tags: Vec::new(),
         quest: None,
+        volley: Vec::new(),
     }
 }
 
@@ -220,6 +221,7 @@ fn an_override_moves_the_focus_off_the_talents_list() {
             modifiers: Vec::new(),
             tags: Vec::new(),
             quest: None,
+            volley: Vec::new(),
         };
         assert_eq!(t.changes(), Some(AbilityFocus::Slot(overridden)));
     });
@@ -241,6 +243,7 @@ fn two_selectors_on_one_talent_have_no_single_focus() {
             modifiers: Vec::new(),
             tags: Vec::new(),
             quest: None,
+            volley: Vec::new(),
         };
         assert_eq!(t.changes(), None, "a two-slot talent named one of them");
     });

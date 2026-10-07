@@ -15,6 +15,7 @@ use crate::impacts::Impact;
 use crate::math::Value;
 use crate::tasks::QuestSpec;
 use crate::triggers::Reaction;
+use crate::volley::VolleyMod;
 
 /// Which abilities a talent applies to — keyed on slot/tag/id, never identity.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
@@ -250,6 +251,11 @@ pub struct TalentDescriptor {
     /// [`UnitDescriptor::tasks`]: crate::units::UnitDescriptor::tasks
     #[serde(default)]
     pub quest: Option<QuestSpec>,
+    /// How this talent rewrites the volley its selected abilities fire
+    /// (stormlight/server#210) — copies of the ability's *own* bodies, never a
+    /// body of the talent's. Empty for almost every talent.
+    #[serde(default)]
+    pub volley: Vec<VolleyMod>,
 }
 
 impl TalentDescriptor {

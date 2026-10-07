@@ -27,6 +27,7 @@ mod quest_done;
 mod registration;
 mod remap;
 mod respawn;
+mod rider_spawn_hook;
 mod runtime;
 mod scenery;
 mod shot_sockets;

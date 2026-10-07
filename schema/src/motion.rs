@@ -52,7 +52,10 @@ pub struct Motion {
     /// Runs once on each unit the motion meets, with that unit as its target, in
     /// the order the path reaches them.
     pub on_hit: Vec<Impact>,
-    /// Runs on the moving unit when geometry stops it short.
+    /// What a wall does to it (stormlight/server#215).
+    pub walls: WallContact,
+    /// Runs on the moving unit each time it meets a wall — once for the wall that
+    /// stops it, once per ricochet.
     pub on_collision: Vec<Impact>,
     /// Runs on the moving unit when the motion comes to an end **on its own**: its
     /// path runs out, a wall stops it (after `on_collision`), or its time is up.
@@ -91,6 +94,19 @@ pub enum UnitContact {
     PassThrough(TargetFilter),
     /// Meets the first unit the filter keeps and ends there, short of its body.
     StopAtFirst(TargetFilter),
+}
+
+/// What a motion does about the walls in its way (stormlight/server#215).
+#[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
+pub enum WallContact {
+    /// Ends against the first wall, a hair short of it.
+    #[default]
+    Stop,
+    /// Glances off: the rest of the leg is travelled mirrored in the wall, as a ball
+    /// would. After `max` ricochets the next wall stops it; fewer than none is none.
+    Bounce { max: Value },
+    /// Goes through walls. Where it ends, it is put on the nearest walkable ground.
+    Pass,
 }
 
 /// How many times a motion travels its legs.

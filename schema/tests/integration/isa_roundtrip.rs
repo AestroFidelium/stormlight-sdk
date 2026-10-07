@@ -200,7 +200,7 @@ impl Gen<'_> {
         }
     }
     fn body(&mut self, depth: u8) -> BodyDescriptor {
-        let kind = match self.next() % 3 {
+        let kind = match self.next() % 4 {
             0 => BodyKind::Missile {
                 speed: self.value(1),
                 range: self.value(1),
@@ -211,10 +211,16 @@ impl Gen<'_> {
                 health: self.value(1),
                 duration: self.next().is_multiple_of(2).then(|| self.value(1)),
             },
-            _ => BodyKind::Zone {
+            2 => BodyKind::Zone {
                 radius: self.value(1),
                 duration: self.value(1),
                 tick: self.value(1),
+                on_enter: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
+            },
+            _ => BodyKind::Pickup {
+                radius: self.value(1),
+                charges: self.value(1),
+                duration: self.next().is_multiple_of(2).then(|| self.value(1)),
             },
         };
         BodyDescriptor {

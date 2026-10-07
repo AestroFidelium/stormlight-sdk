@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::impacts::{Impact, LoopKind, SpawnPattern};
 use crate::math::{BinOp, Value};
-use crate::missiles::BodyDescriptor;
+use crate::missiles::{BodyDescriptor, BodyKind};
 
 /// One talent's rewrite of the volley an ability fires.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -193,6 +193,9 @@ fn scaled(body: &BodyDescriptor, power: &Value) -> BodyDescriptor {
     if *power != Value::Const(1.0) {
         for program in [&mut body.on_spawn, &mut body.on_hit, &mut body.on_expire] {
             scale_program(program, power);
+        }
+        if let BodyKind::Zone { on_enter, .. } = &mut body.kind {
+            scale_program(on_enter, power);
         }
     }
     body

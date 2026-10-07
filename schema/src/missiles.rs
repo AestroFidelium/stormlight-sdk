@@ -18,9 +18,40 @@ use crate::math::Value;
 /// The shape of a spawned body; all parameters are `Value` expressions.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum BodyKind {
-    Missile { speed: Value, range: Value, homing: bool, pierce: Value },
-    Unit { health: Value, duration: Option<Value> },
-    Zone { radius: Value, duration: Value, tick: Value },
+    Missile {
+        speed: Value,
+        range: Value,
+        homing: bool,
+        pierce: Value,
+    },
+    Unit {
+        health: Value,
+        duration: Option<Value>,
+    },
+    /// A ground area: `on_hit` lands on every unit the filter keeps inside
+    /// `radius`, once per `tick` seconds, for `duration` seconds.
+    Zone {
+        radius: Value,
+        duration: Value,
+        tick: Value,
+        /// Runs once on each unit the filter keeps as it **enters** the area —
+        /// including one already standing there when the zone appears, and one
+        /// that crosses it within a single tick, at any speed
+        /// (stormlight/server#218). Leaving and coming back is a new entry.
+        on_enter: Vec<Impact>,
+    },
+    /// An item lying on the ground (stormlight/server#200): the first units the
+    /// collision filter keeps to come within `radius` collect it, in the order
+    /// they reach it — a unit crossing it at any speed included — and each runs
+    /// `on_hit` on itself. Gone after `charges` collections (fewer than one is
+    /// one), or after `duration` seconds if it declares one.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Pickup {
+        radius: Value,
+        charges: Value,
+        duration: Option<Value>,
+    },
 }
 
 /// How a body collides with the world.

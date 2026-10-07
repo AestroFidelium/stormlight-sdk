@@ -22,7 +22,7 @@ use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
 
-use crate::common::Direction;
+use crate::common::{Direction, TargetFilter};
 use crate::impacts::Impact;
 use crate::math::Value;
 
@@ -44,6 +44,14 @@ pub struct Motion {
     /// The longest the motion may last, in seconds — the way an endless orbit ends
     /// on its own. `None` lets the path decide.
     pub max_secs: Option<Value>,
+    /// Which units on the path it meets, and whether meeting one stops it
+    /// (stormlight/server#214). Every unit is met where the path reaches it, at any
+    /// speed: a motion that crosses a room in one tick meets everyone in the room
+    /// it passes.
+    pub units: UnitContact,
+    /// Runs once on each unit the motion meets, with that unit as its target, in
+    /// the order the path reaches them.
+    pub on_hit: Vec<Impact>,
     /// Runs on the moving unit when geometry stops it short.
     pub on_collision: Vec<Impact>,
     /// Runs on the moving unit when the motion comes to an end **on its own**: its
@@ -67,6 +75,22 @@ pub enum Leg {
     /// Straight to the point the effect was aimed at — the target unit's position,
     /// or the aimed point, as it was when the motion started.
     ToTarget,
+}
+
+/// What a motion does about the units on its path (stormlight/server#214).
+///
+/// A unit is met when the mover first comes within that unit's body radius — the
+/// same reach a missile needs. Two units already that close count only if they are
+/// closing, so a dash leaving the unit it stands beside does not meet it.
+#[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
+pub enum UnitContact {
+    /// Meets nobody: passes through everyone and runs no `on_hit`.
+    #[default]
+    Ignore,
+    /// Meets every unit the filter keeps, once each per motion, and carries on.
+    PassThrough(TargetFilter),
+    /// Meets the first unit the filter keeps and ends there, short of its body.
+    StopAtFirst(TargetFilter),
 }
 
 /// How many times a motion travels its legs.

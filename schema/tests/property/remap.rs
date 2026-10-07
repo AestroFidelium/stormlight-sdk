@@ -32,7 +32,7 @@ use stormlight_mod_abi::impacts::{
 use stormlight_mod_abi::manifest::ABI_VERSION;
 use stormlight_mod_abi::math::{BinOp, Value, Var, Who};
 use stormlight_mod_abi::missiles::{BodyDescriptor, BodyFlags, BodyKind, CollisionSpec};
-use stormlight_mod_abi::motion::{Leg, Motion, Repeat};
+use stormlight_mod_abi::motion::{Leg, Motion, Repeat, UnitContact};
 use stormlight_mod_abi::navmesh::NavMeshDescriptor;
 use stormlight_mod_abi::placement::UnitPlacement;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
@@ -301,6 +301,12 @@ impl Gen<'_> {
                 _ => Repeat::UntilEnded,
             },
             max_secs: self.next().is_multiple_of(2).then(|| self.value(1)),
+            units: match self.next() % 3 {
+                0 => UnitContact::Ignore,
+                1 => UnitContact::PassThrough(self.filter()),
+                _ => UnitContact::StopAtFirst(self.filter()),
+            },
+            on_hit: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
             on_collision: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
             on_end: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
         }

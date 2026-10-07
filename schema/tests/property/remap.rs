@@ -367,6 +367,7 @@ impl Gen<'_> {
                 duration: self.value(1),
                 tick: self.value(1),
                 on_enter: if depth == 0 { Vec::new() } else { self.impacts(depth - 1) },
+                time_scale: self.next().is_multiple_of(2).then(|| self.value(1)),
             },
             _ => BodyKind::Pickup {
                 radius: self.value(1),

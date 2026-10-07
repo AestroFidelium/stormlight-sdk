@@ -44,11 +44,20 @@ pub struct ParamPatch {
 }
 
 /// Which of a selected ability's own hooks a rider appends into.
+///
+/// New hooks are only ever **appended**: the variant index is the wire tag.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum AbilityHook {
+    /// Once per press, when the cast starts.
     OnCastStart,
+    /// Once per press, when the cast resolves.
     OnCast,
+    /// Once per body the cast spawns **that lands** — nothing on a miss.
     OnHit,
+    /// Once per body the cast spawns, the moment it is spawned — hit or miss. What
+    /// a card means by "each bolt fired": a cast that puts three bolts on the field
+    /// pays three times, whichever talent added them.
+    OnSpawn,
 }
 
 /// Extra effects appended into a selected ability's payload — they travel with

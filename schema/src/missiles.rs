@@ -39,6 +39,16 @@ pub enum BodyKind {
         /// that crosses it within a single tick, at any speed
         /// (stormlight/server#218). Leaving and coming back is a new entry.
         on_enter: Vec<Impact>,
+        /// Makes the zone a **time field** (stormlight/server#221): everything
+        /// inside `radius` that the collision filter keeps — units, and missiles,
+        /// zones and items judged by their side — runs at this factor of the
+        /// world's pace. `0` stops time, `0.5` halves it, `2` doubles it; the
+        /// owner is exempt, as from every zone. Overlapping fields multiply.
+        ///
+        /// A field's own clock is never bent, by itself or by another field: its
+        /// `duration` and `tick` are measured in the world's time, so a stop always
+        /// ends.
+        time_scale: Option<Value>,
     },
     /// An item lying on the ground (stormlight/server#200): the first units the
     /// collision filter keeps to come within `radius` collect it, in the order

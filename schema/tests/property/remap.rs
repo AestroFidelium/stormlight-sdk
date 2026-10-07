@@ -42,6 +42,7 @@ use stormlight_mod_abi::talents::{
 use stormlight_mod_abi::tasks::QuestSpec;
 use stormlight_mod_abi::triggers::{EventFilter, EventKind, Reaction};
 use stormlight_mod_abi::units::{ResourcePool, UnitDescriptor};
+use stormlight_mod_abi::volley::VolleyMod;
 
 /// A map that returns every id unchanged and never fails, while counting how many
 /// ids the walk visited — so we know whether a given tree carried any handles.
@@ -633,6 +634,17 @@ impl Gen<'_> {
             quest: self.next().is_multiple_of(2).then(|| {
                 QuestSpec::single(StackId(self.next()), f32::from(self.next()), self.impacts(2))
             }),
+            // A fan's angle and an echo's gap are values like any other, and may
+            // read a stat or a curve (server#210).
+            volley: (0..self.next() % 3)
+                .map(|_| {
+                    if self.next().is_multiple_of(2) {
+                        VolleyMod::Fan { extra: 2, angle: self.value(2), power: self.value(2) }
+                    } else {
+                        VolleyMod::Echo { times: 1, gap: self.value(2), power: self.value(2) }
+                    }
+                })
+                .collect(),
         }
     }
     fn buff(&mut self) -> BuffSpec {

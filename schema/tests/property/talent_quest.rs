@@ -65,6 +65,7 @@ impl Scenario {
             modifiers: Vec::new(),
             tags: Vec::new(),
             quest,
+            volley: Vec::new(),
         }
     }
 }

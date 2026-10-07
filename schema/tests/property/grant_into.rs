@@ -277,6 +277,7 @@ fn a_lone_grant_is_about_the_button_it_can_name() {
             modifiers: Vec::new(),
             tags: Vec::new(),
             quest: None,
+            volley: Vec::new(),
         };
         let expected = match s.into {
             Target::Exact(slot) | Target::Replace(slot) => AbilityFocus::Slot(Slot(slot)),

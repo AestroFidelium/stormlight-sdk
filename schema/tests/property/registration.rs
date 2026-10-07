@@ -137,6 +137,7 @@ impl Gen<'_> {
             quest: (self.next().is_multiple_of(2)).then(|| {
                 QuestSpec::single(StackId(self.next()), f32::from(self.next()), Vec::new())
             }),
+            volley: Vec::new(),
         }
     }
     fn buff(&mut self) -> BuffSpec {

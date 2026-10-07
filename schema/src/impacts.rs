@@ -7,6 +7,7 @@
 //! Ids here are interned handles (the runtime form). Authoring uses stable
 //! strings converted to handles at adoption (§6.3); the tree shape is identical.
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
@@ -107,8 +108,23 @@ pub enum SpawnAnchor {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum SpawnPattern {
     Single,
-    Radial { count: Value },
-    Arc { count: Value, spread: Value },
+    Radial {
+        count: Value,
+    },
+    Arc {
+        count: Value,
+        spread: Value,
+    },
+    /// `inner`, turned off the aim by `angle` radians about the vertical — the
+    /// whole arrangement, so a turned arc is still an arc (stormlight/server#210).
+    /// Turns nest by adding. What a fan talent's copies fly
+    /// ([`VolleyMod::Fan`](crate::volley::VolleyMod::Fan)).
+    ///
+    /// **Appended, never inserted**: the variant order is the wire tag.
+    Turned {
+        angle: Value,
+        inner: Box<SpawnPattern>,
+    },
 }
 
 /// Whom a `CastAbility` sub-cast aims at.

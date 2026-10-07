@@ -48,6 +48,7 @@ use crate::units::{ResourcePool, UnitDescriptor};
 use crate::visuals::{
     AbilityIcon, ClientRegistration, EffectVisualDescriptor, TalentCard, VisualDescriptor,
 };
+use crate::volley::VolleyMod;
 
 /// Translates one interned handle to another, one method per id family. A total
 /// map (identity, or a complete local→global table) never errors; a map missing a
@@ -292,6 +293,10 @@ impl RemapIds for SpawnPattern {
             SpawnPattern::Arc { count, spread } => {
                 count.remap_ids(m)?;
                 spread.remap_ids(m)?;
+            }
+            SpawnPattern::Turned { angle, inner } => {
+                angle.remap_ids(m)?;
+                inner.remap_ids(m)?;
             }
         }
         Ok(())
@@ -626,7 +631,21 @@ impl RemapIds for TalentDescriptor {
         if let Some(quest) = &mut self.quest {
             quest.remap_ids(m)?;
         }
-        Ok(())
+        // A fan's angle or an echo's gap is a `Value` and may read a stat or a
+        // curve like any other (server#210).
+        self.volley.remap_ids(m)
+    }
+}
+
+impl RemapIds for VolleyMod {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        match self {
+            VolleyMod::Fan { extra: _, angle: spacing, power }
+            | VolleyMod::Echo { times: _, gap: spacing, power } => {
+                spacing.remap_ids(m)?;
+                power.remap_ids(m)
+            }
+        }
     }
 }
 

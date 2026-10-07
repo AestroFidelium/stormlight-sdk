@@ -37,7 +37,7 @@ use crate::impacts::{
 };
 use crate::math::{Value, Var};
 use crate::missiles::{BodyDescriptor, BodyKind, CollisionSpec};
-use crate::motion::{Leg, Motion, Repeat, UnitContact};
+use crate::motion::{Leg, Motion, Repeat, UnitContact, WallContact};
 use crate::params::ParamOverride;
 use crate::progression::{LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpSource};
 use crate::slot_ref::SlotRef;
@@ -844,8 +844,18 @@ impl RemapIds for Registration {
 
 impl RemapIds for Motion {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
-        let Motion { dir: _, legs, speed, repeat, max_secs, units, on_hit, on_collision, on_end } =
-            self;
+        let Motion {
+            dir: _,
+            legs,
+            speed,
+            repeat,
+            max_secs,
+            units,
+            on_hit,
+            walls,
+            on_collision,
+            on_end,
+        } = self;
         for leg in legs {
             match leg {
                 Leg::Straight { turn, dist } => {
@@ -872,6 +882,9 @@ impl RemapIds for Motion {
             }
         }
         on_hit.remap_ids(m)?;
+        if let WallContact::Bounce { max } = walls {
+            max.remap_ids(m)?;
+        }
         on_collision.remap_ids(m)?;
         on_end.remap_ids(m)
     }

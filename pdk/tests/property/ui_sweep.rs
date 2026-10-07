@@ -13,7 +13,7 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::Slot;
-use stormlight_mod_abi::ui::{Style, Sweep, SweepDirection};
+use stormlight_mod_abi::ui::{Style, Sweep, SweepCountdown, SweepDirection};
 use stormlight_mod_sdk::ui::{WidgetExt, ability_slot, icon};
 
 #[derive(Debug, TypeGenerator)]
@@ -23,6 +23,24 @@ struct Scenario {
     /// Whether the run overrides a slot or a kind with no cooldown at all — the
     /// setter is inert on the second, and must still be harmless.
     on_a_slot: bool,
+    /// Whether the slot printed its countdown before the colour was restated.
+    countdown: Countdown,
+}
+
+/// The generated mirror of [`SweepCountdown`].
+#[derive(Debug, Clone, Copy, TypeGenerator)]
+enum Countdown {
+    Hidden,
+    Seconds,
+}
+
+impl From<Countdown> for SweepCountdown {
+    fn from(c: Countdown) -> Self {
+        match c {
+            Countdown::Hidden => Self::Hidden,
+            Countdown::Seconds => Self::Seconds,
+        }
+    }
 }
 
 impl Scenario {
@@ -54,12 +72,13 @@ fn declaring_a_sweep_changes_the_sweep_and_nothing_else() {
             ability_slot(Slot(1), "W").color([1.0, 0.5, 0.25, 1.0]).image("mod://pack/bolt.png")
         } else {
             icon("mod://pack/bolt.png").color([1.0, 0.5, 0.25, 1.0])
-        };
+        }
+        .countdown(s.countdown.into());
         let after = base.clone().sweep(s.color(), s.direction());
 
         assert_eq!(
             after.style.sweep,
-            Sweep { color: s.color(), direction: s.direction() },
+            Sweep { color: s.color(), direction: s.direction(), countdown: s.countdown.into() },
             "the sweep the author declared is not the one on the widget",
         );
         assert_eq!(
@@ -69,5 +88,30 @@ fn declaring_a_sweep_changes_the_sweep_and_nothing_else() {
         );
         assert_eq!(after.layout, base.layout, "declaring a sweep moved the widget");
         assert_eq!(after.kind, base.kind, "declaring a sweep changed what the widget is");
+    });
+}
+
+#[test]
+fn declaring_a_countdown_changes_the_countdown_and_nothing_else() {
+    check!().with_type::<Scenario>().for_each(|s| {
+        let base =
+            ability_slot(Slot(2), "E").color([1.0, 0.5, 0.25, 1.0]).sweep(s.color(), s.direction());
+        let after = base.clone().countdown(s.countdown.into());
+
+        assert_eq!(
+            after.style.sweep.countdown,
+            SweepCountdown::from(s.countdown),
+            "the countdown the author declared is not the one on the widget",
+        );
+        assert_eq!(
+            Sweep { countdown: base.style.sweep.countdown, ..after.style.sweep },
+            base.style.sweep,
+            "declaring a countdown recoloured or turned the wedge",
+        );
+        assert_eq!(
+            Style { sweep: base.style.sweep, ..after.style.clone() },
+            base.style,
+            "declaring a countdown disturbed another property of the style",
+        );
     });
 }

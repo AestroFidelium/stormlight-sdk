@@ -26,8 +26,8 @@ use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::slot_ref::SlotRef;
 use stormlight_mod_abi::ui::{
     Anchor, Border, Flow, InteractionStyle, Layout, Length, ListBinding, RootVisibility, Shown,
-    Slice, StateStyle, Strip, Style, SummonGate, Sweep, SweepDirection, TextSource, Tooltip,
-    UiAction, UiRoot, UiSubject, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+    Slice, StateStyle, Strip, Style, SummonGate, Sweep, SweepCountdown, SweepDirection, TextSource,
+    Tooltip, UiAction, UiRoot, UiSubject, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, MAX_UI_TRACKS, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -295,6 +295,11 @@ impl Gen<'_> {
                     SweepDirection::Clockwise
                 } else {
                     SweepDirection::CounterClockwise
+                },
+                countdown: if self.next().is_multiple_of(2) {
+                    SweepCountdown::Seconds
+                } else {
+                    SweepCountdown::Hidden
                 },
             },
             anim: self.anim(),

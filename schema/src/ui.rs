@@ -592,6 +592,26 @@ pub enum SweepDirection {
     CounterClockwise,
 }
 
+/// Whether an ability slot prints the seconds left on its cooldown
+/// (stormlight/server#143).
+///
+/// The wedge says what *share* of the wait is left, which a player reads at a
+/// glance and cannot turn into a time: a quarter of a four-second cooldown and a
+/// quarter of a ninety-second one look the same. The number is the other half.
+///
+/// An enum rather than a flag so a later way of printing it (tenths near the end,
+/// a different place on the slot) is one more variant rather than a second field
+/// that can disagree with the first.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum SweepCountdown {
+    /// No number: the HUD shows its cooldowns some other way, or by the wedge alone.
+    Hidden,
+    /// Whole seconds while there is at least one left, tenths below that, centred
+    /// on the icon and gone the moment the key is live.
+    #[default]
+    Seconds,
+}
+
 /// How the part of a cooldown still to run is drawn over an ability slot's icon
 /// (stormlight/server#99).
 ///
@@ -617,13 +637,23 @@ pub struct Sweep {
     pub color: [f32; 4],
     /// Which way round the icon it wipes.
     pub direction: SweepDirection,
+    /// Whether the seconds left are printed over it (stormlight/server#143).
+    ///
+    /// Independent of [`Self::color`]: a HUD may print the number over a slot it
+    /// draws no wedge on.
+    pub countdown: SweepCountdown,
 }
 
 impl Default for Sweep {
-    /// A dark scrim, clockwise: what a slot gets by saying nothing, because a
-    /// cooldown a HUD does not draw is a HUD the player cannot use.
+    /// A dark scrim, clockwise, with the seconds printed: what a slot gets by saying
+    /// nothing, because a cooldown a HUD does not draw is a HUD the player cannot
+    /// use.
     fn default() -> Self {
-        Self { color: [0.0, 0.0, 0.0, 0.6], direction: SweepDirection::Clockwise }
+        Self {
+            color: [0.0, 0.0, 0.0, 0.6],
+            direction: SweepDirection::Clockwise,
+            countdown: SweepCountdown::Seconds,
+        }
     }
 }
 

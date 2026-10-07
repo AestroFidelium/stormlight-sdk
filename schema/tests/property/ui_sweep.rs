@@ -17,14 +17,17 @@
 //!   - **It survives the wire.** Style crosses the wasm boundary with everything
 //!     else; a sweep that round-tripped to a different colour would be a HUD that
 //!     looks different in the client than in the mod's own tests.
+//!   - **A slot that says nothing prints how long is left** (stormlight/server#143).
+//!     The wedge says *how much* of the wait is left; only a number says how long,
+//!     and a HUD that wants the wedge alone has to say so.
 //!   - **A non-finite colour is refused at load**, at the widget that carries it —
 //!     the same as every other colour, because it reaches a shader uniform where a
 //!     NaN is not a wrong colour but an undefined pixel.
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ui::{
-    Layout, RootVisibility, Strip, Style, SummonGate, Sweep, SweepDirection, UiError, UiRoot,
-    Widget, WidgetKind,
+    Layout, RootVisibility, Strip, Style, SummonGate, Sweep, SweepCountdown, SweepDirection,
+    UiError, UiRoot, Widget, WidgetKind,
 };
 
 extern crate alloc;
@@ -52,6 +55,24 @@ impl Rgba {
 struct Scenario {
     color: Rgba,
     counter: bool,
+    countdown: Countdown,
+}
+
+/// The generated mirror of [`SweepCountdown`], which the ABI does not derive a
+/// generator for.
+#[derive(Debug, Clone, Copy, TypeGenerator)]
+enum Countdown {
+    Hidden,
+    Seconds,
+}
+
+impl From<Countdown> for SweepCountdown {
+    fn from(c: Countdown) -> Self {
+        match c {
+            Countdown::Hidden => Self::Hidden,
+            Countdown::Seconds => Self::Seconds,
+        }
+    }
 }
 
 impl Scenario {
@@ -63,6 +84,7 @@ impl Scenario {
             } else {
                 SweepDirection::Clockwise
             },
+            countdown: self.countdown.into(),
         }
     }
 }
@@ -106,6 +128,16 @@ fn a_slot_that_declares_nothing_still_shows_a_cooldown_through_its_icon() {
         default.color[3] < 1.0,
         "the default scrim is opaque, so a slot on cooldown hides the ability the \
          player is waiting for",
+    );
+}
+
+#[test]
+fn a_slot_that_declares_nothing_prints_how_long_is_left() {
+    assert_eq!(
+        Sweep::default().countdown,
+        SweepCountdown::Seconds,
+        "the default sweep prints no countdown, so every mod that said nothing about \
+         cooldowns shows a wedge and leaves the player to guess the seconds",
     );
 }
 

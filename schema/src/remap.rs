@@ -255,7 +255,9 @@ impl RemapIds for PoolRef {
             PoolRef::Resource(id) => *id = m.resource(*id)?,
             PoolRef::Stacks(id) => *id = m.stack(*id)?,
             // Not an id either, but a reference the walk does rewrite (server#187).
-            PoolRef::Cooldown(slot) | PoolRef::Charges(slot) => *slot = m.slot_ref(*slot)?,
+            PoolRef::Cooldown(slot) | PoolRef::Charges(slot) | PoolRef::AbilityCost(slot) => {
+                *slot = m.slot_ref(*slot)?;
+            }
         }
         Ok(())
     }

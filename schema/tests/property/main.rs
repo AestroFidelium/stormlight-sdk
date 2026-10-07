@@ -22,6 +22,7 @@ mod modifiers;
 mod navmesh;
 mod passive_cast;
 mod placement;
+mod pool_ability_cost;
 mod progression;
 mod quest_done;
 mod registration;

@@ -1805,8 +1805,9 @@ fn binds_relative_slot(widget: &Widget) -> bool {
     let relative = |binding: &ValueBinding| {
         matches!(
             binding,
-            ValueBinding::Pool(PoolRef::Cooldown(slot) | PoolRef::Charges(slot))
-                if slot.is_relative()
+            ValueBinding::Pool(
+                PoolRef::Cooldown(slot) | PoolRef::Charges(slot) | PoolRef::AbilityCost(slot)
+            ) if slot.is_relative()
         )
     };
     match &widget.kind {

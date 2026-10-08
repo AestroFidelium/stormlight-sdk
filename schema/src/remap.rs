@@ -216,15 +216,15 @@ impl RemapIds for TargetShape {
             TargetShape::SelfOnly | TargetShape::AllAllies | TargetShape::AllEnemies => {}
             // The origin is relational (or a literal point) — it carries no id.
             TargetShape::Circle { at: _, radius } => radius.remap_ids(m)?,
-            TargetShape::Cone { radius, angle } => {
+            TargetShape::Cone { at: _, radius, angle } => {
                 radius.remap_ids(m)?;
                 angle.remap_ids(m)?;
             }
-            TargetShape::Chain { jumps, range } => {
+            TargetShape::Chain { from: _, jumps, range } => {
                 jumps.remap_ids(m)?;
                 range.remap_ids(m)?;
             }
-            TargetShape::Line { length, width } => {
+            TargetShape::Line { at: _, length, width } => {
                 length.remap_ids(m)?;
                 width.remap_ids(m)?;
             }

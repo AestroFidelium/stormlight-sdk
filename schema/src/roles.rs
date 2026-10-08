@@ -279,7 +279,7 @@ pub fn visit_quantities(program: &mut [Impact], f: &mut dyn FnMut(QuantityRole, 
 fn shape_quantities(shape: &mut TargetShape, f: &mut dyn FnMut(QuantityRole, &mut Value)) {
     match shape {
         TargetShape::Circle { radius, .. } => f(QuantityRole::Radius, radius),
-        TargetShape::Cone { radius, angle } => {
+        TargetShape::Cone { radius, angle, .. } => {
             f(QuantityRole::Radius, radius);
             f(QuantityRole::Spread, angle);
         }

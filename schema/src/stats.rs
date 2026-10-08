@@ -79,8 +79,22 @@ pub const TARGET_PRIORITY: &str = "target_priority";
 /// socket is not something contact could ever be decided against.
 pub const BODY_RADIUS: &str = "body_radius";
 
+/// How fast a unit's own time runs, as a **multiplier** on the world's pace —
+/// `1.0` is the world's pace, `2.0` twice as fast, `0.0` stopped
+/// (stormlight/server#226). A unit aggregating none runs at the world's pace.
+///
+/// This is how time is bent on *one* unit — a haste, a slow, a personal stop — as
+/// opposed to an area, which a zone's `time_scale` does. Being an ordinary stat it
+/// folds through the modifier stack, so two hastes multiply, a talent can lend
+/// one, and it composes with every field the unit stands in by product.
+///
+/// A buff that moves this stat **ages in the world's time**, not the unit's: an
+/// effect that bends time is measured in unbent time, or a personal stop would
+/// never wear off and a haste would last half as long as its card says.
+pub const TIME_SCALE: &str = "time_scale";
+
 /// Every reserved stat name **in id order**: `RESERVED[i]` is `StatId(i)`.
-pub const RESERVED: [&str; 8] = [
+pub const RESERVED: [&str; 9] = [
     MOVE_SPEED,
     ARMOR,
     RESIST,
@@ -89,6 +103,7 @@ pub const RESERVED: [&str; 8] = [
     ATTACK_DAMAGE,
     TARGET_PRIORITY,
     BODY_RADIUS,
+    TIME_SCALE,
 ];
 
 /// The reserved id `name` occupies, or `None` when it is a mod's own stat. The

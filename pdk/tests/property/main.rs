@@ -17,6 +17,7 @@ mod client_scenery;
 mod client_summon;
 mod client_tier_view;
 mod client_ui;
+mod client_value_gate;
 mod context;
 mod effect_key;
 mod ui_anim;

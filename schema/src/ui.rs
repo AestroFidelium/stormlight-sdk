@@ -292,6 +292,23 @@ pub enum Shown {
         /// What has to be true of it.
         is: TaskState,
     },
+    /// Only while a binding reads above zero for the tree's subject
+    /// (stormlight/server#230).
+    ///
+    /// The one gate answered per **subject** rather than off the player's own tree,
+    /// and the one that asks about a number rather than about a choice. A figure of
+    /// the hits held on a stopped unit must not print `0` over every unit on screen;
+    /// a shield bar should exist only while there is a shield; a charge pip only
+    /// while there is a charge. Each is "this number, while there is any of it", so
+    /// one gate serves all of them and every binding added after.
+    ///
+    /// Read off the binding's [`ValuePart::Current`]. A binding that resolves to
+    /// nothing for the subject — state this client cannot see, or a unit that has
+    /// no such thing — is not above zero, so the widget is not laid out: absent
+    /// reads as absent here exactly as it does on a bar.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    WhilePositive(ValueBinding),
 }
 
 impl Shown {
@@ -299,18 +316,39 @@ impl Shown {
     ///
     /// Almost every conditional gate names exactly one tier, because a widget's
     /// condition is almost always a question about one row of one tree. The
-    /// exception is [`Self::WhileUnitTask`] (stormlight/server#139): a unit's own
+    /// exceptions are [`Self::WhileUnitTask`] (stormlight/server#139) — a unit's own
     /// task belongs to no tree at all, which is most of the reason it needed a gate
-    /// of its own.
+    /// of its own — and [`Self::WhilePositive`] (stormlight/server#230), which asks
+    /// about a number.
     #[must_use]
     pub fn tier(self) -> Option<u8> {
         match self {
-            Self::Always | Self::WhileUnitTask { .. } => None,
+            Self::Always | Self::WhileUnitTask { .. } | Self::WhilePositive(_) => None,
             Self::WhileTierSelected(tier)
             | Self::WhileTierUndecided(tier)
             | Self::WhileTierWaiting(tier)
             | Self::WhileOption { tier, .. }
             | Self::WhileTalentTask { tier, .. } => Some(tier),
+        }
+    }
+
+    /// The number this gate waits on, or `None` for a gate that asks about no
+    /// number (stormlight/server#230).
+    ///
+    /// The one question every walk that treats a binding as a binding has to ask of
+    /// a widget's layout too: a handle in here is remapped at adoption and checked
+    /// at load exactly as one on a bar is.
+    #[must_use]
+    pub fn binding(self) -> Option<ValueBinding> {
+        match self {
+            Self::WhilePositive(binding) => Some(binding),
+            Self::Always
+            | Self::WhileTierSelected(_)
+            | Self::WhileTierUndecided(_)
+            | Self::WhileTierWaiting(_)
+            | Self::WhileOption { .. }
+            | Self::WhileTalentTask { .. }
+            | Self::WhileUnitTask { .. } => None,
         }
     }
 }
@@ -1043,6 +1081,44 @@ pub enum ValueBinding {
         /// worked at.
         span: QuestSpan,
     },
+    /// What is waiting to land on the subject while its time is stopped
+    /// (stormlight/server#230).
+    ///
+    /// Blows aimed at a unit in stopped time are held on its own clock and land the
+    /// moment it moves again (server#223). Without this a player rains hits on a
+    /// frozen target and sees no number move, which reads as "my hits do nothing" —
+    /// the one thing that makes a stop feel broken rather than powerful.
+    ///
+    /// Public, like the health it will come out of: what is about to happen to a
+    /// unit everybody can see happening to it. A unit with nothing held reads
+    /// **zero**, not empty — nothing waiting is a fact about a unit this client
+    /// can see. Empty is kept for a subject that is not a unit at all.
+    ///
+    /// Gate a figure on it with [`Shown::WhilePositive`] so it is only laid out
+    /// while something is waiting.
+    ///
+    /// Appended, for the reason [`Self::TierLevel`] above states.
+    Held(HeldQuantity),
+}
+
+/// Which number about a stopped unit's held deliveries a [`ValueBinding::Held`]
+/// reads (stormlight/server#230).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum HeldQuantity {
+    /// How many deliveries are waiting. A count has no ceiling, so a bar bound to
+    /// one reads full and only its [`ValuePart::Current`] is meaningful.
+    #[default]
+    Count,
+    /// The damage they carry between them, as each sender fixed it at the hit —
+    /// before the subject's own armour and shields, which are read when it lands.
+    ///
+    /// Measured against the health the subject **has left**: its
+    /// [`ValuePart::Max`] is that health and its [`ValuePart::Fraction`] the share
+    /// of it waiting to come off, full when what is waiting would kill. That is the
+    /// number a bar laid over a health bar wants, and the reason this is bounded
+    /// where the count is not. Empty for a subject with no health to measure it
+    /// against.
+    Damage,
 }
 
 /// Which of a task's two targets a reading is against (stormlight/server#139).
@@ -1829,8 +1905,9 @@ fn is_negative(widget: &Widget) -> bool {
 /// Whether `widget` reads a pool through a slot reference it cannot resolve
 /// (stormlight/server#187).
 ///
-/// Both binding positions on a widget, because an author reaches for the same
-/// spelling in either: a bar's fill and a text's number.
+/// Every binding position on a widget, because an author reaches for the same
+/// spelling in any of them: a bar's fill, a text's number, and the number a value
+/// gate waits on (server#230).
 fn binds_relative_slot(widget: &Widget) -> bool {
     let relative = |binding: &ValueBinding| {
         matches!(
@@ -1840,11 +1917,13 @@ fn binds_relative_slot(widget: &Widget) -> bool {
             ) if slot.is_relative()
         )
     };
-    match &widget.kind {
-        WidgetKind::Bar { value } => relative(value),
-        WidgetKind::Text { text: TextSource::Value { binding, .. } } => relative(binding),
-        _ => false,
-    }
+    let gated = widget.layout.shown.binding().is_some_and(|binding| relative(&binding));
+    gated
+        || match &widget.kind {
+            WidgetKind::Bar { value } => relative(value),
+            WidgetKind::Text { text: TextSource::Value { binding, .. } } => relative(binding),
+            _ => false,
+        }
 }
 
 fn animation_fault(widget: &Widget, index: u16) -> Result<(), UiError> {
@@ -1990,13 +2069,15 @@ impl RemapIds for ValueBinding {
             // list of tasks (server#139) — the counter behind either is the gameplay
             // mod's handle, resolved at read time, and never something this
             // declaration carries.
+            // Held deliveries are the engine's own tally, like health (server#230).
             Self::Health
             | Self::Level
             | Self::CastProgress
             | Self::Event(_)
             | Self::TierLevel(_)
             | Self::TalentQuest { .. }
-            | Self::UnitTask { .. } => {}
+            | Self::UnitTask { .. }
+            | Self::Held(_) => {}
             Self::Pool(pool) => pool.remap_ids(m)?,
             Self::Stat(id) => *id = m.stat(*id)?,
         }
@@ -2064,6 +2145,10 @@ impl RemapIds for Widget {
         // asset strings — never a handle. A tooltip is the exception, because it is
         // widgets: one of them may well be a trigger button or a bound number, and a
         // handle left unremapped there resolves against the wrong mod's id space.
+        // So is a value gate (server#230), which is a binding kept in the layout.
+        if let Shown::WhilePositive(binding) = &mut self.layout.shown {
+            binding.remap_ids(m)?;
+        }
         self.kind.remap_ids(m)?;
         self.style.tooltip.content.remap_ids(m)
     }

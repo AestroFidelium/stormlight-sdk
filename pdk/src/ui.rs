@@ -426,6 +426,15 @@ pub trait WidgetExt: Sized {
     /// [`WidgetExt::shown_while_tier`], which is wherever they happen to be looking.
     #[must_use]
     fn shown_while_tier_waiting(self, tier: u8) -> Self;
+    /// Lay it out only while `binding` reads above zero for the tree's subject
+    /// (stormlight/server#230).
+    ///
+    /// The gate for a figure that should say nothing rather than `0`: the hits held
+    /// on a stopped unit, a shield, a charge. Answered per subject, so on a
+    /// nameplate instanced over every unit it is each unit's own number that
+    /// decides; a binding the subject cannot read keeps the widget out.
+    #[must_use]
+    fn shown_while_positive(self, binding: ValueBinding) -> Self;
     /// Draw it in front of the siblings that declare a lower layer
     /// (stormlight/server#110) — and for a root, the other roots are its siblings.
     ///
@@ -582,6 +591,10 @@ impl WidgetExt for Widget {
     }
     fn shown_while_tier_waiting(mut self, tier: u8) -> Self {
         self.layout.shown = Shown::WhileTierWaiting(tier);
+        self
+    }
+    fn shown_while_positive(mut self, binding: ValueBinding) -> Self {
+        self.layout.shown = Shown::WhilePositive(binding);
         self
     }
     fn layered(mut self, layer: i32) -> Self {

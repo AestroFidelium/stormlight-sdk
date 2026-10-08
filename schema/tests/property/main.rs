@@ -52,6 +52,7 @@ mod ui_action;
 mod ui_anim;
 mod ui_anim_validation;
 mod ui_coalesce_window;
+mod ui_held;
 mod ui_layer;
 mod ui_mask;
 mod ui_option_gate;

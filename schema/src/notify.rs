@@ -38,6 +38,7 @@ use alloc::string::String;
 use serde::{Deserialize, Serialize};
 
 use crate::animation::BonePath;
+use crate::attach::AttachPoint;
 use crate::ids::EventId;
 use crate::remap::{IdMap, RemapIds};
 
@@ -100,6 +101,17 @@ pub enum NotifyAttach {
         /// Offset from that bone, in the bone's own space.
         offset: [f32; 3],
     },
+    /// On an authored **attachment point** of the rig, asked for by name with a
+    /// fallback (stormlight/server#160) — the weapon, the chest, the head.
+    ///
+    /// The difference from [`Self::Socket`] is what is addressed: a socket is a
+    /// bone by its full path in one particular skeleton, a point is a place the
+    /// *art* says something belongs, by the name it gave it. The same notify then
+    /// works on a rig whose bones are named and nested differently, or that lacks
+    /// the point and has a fallback.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Point(AttachPoint),
 }
 
 /// What a notify does when playback reaches it.

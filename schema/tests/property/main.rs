@@ -9,6 +9,7 @@ mod aiming;
 mod anim_notify;
 mod animation;
 mod animation_validation;
+mod attach_point;
 mod attacks;
 mod body_roles;
 mod conditions;

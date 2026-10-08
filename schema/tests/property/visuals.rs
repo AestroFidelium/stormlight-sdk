@@ -13,6 +13,7 @@
 use core::cell::Cell;
 
 use bolero::{TypeGenerator, check};
+use stormlight_mod_abi::attach::AttachPoint;
 use stormlight_mod_abi::descriptors::Names;
 use stormlight_mod_abi::ids::{
     AbilityId, AnimStateId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId,
@@ -286,6 +287,14 @@ impl Gen<'_> {
             ability: AbilityId(u32::from(self.next())),
             role: self.role(),
             model: self.model(),
+            // Generated both ways, so the round trip covers a visual hung on a point
+            // and one hung where its role hangs it (stormlight/server#160).
+            attach: self.next().is_multiple_of(2).then(|| AttachPoint {
+                point: self.string(),
+                fallback: self.next().is_multiple_of(2).then(|| self.string()),
+                offset: [self.f32(), self.f32(), self.f32()],
+                upright: self.next().is_multiple_of(2),
+            }),
         }
     }
     fn named_effect(&mut self) -> NamedEffect {

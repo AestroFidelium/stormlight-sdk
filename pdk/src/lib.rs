@@ -10,6 +10,7 @@ extern crate alloc;
 // Re-export the whole ABI so mods write `use stormlight_mod_sdk::abi::…`.
 pub use stormlight_mod_abi as abi;
 
+pub mod attach;
 pub mod balance;
 pub mod bindings;
 pub mod client;

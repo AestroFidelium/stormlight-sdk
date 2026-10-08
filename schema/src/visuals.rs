@@ -20,6 +20,7 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 use crate::animation::AnimationDescriptor;
+use crate::attach::AttachPoint;
 use crate::descriptors::Names;
 use crate::environment::Environment;
 use crate::ids::{AbilityId, TalentId, UnitId};
@@ -207,6 +208,15 @@ pub struct EffectVisualDescriptor {
     pub role: EffectRole,
     /// How to draw it.
     pub model: VisualModel,
+    /// Where on the rig of the unit it belongs to the visual is hung
+    /// (stormlight/server#160) — a cast's flare on the weapon, rather than over the
+    /// caster's head. `None` is where the role has always hung it.
+    ///
+    /// Read by the roles that have a unit to hang on: today the
+    /// [`EffectRole::CastIndicator`], on its caster. A role whose visual has no
+    /// such unit — a shot in flight, a burst on the ground, an area — ignores it,
+    /// and the client says so when the mod loads.
+    pub attach: Option<AttachPoint>,
 }
 
 /// The picture an ability wears in an interface — the icon a HUD draws in

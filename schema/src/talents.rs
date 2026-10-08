@@ -23,8 +23,23 @@ pub enum AbilitySelector {
     Slot(Slot),
     Tag(TagId),
     Ability(AbilityId),
+    /// Every ability the unit has bound — and only abilities: a basic attack is
+    /// not one, and is reached by naming it ([`Self::BasicAttack`]).
     Any,
     SelfUnit,
+    /// The unit's **basic attack** (stormlight/server#89): its patches reach the
+    /// attack's quantities (damage, range, …), its riders hang off the swing —
+    /// `OnCastStart` when a swing begins, `OnCast` at the swing point, `OnHit` with
+    /// the payload on whatever the attack lands on, `OnSpawn` on a ranged attack's
+    /// shot — and its volley transforms multiply a ranged attack's shots. A unit
+    /// with no attack is matched by nothing.
+    ///
+    /// Not part of [`Self::Any`]: "each of your abilities" and "your attacks" are
+    /// two different cards, and folding one into the other would silently give
+    /// every ability talent to the thing a player does most.
+    ///
+    /// **Appended, never inserted**: the variant order is the wire tag.
+    BasicAttack,
 }
 
 /// A generic parameter tweak: the whole "+radius / −cooldown / +charge /
@@ -293,7 +308,11 @@ impl TalentDescriptor {
                 AbilitySelector::Ability(id) => Some(AbilityFocus::Ability(*id)),
                 // A tag selects a set; "any" and "the unit itself" select no ability
                 // at all. None of the three is one button.
-                AbilitySelector::Tag(_) | AbilitySelector::Any | AbilitySelector::SelfUnit => None,
+                // A basic attack occupies no slot, so there is no button to point at.
+                AbilitySelector::Tag(_)
+                | AbilitySelector::Any
+                | AbilitySelector::SelfUnit
+                | AbilitySelector::BasicAttack => None,
             },
             // Nothing governed, or several buttons governed: neither is one answer.
             _ => None,

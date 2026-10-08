@@ -24,6 +24,7 @@ mod passive_cast;
 mod placement;
 mod pool_ability_cost;
 mod progression;
+mod quantity_roles;
 mod quest_done;
 mod registration;
 mod remap;

@@ -555,7 +555,10 @@ impl RemapIds for AbilityDescriptor {
 impl RemapIds for AbilitySelector {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
         match self {
-            AbilitySelector::Slot(_) | AbilitySelector::Any | AbilitySelector::SelfUnit => {}
+            AbilitySelector::Slot(_)
+            | AbilitySelector::Any
+            | AbilitySelector::SelfUnit
+            | AbilitySelector::BasicAttack => {}
             AbilitySelector::Tag(id) => *id = m.tag(*id)?,
             AbilitySelector::Ability(id) => *id = m.ability(*id)?,
         }

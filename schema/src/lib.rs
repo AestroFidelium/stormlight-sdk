@@ -32,6 +32,7 @@ pub mod placement;
 pub mod progression;
 pub mod remap;
 pub mod respawn;
+pub mod roles;
 pub mod runtime;
 pub mod scenery;
 pub mod slot_ref;

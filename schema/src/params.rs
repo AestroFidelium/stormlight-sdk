@@ -2,12 +2,13 @@
 //! entries the engine reads generically, by name.
 //!
 //! Everything else in `Params` is a mod's own vocabulary the engine never looks
-//! at. These four are different: the cast pipeline needs a cooldown to start, a
-//! range to validate an aim against, and (for an aimed area or cone) the size of
-//! the shape the client draws and the server resolves. Naming them here — in the
-//! ABI both sides compile against — is what makes a mod's `"range"` land on the
-//! id the engine reads, and what stops the client and the server from disagreeing
-//! about the spelling.
+//! at. These are different: each is a **quantity role** ([`crate::roles`]) — the
+//! cast pipeline needs a cooldown to start, a range to validate an aim against,
+//! the size of the shape the client draws; and a talent patching `"damage"` or
+//! `"duration"` reaches every number of that kind in the ability's effects.
+//! Naming them here — in the ABI both sides compile against — is what makes a
+//! mod's `"range"` land on the id the engine reads, and what stops the client and
+//! the server from disagreeing about the spelling.
 //!
 //! Why parameters rather than fields on [`Targeting`](crate::abilities::Targeting):
 //! range and radius are exactly the numbers talents tune ("+2 range", "−20%
@@ -51,8 +52,34 @@ pub const SPREAD: &str = "spread";
 /// choice, not something to inherit by omission.
 pub const COMMIT: &str = "commit";
 
-/// Every reserved param name **in id order**: `RESERVED[i]` is `ParamId(i)`.
-pub const RESERVED: [&str; 5] = [COOLDOWN, RANGE, RADIUS, SPREAD, COMMIT];
+/// The amount of every `Damage` an ability deals — a quantity role
+/// (stormlight/server#190, [`crate::roles`]). The names below are the same: each is
+/// a position the engine finds in an ability's effects by itself, so a talent
+/// patching it reaches every number of that kind and nothing else.
+pub const DAMAGE: &str = "damage";
+
+/// The amount of every `Heal` an ability does.
+pub const HEALING: &str = "healing";
+
+/// Every shield an ability grants.
+pub const SHIELDING: &str = "shielding";
+
+/// How long what an ability leaves behind lasts: buffs, zones, summons, items.
+pub const DURATION: &str = "duration";
+
+/// The force of every knockback an ability inflicts.
+pub const KNOCKBACK: &str = "knockback";
+
+/// How fast an ability's missiles and dashes travel.
+pub const SPEED: &str = "speed";
+
+/// Every reserved param name **in id order**: `RESERVED[i]` is `ParamId(i)`, and
+/// `RESERVED[i]` is the name of [`QuantityRole::ALL`]`[i]` — one table, not two.
+///
+/// [`QuantityRole::ALL`]: crate::roles::QuantityRole::ALL
+pub const RESERVED: [&str; 11] = [
+    COOLDOWN, RANGE, RADIUS, SPREAD, COMMIT, DAMAGE, HEALING, SHIELDING, DURATION, KNOCKBACK, SPEED,
+];
 
 /// The reserved id `name` occupies, or `None` when it is a mod's own parameter.
 /// The engine interns [`RESERVED`] in order, so this index *is* the `ParamId`.

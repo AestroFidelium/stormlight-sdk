@@ -34,10 +34,40 @@ use crate::slot_ref::SlotRef;
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum TargetShape {
     SelfOnly,
-    Circle { at: ImpactTarget, radius: Value },
-    Cone { radius: Value, angle: Value },
-    Chain { jumps: Value, range: Value },
-    Line { length: Value, width: Value },
+    Circle {
+        at: ImpactTarget,
+        radius: Value,
+    },
+    /// Everything within `radius` of `at` and at most `angle` radians off the
+    /// resolution's aim — `angle` is the **half**-angle, the same measure as the
+    /// reserved `spread` param (stormlight/server#233).
+    ///
+    /// The aim is the direction the resolution was aimed along: the press's aim, an
+    /// attack's line to its target, a missile's line of flight. With none, the cone
+    /// opens from `at` toward the resolved target; with neither, it selects only
+    /// what stands on `at`.
+    Cone {
+        at: ImpactTarget,
+        radius: Value,
+        angle: Value,
+    },
+    /// A chain: its first link is the unit `from` names when that unit passes the
+    /// filter (else the nearest one within `range` of it), and each next link is the
+    /// nearest unit not yet linked within `range` of the last, for up to `jumps`
+    /// jumps (stormlight/server#233).
+    Chain {
+        from: ImpactTarget,
+        jumps: Value,
+        range: Value,
+    },
+    /// A strip `length` long and `width` wide (half to each side), running from
+    /// `at` along the resolution's aim — oriented like [`TargetShape::Cone`]
+    /// (stormlight/server#233).
+    Line {
+        at: ImpactTarget,
+        length: Value,
+        width: Value,
+    },
     AllAllies,
     AllEnemies,
 }

@@ -333,9 +333,21 @@ impl Gen<'_> {
         match self.next() % 7 {
             0 => TargetShape::SelfOnly,
             1 => TargetShape::Circle { at: self.target(), radius: self.value(1) },
-            2 => TargetShape::Cone { radius: self.value(1), angle: self.value(1) },
-            3 => TargetShape::Chain { jumps: self.value(1), range: self.value(1) },
-            4 => TargetShape::Line { length: self.value(1), width: self.value(1) },
+            2 => TargetShape::Cone {
+                at: ImpactTarget::Caster,
+                radius: self.value(1),
+                angle: self.value(1),
+            },
+            3 => TargetShape::Chain {
+                from: ImpactTarget::ResolvedTarget,
+                jumps: self.value(1),
+                range: self.value(1),
+            },
+            4 => TargetShape::Line {
+                at: ImpactTarget::Caster,
+                length: self.value(1),
+                width: self.value(1),
+            },
             5 => TargetShape::AllAllies,
             _ => TargetShape::AllEnemies,
         }

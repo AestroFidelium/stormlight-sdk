@@ -271,11 +271,14 @@ impl Gen<'_> {
         VisualDescriptor { unit: UnitId(u32::from(self.next())), model: self.model() }
     }
     fn role(&mut self) -> EffectRole {
-        match self.next() % 4 {
+        match self.next() % 7 {
             0 => EffectRole::Projectile,
             1 => EffectRole::Impact,
             2 => EffectRole::CastIndicator,
-            _ => EffectRole::Miss,
+            3 => EffectRole::Miss,
+            4 => EffectRole::Zone,
+            5 => EffectRole::Pickup,
+            _ => EffectRole::Summon,
         }
     }
     fn effect(&mut self) -> EffectVisualDescriptor {

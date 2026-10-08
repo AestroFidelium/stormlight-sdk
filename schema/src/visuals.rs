@@ -165,6 +165,33 @@ pub enum EffectRole {
     ///
     /// **Appended, not inserted**: the variant order is the wire tag.
     Miss,
+    /// The area an ability's ground zone covers, drawn for as long as the zone
+    /// lasts (stormlight/server#220).
+    ///
+    /// **Authored for a radius of one world unit**: the client scales the art by the
+    /// zone's own radius, so a talent that widens the zone widens what is drawn and
+    /// the picture never disagrees with the area that hits. An undressed zone is a
+    /// flat, see-through disc of exactly that radius.
+    ///
+    /// Appended, for the reason [`Self::Miss`] states.
+    Zone,
+    /// An item an ability left lying on the ground, drawn until the last unit that
+    /// may collect it has (stormlight/server#220).
+    ///
+    /// Drawn at the art's own size: how near a unit has to come is a rule about
+    /// reach, not a picture of the item.
+    ///
+    /// Appended, for the reason [`Self::Miss`] states.
+    Pickup,
+    /// A unit an ability summoned (stormlight/server#220).
+    ///
+    /// A summon is a body, not a unit descriptor, so there is no unit id for a
+    /// [`VisualDescriptor`] to name — the ability that summoned it is its key, as it
+    /// is for everything else an ability puts in the world. An undressed summon is
+    /// drawn as any undressed unit is.
+    ///
+    /// Appended, for the reason [`Self::Miss`] states.
+    Summon,
 }
 
 /// The cosmetic descriptor a client mod attaches to an *ability's feedback*: how

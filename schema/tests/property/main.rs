@@ -10,6 +10,7 @@ mod anim_notify;
 mod animation;
 mod animation_validation;
 mod attacks;
+mod body_roles;
 mod conditions;
 mod effect_origin;
 mod environment;

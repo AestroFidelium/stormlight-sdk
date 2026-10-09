@@ -13,6 +13,7 @@ mod attach_point;
 mod attacks;
 mod body_roles;
 mod conditions;
+mod decal;
 mod effect_life;
 mod effect_origin;
 mod environment;

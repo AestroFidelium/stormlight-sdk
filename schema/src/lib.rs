@@ -17,6 +17,7 @@ pub mod behaviors;
 pub mod bridge;
 pub mod common;
 pub mod conditions;
+pub mod decal;
 pub mod descriptors;
 pub mod environment;
 pub mod ids;

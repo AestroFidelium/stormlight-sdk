@@ -827,7 +827,8 @@ impl RemapIds for TalentCard {
 
 impl RemapIds for ClientRegistration {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
-        // `abi` and `names` (the string tables) carry no interned handle.
+        // `abi`, `names` (the string tables) and `unit_marks` (keyed by role and
+        // relation, never by a handle) carry no interned handle.
         self.visuals.remap_ids(m)?;
         self.effects.remap_ids(m)?;
         self.ability_cards.remap_ids(m)?;

@@ -386,6 +386,7 @@ impl Gen<'_> {
             environment: None,
             // Status visuals have their own invariants (see `status_visual.rs`).
             status_visuals: Vec::new(),
+            unit_marks: Vec::new(),
         }
     }
 }

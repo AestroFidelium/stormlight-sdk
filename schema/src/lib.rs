@@ -49,6 +49,7 @@ pub mod triggers;
 pub mod ui;
 pub mod ui_anim;
 pub mod ui_event;
+pub mod unit_mark;
 pub mod units;
 pub mod visuals;
 pub mod volley;

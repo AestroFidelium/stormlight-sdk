@@ -4,13 +4,14 @@
 //!   - **Round-trip**: a registration carrying an environment survives postcard
 //!     unchanged, like every other cosmetic.
 //!   - **Validity is finiteness and sense**: a light with no direction, a negative
-//!     colour, or a non-positive exposure is refused — each would draw nothing or
-//!     poison a shader with NaN — and anything finite and sensible is accepted.
+//!     colour, a non-positive exposure, or a bloom with a negative threshold or an
+//!     intensity outside `0..=1` is refused — each would draw nothing or poison a
+//!     shader with NaN — and anything finite and sensible is accepted.
 //!   - **Directions are unit on demand**: `toward` normalises whatever length the
 //!     mod wrote, and keeps its direction.
 
 use bolero::{TypeGenerator, check};
-use stormlight_mod_abi::environment::{Environment, Shadow, SunLight};
+use stormlight_mod_abi::environment::{Bloom, Environment, Shadow, SunLight};
 use stormlight_mod_abi::visuals::ClientRegistration;
 
 #[derive(Debug, TypeGenerator)]
@@ -20,6 +21,15 @@ struct Scenario {
     shadow: Option<([i8; 3], u8)>,
     exposure: u8,
     backdrop: [u8; 3],
+    /// The bloom it declares, if any (stormlight/server#202).
+    bloom: Option<Glow>,
+}
+
+/// A declared bloom: its threshold and intensity, in 255ths of their ranges.
+#[derive(Debug, Clone, Copy, TypeGenerator)]
+struct Glow {
+    threshold: u8,
+    intensity: u8,
 }
 
 fn dir(d: [i8; 3]) -> [f32; 3] {
@@ -39,6 +49,10 @@ fn build(s: &Scenario) -> Environment {
         shadow: s.shadow.map(|(d, k)| Shadow { direction: dir(d), strength: f32::from(k) / 255.0 }),
         exposure: f32::from(s.exposure) / 64.0 + 0.25,
         backdrop: s.backdrop.map(|v| f32::from(v) / 255.0),
+        bloom: s.bloom.map(|g| Bloom {
+            threshold: f32::from(g.threshold) / 64.0,
+            intensity: f32::from(g.intensity) / 255.0,
+        }),
     }
 }
 
@@ -69,6 +83,9 @@ enum Fault {
     ZeroExposure,
     ShadowWithoutDirection,
     ShadowStrengthOutOfRange,
+    BloomNegativeThreshold,
+    BloomIntensityOutOfRange,
+    BloomNotANumber,
 }
 
 #[test]
@@ -89,6 +106,13 @@ fn a_broken_environment_is_refused() {
             Fault::ShadowStrengthOutOfRange => {
                 e.shadow = Some(Shadow { direction: [0.0, -1.0, 0.0], strength: 1.5 });
             }
+            Fault::BloomNegativeThreshold => {
+                e.bloom = Some(Bloom { threshold: -0.1, intensity: 0.2 });
+            }
+            Fault::BloomIntensityOutOfRange => {
+                e.bloom = Some(Bloom { threshold: 0.9, intensity: 1.5 });
+            }
+            Fault::BloomNotANumber => e.bloom = Some(Bloom { threshold: f32::NAN, intensity: 0.2 }),
         }
         assert!(!e.is_valid(), "{fault:?} accepted: {e:?}");
     });

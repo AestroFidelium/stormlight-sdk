@@ -65,6 +65,28 @@ impl Shadow {
     }
 }
 
+/// How much of a map's brightest light spills over into a glow around it
+/// (stormlight/server#202) — what makes emissive art and additive effects read as
+/// light rather than as pale paint.
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Bloom {
+    /// How bright a pixel has to be before it glows, in the same relative units as
+    /// every light here: `1.0` is a white surface under a light of strength `1.0`,
+    /// after [`Environment::exposure`]. Zero lets everything glow a little.
+    pub threshold: f32,
+    /// How strongly what passes the threshold glows, `0` to `1`.
+    pub intensity: f32,
+}
+
+impl Bloom {
+    fn is_valid(&self) -> bool {
+        self.threshold.is_finite()
+            && self.threshold >= 0.0
+            && self.intensity.is_finite()
+            && (0.0..=1.0).contains(&self.intensity)
+    }
+}
+
 /// Everything a map says about the light it is seen in.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Environment {
@@ -78,6 +100,12 @@ pub struct Environment {
     pub exposure: f32,
     /// What is drawn where there is nothing — past the map's edge — linear RGB.
     pub backdrop: [f32; 3],
+    /// How its brightest light glows (stormlight/server#202). `None`: the
+    /// engine's neutral glow.
+    ///
+    /// **Appended, not inserted**: the field order is the wire layout.
+    #[serde(default)]
+    pub bloom: Option<Bloom>,
 }
 
 impl Environment {
@@ -91,6 +119,7 @@ impl Environment {
             && self.exposure > 0.0
             && self.lights.iter().all(SunLight::is_valid)
             && self.shadow.as_ref().is_none_or(Shadow::is_valid)
+            && self.bloom.as_ref().is_none_or(Bloom::is_valid)
     }
 }
 

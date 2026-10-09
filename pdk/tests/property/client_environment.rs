@@ -17,6 +17,7 @@ fn env(k: u8) -> Environment {
         shadow: None,
         exposure: 1.0 + f32::from(k) / 100.0,
         backdrop: [0.0; 3],
+        bloom: None,
     }
 }
 

@@ -24,6 +24,7 @@ use stormlight_mod_abi::lifetime::{EffectLifetime, HostEnd};
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::shadow::ModelShadow;
+use stormlight_mod_abi::sound::{SoundFalloff, SoundPlayback};
 use stormlight_mod_abi::visuals::{
     ClientRegistration, EffectRole, EffectVisualDescriptor, ModelClips, NamedEffect,
     PrimitiveShape, VisualDescriptor, VisualModel,
@@ -244,7 +245,12 @@ impl Gen<'_> {
         (0..n).map(|_| self.string()).collect()
     }
     fn model(&mut self) -> VisualModel {
-        match self.next() % 4 {
+        self.model_at(0)
+    }
+    /// A model, nesting layers at most two deep so a generated tree stays small.
+    fn model_at(&mut self, depth: u8) -> VisualModel {
+        let kinds = if depth < 2 { 6 } else { 5 };
+        match self.next() % kinds {
             0 => VisualModel::Primitive {
                 shape: match self.next() % 3 {
                     0 => PrimitiveShape::Cube,
@@ -279,6 +285,22 @@ impl Gen<'_> {
                 },
             },
             2 => VisualModel::Sprite { asset: self.string(), size: [self.f32(), self.f32()] },
+            // A sound (server#176), once or looping.
+            3 => VisualModel::Sound {
+                asset: self.string(),
+                volume: self.f32(),
+                playback: if self.next().is_multiple_of(2) {
+                    SoundPlayback::Once
+                } else {
+                    SoundPlayback::Loop
+                },
+                falloff: SoundFalloff { near: self.f32(), far: self.f32() },
+            },
+            // Several drawings at one place (server#176), themselves possibly layered.
+            5 => {
+                let n = self.count(3);
+                VisualModel::Layered((0..n).map(|_| self.model_at(depth + 1)).collect())
+            }
             // A ground decal (server#170), with and without a fade.
             _ => VisualModel::Decal {
                 asset: self.string(),

@@ -19,6 +19,7 @@ pub mod effects;
 pub mod macros;
 pub mod marks;
 pub mod runtime;
+pub mod sounds;
 pub mod status;
 pub mod tasks;
 pub mod types;

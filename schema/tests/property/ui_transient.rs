@@ -272,7 +272,10 @@ fn the_new_variants_were_appended_never_inserted() {
         assert_eq!(amount.first(), Some(&5), "the occurrence amount is not the sixth tag");
 
         // And the three new enums number themselves by declaration order.
-        for (tag, event) in [UiEvent::Damaged, UiEvent::Healed].iter().enumerate() {
+        // A task's payout (server#184) is appended after both.
+        for (tag, event) in
+            [UiEvent::Damaged, UiEvent::Healed, UiEvent::TaskPaid].iter().enumerate()
+        {
             let bytes = postcard::to_allocvec(event).expect("serialize");
             assert_eq!(bytes, vec![tag as u8], "{event:?} moved off wire tag {tag}");
         }
@@ -288,6 +291,9 @@ fn the_new_variants_were_appended_never_inserted() {
             EventQuantity::Hits,
             EventQuantity::Absorbed,
             EventQuantity::Toll,
+            // The payout's own two (server#184), appended.
+            EventQuantity::Rung,
+            EventQuantity::Shortcut,
         ]
         .iter()
         .enumerate()
@@ -312,6 +318,8 @@ fn the_occurrences_own_number_names_no_handle() {
             EventQuantity::Hits,
             EventQuantity::Absorbed,
             EventQuantity::Toll,
+            EventQuantity::Rung,
+            EventQuantity::Shortcut,
         ] {
             let mut binding = ValueBinding::Event(quantity);
             binding.remap_ids(&RefuseEverything).expect("an amount cannot fail to remap");

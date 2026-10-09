@@ -40,8 +40,8 @@ use serde::{Deserialize, Serialize};
 
 /// Which authoritative occurrence a transient root listens for.
 ///
-/// Closed, and both variants are things the *simulation* did — never something the
-/// interface noticed. A mod that wants a popup for an occasion the engine does not
+/// Closed, and every variant is something the *simulation* did — never something
+/// the interface noticed. A mod that wants a popup for an occasion the engine does not
 /// report raises its own event through its gameplay guest and shows an ordinary
 /// root; it does not get a variant here.
 ///
@@ -58,6 +58,18 @@ pub enum UiEvent {
     Damaged,
     /// A unit was healed, by the amount that was actually restored.
     Healed,
+    /// One of the player's own tasks paid out (stormlight/server#184): one or more
+    /// rungs, or its shortcut. The amount is **how many rungs** it paid.
+    ///
+    /// The owner's alone: only the client of the player whose unit it is is told,
+    /// as only they are told the paid record — so a root listening for this draws
+    /// nothing over anybody else's unit. One occurrence per task per tick, however
+    /// many rungs one increment jumped or a shortcut skipped; [`EventQuantity::Rung`]
+    /// says where on the ladder it landed. Instances on the same task are the same
+    /// *cause* for [`Coalesce`].
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    TaskPaid,
 }
 
 /// Whether a fresh occurrence joins a popup already on screen, and what counts as
@@ -145,4 +157,18 @@ pub enum EventQuantity {
     /// popup becomes a sum of more than one thing — which is the moment it starts
     /// saying something the first line does not.
     Toll,
+    /// How far up its ladder a [`UiEvent::TaskPaid`] instance has got — the count of
+    /// rungs paid so far on that task, so the third rung reads `3`
+    /// (stormlight/server#184).
+    ///
+    /// Absent for anything that is not a payout: damage has no ladder.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Rung,
+    /// `1` when a [`UiEvent::TaskPaid`] instance includes its task's **shortcut**,
+    /// and absent otherwise (stormlight/server#184) — so a "skipped!" mark gated on
+    /// it being positive is simply not laid out for an ordinary rung.
+    ///
+    /// Appended, for the reason [`Self::Rung`] states.
+    Shortcut,
 }

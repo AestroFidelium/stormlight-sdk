@@ -17,6 +17,7 @@ mod client_icon;
 mod client_notify;
 mod client_option_gate;
 mod client_scenery;
+mod client_status_visual;
 mod client_summon;
 mod client_tier_view;
 mod client_ui;

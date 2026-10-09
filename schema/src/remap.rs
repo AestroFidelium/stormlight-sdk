@@ -41,6 +41,7 @@ use crate::motion::{Leg, Motion, Repeat, UnitContact, WallContact};
 use crate::params::ParamOverride;
 use crate::progression::{LevelGrants, ProgressionSpec, XpBounty, XpCurve, XpSource};
 use crate::slot_ref::SlotRef;
+use crate::status_visual::StatusVisual;
 use crate::talent_tree::{TalentTier, TalentTree};
 use crate::talents::{AbilitySelector, GrantAbility, ParamPatch, Rider, TalentDescriptor};
 use crate::tasks::{QuestPayout, QuestSpec};
@@ -832,7 +833,17 @@ impl RemapIds for ClientRegistration {
         self.ability_cards.remap_ids(m)?;
         self.cards.remap_ids(m)?;
         self.animations.remap_ids(m)?;
+        self.status_visuals.remap_ids(m)?;
         self.ui.remap_ids(m)
+    }
+}
+
+impl RemapIds for StatusVisual {
+    fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
+        // Only the buff key is an interned handle; the looks carry asset strings and
+        // numbers, and the point is a name in the art.
+        self.buff = m.buff(self.buff)?;
+        Ok(())
     }
 }
 

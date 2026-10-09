@@ -27,6 +27,7 @@ use crate::ids::{AbilityId, TalentId, UnitId};
 use crate::lifetime::{EffectLifetime, HostEnd};
 use crate::manifest::Version;
 use crate::scenery::{HeightField, SceneryPiece};
+use crate::status_visual::StatusVisual;
 use crate::ui::UiRoot;
 
 /// A procedural primitive the client can draw with no asset. The graceful
@@ -442,4 +443,8 @@ pub struct ClientRegistration {
     /// [`crate::environment`]). `None`: the engine's neutral default.
     #[serde(default)]
     pub environment: Option<Environment>,
+    /// How each status this mod dresses is drawn on the unit carrying it
+    /// (stormlight/server#171), keyed by the buff's handle.
+    #[serde(default)]
+    pub status_visuals: Vec<StatusVisual>,
 }

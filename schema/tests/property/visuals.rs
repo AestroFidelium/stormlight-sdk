@@ -19,6 +19,7 @@ use stormlight_mod_abi::ids::{
     AbilityId, AnimStateId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId,
     ResourceId, StackId, StatId, TagClassId, TagId, TalentId, UnitId,
 };
+use stormlight_mod_abi::lifetime::{EffectLifetime, HostEnd};
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::visuals::{
@@ -260,7 +261,11 @@ impl Gen<'_> {
                 impact: self.next().is_multiple_of(2).then(|| self.string()),
                 // Generated both empty and named, so the round trip covers art
                 // that plays a cycle of its own and art that plays nothing.
-                clips: ModelClips { birth: self.string(), live: self.string() },
+                clips: ModelClips {
+                    birth: self.string(),
+                    live: self.string(),
+                    death: self.string(),
+                },
                 // Generated non-zero as well, so the round trip covers art that
                 // expects to be held somewhere other than its own origin.
                 offset: [self.f32(), self.f32(), self.f32()],
@@ -295,10 +300,27 @@ impl Gen<'_> {
                 offset: [self.f32(), self.f32(), self.f32()],
                 upright: self.next().is_multiple_of(2),
             }),
+            lifetime: self.lifetime(),
+        }
+    }
+    fn lifetime(&mut self) -> EffectLifetime {
+        match self.next() % 3 {
+            0 => EffectLifetime::Default,
+            1 => EffectLifetime::Seconds(self.f32()),
+            _ => EffectLifetime::Art,
         }
     }
     fn named_effect(&mut self) -> NamedEffect {
-        NamedEffect { name: self.string(), model: self.model() }
+        NamedEffect {
+            name: self.string(),
+            model: self.model(),
+            lifetime: self.lifetime(),
+            on_host_end: if self.next().is_multiple_of(2) {
+                HostEnd::Follow
+            } else {
+                HostEnd::Detach
+            },
+        }
     }
     fn names(&mut self) -> Names {
         // A cosmetic bundle names the units it dresses and the abilities its

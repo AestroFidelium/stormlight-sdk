@@ -20,6 +20,7 @@ use stormlight_mod_abi::animation::{
 };
 use stormlight_mod_abi::attach::AttachPoint;
 use stormlight_mod_abi::ids::{AbilityId, UnitId};
+use stormlight_mod_abi::lifetime::EffectLifetime;
 use stormlight_mod_abi::notify::{NotifyAction, NotifyAttach, NotifyPoint, NotifyTime};
 use stormlight_mod_abi::visuals::{
     EffectRole, EffectVisualDescriptor, PrimitiveShape, VisualModel,
@@ -127,6 +128,7 @@ fn a_request_survives_the_trip_to_the_host_in_both_places() {
             role: EffectRole::CastIndicator,
             model: VisualModel::Primitive { shape: PrimitiveShape::Sphere, color: [1.0; 4] },
             attach: Some(r.attach()),
+            lifetime: EffectLifetime::Default,
         };
         let bytes = postcard::to_allocvec(&effect).expect("an effect visual encodes");
         let back: EffectVisualDescriptor = postcard::from_bytes(&bytes).expect("and decodes");

@@ -290,6 +290,7 @@ impl Gen<'_> {
             ground: None,
             environment: None,
             status_visuals: Vec::new(),
+            unit_marks: Vec::new(),
             named_effects: Vec::new(),
             // Widget trees have their own invariants (see `ui.rs`); this file
             // stays about animations.

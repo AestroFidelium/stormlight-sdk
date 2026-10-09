@@ -39,6 +39,7 @@ use stormlight_mod_abi::visuals::{
 
 use crate::context::table;
 use crate::effects;
+use crate::marks::MarkSpec;
 use crate::status;
 
 /// Accumulates a cosmetic mod's declared visuals and finalizes them into a
@@ -69,6 +70,7 @@ pub struct ClientContext {
     ground: Option<HeightField>,
     environment: Option<Environment>,
     status_visuals: Vec<StatusVisual>,
+    unit_marks: Vec<stormlight_mod_abi::unit_mark::UnitMark>,
 }
 
 impl ClientContext {
@@ -154,6 +156,13 @@ impl ClientContext {
             look: StatusLook { own: spec.own, others: spec.others, attach: spec.attach },
         });
         id
+    }
+
+    /// Declare a mark laid under units playing a role for the viewer
+    /// (stormlight/server#181), built with [`crate::marks::mark`]. Declared order
+    /// is precedence: the first mark that fits a unit is the one it wears.
+    pub fn mark_units(&mut self, spec: MarkSpec) {
+        self.unit_marks.push(spec.0);
     }
 
     /// Declare the icon the ability named `ability` wears in an interface
@@ -438,6 +447,7 @@ impl ClientContext {
             ground: self.ground,
             environment: self.environment,
             status_visuals: self.status_visuals,
+            unit_marks: self.unit_marks,
         }
     }
 }

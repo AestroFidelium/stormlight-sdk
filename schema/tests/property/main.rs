@@ -75,5 +75,6 @@ mod ui_tier_view;
 mod ui_tooltip;
 mod ui_transient;
 mod ui_validation;
+mod unit_mark;
 mod visuals;
 mod volley;

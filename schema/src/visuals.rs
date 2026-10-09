@@ -31,6 +31,7 @@ use crate::scenery::{HeightField, SceneryPiece};
 use crate::shadow::ModelShadow;
 use crate::status_visual::StatusVisual;
 use crate::ui::UiRoot;
+use crate::unit_mark::UnitMark;
 
 /// A procedural primitive the client can draw with no asset. The graceful
 /// fallback a cosmetic mod always has, and what a missing/unknown model degrades
@@ -492,4 +493,10 @@ pub struct ClientRegistration {
     /// (stormlight/server#171), keyed by the buff's handle.
     #[serde(default)]
     pub status_visuals: Vec<StatusVisual>,
+    /// What lies on the ground under a unit because of what it is to the viewer
+    /// (stormlight/server#181): the unit they drive, select, attack or point at.
+    /// Not keyed by anything a mod owns — every mod's marks join one list, read in
+    /// load order, the first that fits a unit winning.
+    #[serde(default)]
+    pub unit_marks: Vec<UnitMark>,
 }

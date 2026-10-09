@@ -15,6 +15,7 @@
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::ids::UnitId;
+use stormlight_mod_abi::shadow::ModelShadow;
 use stormlight_mod_abi::visuals::{ModelClips, VisualDescriptor, VisualModel};
 
 extern crate alloc;
@@ -69,6 +70,7 @@ impl Scenario {
             impact,
             clips: ModelClips::default(),
             offset: [0.0; 3],
+            shadow: ModelShadow::Fit,
         }
     }
 }

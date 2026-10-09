@@ -21,6 +21,7 @@ mod ground;
 mod interner;
 mod manifest;
 mod math;
+mod model_shadow;
 mod modifiers;
 mod navmesh;
 mod passive_cast;

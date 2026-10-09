@@ -47,7 +47,7 @@ use crate::tasks::{QuestPayout, QuestSpec};
 use crate::triggers::{EventFilter, EventKind, Reaction};
 use crate::units::{ResourcePool, UnitDescriptor};
 use crate::visuals::{
-    AbilityIcon, ClientRegistration, EffectVisualDescriptor, TalentCard, VisualDescriptor,
+    AbilityCard, ClientRegistration, EffectVisualDescriptor, TalentCard, VisualDescriptor,
 };
 use crate::volley::VolleyMod;
 
@@ -806,9 +806,10 @@ impl RemapIds for EffectVisualDescriptor {
     }
 }
 
-impl RemapIds for AbilityIcon {
+impl RemapIds for AbilityCard {
     fn remap_ids<M: IdMap>(&mut self, m: &M) -> Result<(), M::Error> {
-        // Only the ability key is an interned handle; `image` is an asset URL.
+        // Only the ability key is an interned handle; `info` is the mod's own words
+        // and an asset URL.
         self.ability = m.ability(self.ability)?;
         Ok(())
     }
@@ -828,7 +829,7 @@ impl RemapIds for ClientRegistration {
         // `abi` and `names` (the string tables) carry no interned handle.
         self.visuals.remap_ids(m)?;
         self.effects.remap_ids(m)?;
-        self.icons.remap_ids(m)?;
+        self.ability_cards.remap_ids(m)?;
         self.cards.remap_ids(m)?;
         self.animations.remap_ids(m)?;
         self.ui.remap_ids(m)

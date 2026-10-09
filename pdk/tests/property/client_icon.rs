@@ -41,20 +41,22 @@ fn every_declared_icon_is_reachable_by_its_ability_name() {
         }
         let reg = ctx.finish();
 
-        assert_eq!(reg.icons.len(), n, "one icon per ability given one");
+        assert_eq!(reg.ability_cards.len(), n, "one icon per ability given one");
         assert_eq!(reg.names.abilities.len(), n, "one ability name per distinct ability");
-        for icon in &reg.icons {
+        for icon in &reg.ability_cards {
             let name = reg
                 .names
                 .abilities
                 .get(icon.ability.0 as usize)
                 .expect("an icon's ability handle must be in the name table");
             assert_eq!(
-                icon.image,
+                icon.info.image,
                 format!("mod://pack/icon_{}.png", &name[1..]),
                 "icon `{}` landed on the handle of ability `{name}`",
-                icon.image,
+                icon.info.image,
             );
+            // An icon is a card with a picture and no words (server#116).
+            assert!(icon.info.name.is_empty() && icon.info.description.is_empty());
         }
     });
 }
@@ -72,7 +74,11 @@ fn an_icon_and_a_feedback_visual_share_one_ability_handle() {
 
         let reg = ctx.finish();
         assert_eq!(reg.names.abilities.len(), 1, "one interned ability name");
-        assert_eq!(reg.icons.len(), 2, "both declarations are carried; adoption picks the later");
+        assert_eq!(
+            reg.ability_cards.len(),
+            2,
+            "both declarations are carried; adoption picks the later"
+        );
     });
 }
 

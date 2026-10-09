@@ -4,7 +4,7 @@
 //! A cosmetic mod declares how content *looks*, how it *moves*, and what the
 //! player *reads*: a [`VisualModel`] per unit, a per-ability feedback visual
 //! ([`EffectVisualDescriptor`], keyed by an [`EffectRole`]), the icon an ability
-//! wears in an interface ([`AbilityIcon`], server#94), what each talent is called
+//! wears in an interface ([`AbilityCard`], server#94), what each talent is called
 //! and does ([`TalentCard`], server#95), an [`AnimationDescriptor`] per unit, and
 //! the widget trees of its interface ([`UiRoot`], server#66). Like the gameplay
 //! context it names everything with stable strings that intern to dense handles;
@@ -32,8 +32,8 @@ use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
 use stormlight_mod_abi::scenery::{HeightField, SceneryPiece};
 use stormlight_mod_abi::ui::{RootVisibility, Strip, SummonGate, UiRoot, UiSubject, Widget};
 use stormlight_mod_abi::visuals::{
-    AbilityIcon, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect, TalentCard,
-    TalentInfo, UnitIcon, VisualDescriptor, VisualModel,
+    AbilityCard, CardInfo, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect,
+    TalentCard, UnitIcon, VisualDescriptor, VisualModel,
 };
 
 use crate::context::table;
@@ -55,7 +55,7 @@ pub struct ClientContext {
 
     visuals: Vec<VisualDescriptor>,
     effects: Vec<EffectVisualDescriptor>,
-    icons: Vec<AbilityIcon>,
+    ability_cards: Vec<AbilityCard>,
     cards: Vec<TalentCard>,
     animations: Vec<AnimationDescriptor>,
     named_effects: Vec<NamedEffect>,
@@ -130,9 +130,37 @@ impl ClientContext {
     /// ability, and the HUD asks for it by slot. `image` is a `mod://<id>/<path>`
     /// URL like every other asset. Re-declaring an ability's icon overrides the
     /// earlier one at adoption (later wins).
+    ///
+    /// A card with a picture and no words (server#116); [`ability_card`](Self::ability_card)
+    /// says what the ability is called and does as well.
     pub fn ability_icon(&mut self, ability: &str, image: &str) -> AbilityId {
+        self.ability_card(ability, "", "", image)
+    }
+
+    /// Declare what the ability named `ability` is called, does and looks like in an
+    /// interface (server#116), returning the ability's interned handle.
+    ///
+    /// The ability's counterpart of [`talent_card`](Self::talent_card), in the same
+    /// shape: a HUD asks for it by **slot**, so its tooltip on an ability socket says
+    /// what the ability bound there is without the HUD naming it. Any of the three
+    /// may be empty. Re-declaring an ability's card overrides the earlier one at
+    /// adoption (later wins).
+    pub fn ability_card(
+        &mut self,
+        ability: &str,
+        name: &str,
+        description: &str,
+        image: &str,
+    ) -> AbilityId {
         let id = self.ability_names.intern(ability);
-        self.icons.push(AbilityIcon { ability: id, image: image.into() });
+        self.ability_cards.push(AbilityCard {
+            ability: id,
+            info: CardInfo {
+                name: name.into(),
+                description: description.into(),
+                image: image.into(),
+            },
+        });
         id
     }
 
@@ -180,7 +208,7 @@ impl ClientContext {
         let id = self.talent_names.intern(talent);
         self.cards.push(TalentCard {
             talent: id,
-            info: TalentInfo {
+            info: CardInfo {
                 name: name.into(),
                 description: description.into(),
                 image: image.into(),
@@ -355,7 +383,7 @@ impl ClientContext {
             },
             visuals: self.visuals,
             effects: self.effects,
-            icons: self.icons,
+            ability_cards: self.ability_cards,
             cards: self.cards,
             animations: self.animations,
             named_effects: self.named_effects,

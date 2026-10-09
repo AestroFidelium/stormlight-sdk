@@ -461,8 +461,9 @@ pub enum OptionState {
 ///
 /// A client that decided for itself whether a rung had been reached would disagree
 /// with the simulation the moment a shortcut fired — a shortcut finishes a task the
-/// count never got to the top of (stormlight/server#137). So all three read the
-/// paid record the server publishes, and the count is only ever a numerator.
+/// count never got to the top of (stormlight/server#137). So every one of them
+/// reads what the server publishes — the paid record, and whether a shortcut's
+/// window is open (stormlight/server#185) — and the count is only ever a numerator.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub enum TaskState {
     /// There is a task here and it is not finished — what a progress ring is drawn
@@ -485,6 +486,28 @@ pub enum TaskState {
     /// Told, for the reason the family docs give: a count that never reached the top
     /// can still have finished the task.
     Done,
+    /// The task's shortcut would fire if its counter moved **now**
+    /// (stormlight/server#185): its condition holds and it has not fired.
+    ///
+    /// The one state about the present rather than the past, and the one a player
+    /// most needs told — a shortcut phrased "while below a quarter health" that
+    /// nothing announces is indistinguishable from one that is broken. **Told**, like
+    /// the rest: the condition is arbitrary world state, and a client that judged it
+    /// for itself would disagree with the simulation at exactly the moment the
+    /// player is watching hardest.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    ShortcutOpen,
+    /// The task has a shortcut that has not fired, and its window is **closed**
+    /// (stormlight/server#185) — what an unlit indicator is drawn for.
+    ///
+    /// Neither this nor [`Self::ShortcutOpen`] is ever true of a task with no
+    /// shortcut, so a lit-or-unlit mark gated on the pair is simply not laid out for
+    /// one: "this task cannot be skipped" is said by drawing nothing, not by drawing
+    /// a window that never opens.
+    ///
+    /// Appended, for the reason [`Self::ShortcutOpen`] states.
+    ShortcutWaiting,
 }
 
 /// What a widget says about itself while the pointer rests on it

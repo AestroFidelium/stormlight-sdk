@@ -40,6 +40,7 @@ mod scenery;
 mod shot_sockets;
 mod slot_bind;
 mod slot_ref;
+mod sound;
 mod stats;
 mod status_visual;
 mod tags;

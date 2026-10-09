@@ -40,6 +40,7 @@ pub mod runtime;
 pub mod scenery;
 pub mod shadow;
 pub mod slot_ref;
+pub mod sound;
 pub mod stats;
 pub mod status_visual;
 pub mod talent_tree;

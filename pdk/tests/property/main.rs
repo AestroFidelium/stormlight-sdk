@@ -25,6 +25,7 @@ mod client_unit_marks;
 mod client_value_gate;
 mod context;
 mod effect_key;
+mod sounds;
 mod ui_anim;
 mod ui_mask;
 mod ui_sweep;

@@ -29,6 +29,7 @@ use crate::lifetime::{EffectLifetime, HostEnd};
 use crate::manifest::Version;
 use crate::scenery::{HeightField, SceneryPiece};
 use crate::shadow::ModelShadow;
+use crate::sound::{SoundFalloff, SoundPlayback};
 use crate::status_visual::StatusVisual;
 use crate::ui::UiRoot;
 use crate::unit_mark::UnitMark;
@@ -140,12 +141,33 @@ pub enum VisualModel {
         /// How its opacity moves over its life. `None`: steady.
         fade: Option<DecalFade>,
     },
+    /// A sound, heard from where it is placed (stormlight/server#176) — placed,
+    /// kept and dropped exactly as a drawing in the same spot would be.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Sound {
+        /// The `mod://` URL of the sound file.
+        asset: String,
+        /// A linear gain over the file as recorded: `1.0` plays it as it is.
+        volume: f32,
+        /// Once through, or for as long as what holds it lasts.
+        playback: SoundPlayback,
+        /// How it fades with distance from the listener.
+        falloff: SoundFalloff,
+    },
+    /// Several of these at one place, sharing its life (stormlight/server#176):
+    /// a burst and the crack it makes, a model and the scorch under it. Each layer
+    /// is placed as if it had been declared alone.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Layered(Vec<VisualModel>),
 }
 
 impl VisualModel {
-    /// Whether a renderer can draw it as declared: a model's shadow radius, and a
-    /// decal's size, tint and fade, are all finite and in range. Everything else a
-    /// model carries is checked where it is used.
+    /// Whether the client can present it as declared: a model's shadow radius, a
+    /// decal's size, tint and fade, and a sound's file, volume and falloff are all
+    /// there, finite and in range; layers are some, each presentable. Everything
+    /// else a model carries is checked where it is used.
     #[must_use]
     pub fn is_drawable(&self) -> bool {
         match self {
@@ -155,8 +177,34 @@ impl VisualModel {
                     && tint.iter().all(|v| v.is_finite() && *v >= 0.0)
                     && fade.as_ref().is_none_or(DecalFade::is_valid)
             }
+            Self::Sound { asset, volume, falloff, .. } => {
+                !asset.is_empty() && volume.is_finite() && *volume >= 0.0 && falloff.is_valid()
+            }
+            Self::Layered(layers) => !layers.is_empty() && layers.iter().all(Self::is_drawable),
             Self::Primitive { .. } | Self::Sprite { .. } => true,
         }
+    }
+
+    /// Every drawing this places, with layers read flat in declared order: itself
+    /// when it is not layered.
+    #[must_use]
+    pub fn layers(&self) -> Vec<&VisualModel> {
+        let mut leaves = Vec::new();
+        let mut pending = alloc::vec![self];
+        while let Some(model) = pending.pop() {
+            match model {
+                Self::Layered(layers) => pending.extend(layers.iter().rev()),
+                leaf => leaves.push(leaf),
+            }
+        }
+        leaves
+    }
+
+    /// The first 3D model this places, if any — what a rig's sockets, an art's own
+    /// clips and its measured length are read from when it is layered.
+    #[must_use]
+    pub fn model_part(&self) -> Option<&VisualModel> {
+        self.layers().into_iter().find(|m| matches!(m, Self::Model { .. }))
     }
 }
 

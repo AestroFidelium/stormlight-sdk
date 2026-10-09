@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::animation::AnimationDescriptor;
 use crate::attach::AttachPoint;
+use crate::decal::{DecalBlend, DecalFade};
 use crate::descriptors::Names;
 use crate::environment::Environment;
 use crate::ids::{AbilityId, TalentId, UnitId};
@@ -118,6 +119,44 @@ pub enum VisualModel {
     },
     /// A flat, billboarded sprite from a `mod://` asset, sized in world units.
     Sprite { asset: String, size: [f32; 2] },
+    /// A picture laid flat on the ground beneath what it draws (stormlight/server#170)
+    /// — an area's marking, a scorch, a ring under a unit.
+    ///
+    /// Lies on whatever is under it rather than standing on the floor as a mesh, so
+    /// it follows the ground's shape where it is drawn and never pokes through a
+    /// slope. Centred on the thing it draws, turning with it.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Decal {
+        /// The `mod://` URL of the picture.
+        asset: String,
+        /// Width (along x) and length (along z) on the ground, world units.
+        size: [f32; 2],
+        /// A linear RGBA multiplier over the picture.
+        tint: [f32; 4],
+        /// Painted over the ground, or added to it as light.
+        blend: DecalBlend,
+        /// How its opacity moves over its life. `None`: steady.
+        fade: Option<DecalFade>,
+    },
+}
+
+impl VisualModel {
+    /// Whether a renderer can draw it as declared: a model's shadow radius, and a
+    /// decal's size, tint and fade, are all finite and in range. Everything else a
+    /// model carries is checked where it is used.
+    #[must_use]
+    pub fn is_drawable(&self) -> bool {
+        match self {
+            Self::Model { shadow, .. } => shadow.is_valid(),
+            Self::Decal { size, tint, fade, .. } => {
+                size.iter().all(|v| v.is_finite() && *v > 0.0)
+                    && tint.iter().all(|v| v.is_finite() && *v >= 0.0)
+                    && fade.as_ref().is_none_or(DecalFade::is_valid)
+            }
+            Self::Primitive { .. } | Self::Sprite { .. } => true,
+        }
+    }
 }
 
 /// What a mounted model plays **on its own** — the lifecycle a piece of art has

@@ -14,6 +14,7 @@ use core::cell::Cell;
 
 use bolero::{TypeGenerator, check};
 use stormlight_mod_abi::attach::AttachPoint;
+use stormlight_mod_abi::decal::{DecalBlend, DecalFade};
 use stormlight_mod_abi::descriptors::Names;
 use stormlight_mod_abi::ids::{
     AbilityId, AnimStateId, BuffId, CurveId, DamageTypeId, EventId, HandlerId, NavMeshId, ParamId,
@@ -243,7 +244,7 @@ impl Gen<'_> {
         (0..n).map(|_| self.string()).collect()
     }
     fn model(&mut self) -> VisualModel {
-        match self.next() % 3 {
+        match self.next() % 4 {
             0 => VisualModel::Primitive {
                 shape: match self.next() % 3 {
                     0 => PrimitiveShape::Cube,
@@ -277,7 +278,24 @@ impl Gen<'_> {
                     _ => ModelShadow::None,
                 },
             },
-            _ => VisualModel::Sprite { asset: self.string(), size: [self.f32(), self.f32()] },
+            2 => VisualModel::Sprite { asset: self.string(), size: [self.f32(), self.f32()] },
+            // A ground decal (server#170), with and without a fade.
+            _ => VisualModel::Decal {
+                asset: self.string(),
+                size: [self.f32(), self.f32()],
+                tint: [self.f32(), self.f32(), self.f32(), self.f32()],
+                blend: if self.next().is_multiple_of(2) {
+                    DecalBlend::Blend
+                } else {
+                    DecalBlend::Add
+                },
+                fade: self.next().is_multiple_of(2).then(|| DecalFade {
+                    attack: self.f32(),
+                    hold: self.f32(),
+                    decay: self.f32(),
+                    alpha: [self.f32(), self.f32(), self.f32()],
+                }),
+            },
         }
     }
     fn visual(&mut self) -> VisualDescriptor {

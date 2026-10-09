@@ -3,7 +3,7 @@
 //! offers a pending tier can say what any of it means.
 //!
 //! Keyed by the talent's interned handle for the reason
-//! [`AbilityIcon`](stormlight_mod_abi::visuals::AbilityIcon) is keyed by the
+//! [`AbilityCard`](stormlight_mod_abi::visuals::AbilityCard) is keyed by the
 //! ability's: the presentation is a fact about the *talent*, and the interface mod
 //! that lays out the panel names no content. Directional / structural only:
 //!   - **Round-trip**: a bundle of cards survives a postcard serialize /
@@ -26,7 +26,7 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::manifest::ABI_VERSION;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
-use stormlight_mod_abi::visuals::{ClientRegistration, TalentCard, TalentInfo};
+use stormlight_mod_abi::visuals::{CardInfo, ClientRegistration, TalentCard};
 
 /// Every family returns its id unchanged — the identity map.
 struct Identity;
@@ -124,7 +124,7 @@ fn build(s: &Scenario) -> ClientRegistration {
             .iter()
             .map(|(handle, seed)| TalentCard {
                 talent: TalentId(u32::from(*handle)),
-                info: TalentInfo {
+                info: CardInfo {
                     name: words(seed),
                     description: words(seed),
                     image: format!("mod://pack/{}", words(seed)),

@@ -1,18 +1,19 @@
-//! Invariants of the ability-icon declaration (`AbilityIcon`, server#94) — the
-//! picture a cosmetic mod attaches to an *ability* so an interface can draw it in
-//! whichever slot that ability occupies. Keyed by the ability's interned handle,
+//! Invariants of the ability card (`AbilityCard`, server#94, server#116) — what a
+//! cosmetic mod says about an *ability* — its name, what it does, and its picture —
+//! so an interface can draw and describe it in whichever slot that ability
+//! occupies. The same shape a talent's card has. Keyed by the ability's interned handle,
 //! exactly like the feedback visuals beside it, because the interface mod that
 //! draws the bar knows no name of the gameplay mod's content. Directional /
 //! structural only:
-//!   - **Round-trip**: a bundle of icons survives a postcard serialize /
+//!   - **Round-trip**: a bundle of cards survives a postcard serialize /
 //!     deserialize unchanged and re-serializes to identical bytes — this crosses
 //!     the wasm boundary like the rest of `ClientRegistration`.
 //!   - **Identity remap is a no-op**: remapping through a map that returns every
 //!     ability id unchanged leaves the bundle byte-identical (the walk rewrites
-//!     the ability handle and touches nothing else — least of all the path).
+//!     the ability handle and touches nothing else — least of all the words).
 //!   - **The handle is really walked**: a map that fails on any ability makes the
-//!     walk return `Err` exactly when the bundle carried an icon, never a panic.
-//!     An icon whose handle adoption never translated would resolve against the
+//!     walk return `Err` exactly when the bundle carried a card, never a panic.
+//!     A card whose handle adoption never translated would resolve against the
 //!     declaring mod's local id space and draw another package's picture.
 
 use bolero::{TypeGenerator, check};
@@ -23,7 +24,7 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::manifest::ABI_VERSION;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
-use stormlight_mod_abi::visuals::{AbilityIcon, ClientRegistration};
+use stormlight_mod_abi::visuals::{AbilityCard, CardInfo, ClientRegistration};
 
 /// Every family returns its id unchanged — the identity map.
 struct Identity;
@@ -94,10 +95,20 @@ total_but!(FailAbility, |_| Err(()));
 
 const IDENT: &[u8] = b"abcdefghijklmnopqrstuvwxyz_0123456789/.";
 
+/// One card a mod declares.
+#[derive(Debug, TypeGenerator)]
+struct Card {
+    /// The raw ability handle it names.
+    handle: u16,
+    /// Seeds for its name, its sentence and its picture.
+    name: Vec<u8>,
+    words: Vec<u8>,
+    picture: Vec<u8>,
+}
+
 #[derive(Debug, TypeGenerator)]
 struct Scenario {
-    /// One `(raw ability handle, path seed)` per icon the mod declares.
-    icons: Vec<(u16, Vec<u8>)>,
+    cards: Vec<Card>,
     /// The ability names the bundle interns — an icon names an ability, so the
     /// table travels with it.
     names: u8,
@@ -117,12 +128,16 @@ fn build(s: &Scenario) -> ClientRegistration {
             abilities: (0..s.names).map(|i| format!("a{i}")).collect(),
             ..Names::default()
         },
-        icons: s
-            .icons
+        ability_cards: s
+            .cards
             .iter()
-            .map(|(handle, seed)| AbilityIcon {
-                ability: AbilityId(u32::from(*handle)),
-                image: path(seed),
+            .map(|card| AbilityCard {
+                ability: AbilityId(u32::from(card.handle)),
+                info: CardInfo {
+                    name: path(&card.name),
+                    description: path(&card.words),
+                    image: path(&card.picture),
+                },
             })
             .collect(),
         ..ClientRegistration::default()
@@ -130,33 +145,33 @@ fn build(s: &Scenario) -> ClientRegistration {
 }
 
 #[test]
-fn declared_icons_survive_a_postcard_round_trip() {
+fn declared_cards_survive_a_postcard_round_trip() {
     check!().with_type::<Scenario>().for_each(|s| {
         let reg = build(s);
         let bytes = postcard::to_allocvec(&reg).expect("serialize");
         let back: ClientRegistration = postcard::from_bytes(&bytes).expect("deserialize");
-        assert_eq!(reg, back, "an icon bundle did not round-trip");
+        assert_eq!(reg, back, "a card bundle did not round-trip");
         let again = postcard::to_allocvec(&back).expect("reserialize");
-        assert_eq!(bytes, again, "icon serialization is not stable");
+        assert_eq!(bytes, again, "card serialization is not stable");
     });
 }
 
 #[test]
-fn identity_remap_leaves_every_icon_untouched() {
+fn identity_remap_leaves_every_card_untouched() {
     check!().with_type::<Scenario>().for_each(|s| {
         let reg = build(s);
         let mut out = reg.clone();
         out.remap_ids(&Identity).expect("identity map never fails");
-        assert_eq!(reg, out, "identity remap changed an icon");
+        assert_eq!(reg, out, "identity remap changed a card");
     });
 }
 
 #[test]
-fn a_failing_ability_map_errors_exactly_when_icons_are_present() {
+fn a_failing_ability_map_errors_exactly_when_cards_are_present() {
     check!().with_type::<Scenario>().for_each(|s| {
         let mut reg = build(s);
-        let carried = !reg.icons.is_empty();
+        let carried = !reg.ability_cards.is_empty();
         let result = reg.remap_ids(&FailAbility);
-        assert_eq!(result.is_err(), carried, "icon ability handles are not walked by the remap",);
+        assert_eq!(result.is_err(), carried, "card ability handles are not walked by the remap",);
     });
 }

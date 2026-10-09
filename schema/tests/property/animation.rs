@@ -283,7 +283,7 @@ impl Gen<'_> {
             names: Names { units: self.strings(), anim_states: self.strings(), ..Names::default() },
             visuals: Vec::new(),
             effects: Vec::new(),
-            icons: Vec::new(),
+            ability_cards: Vec::new(),
             cards: Vec::new(),
             unit_icons: Vec::new(),
             scenery: Vec::new(),

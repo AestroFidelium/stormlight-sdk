@@ -47,9 +47,9 @@ use alloc::vec::Vec;
 
 use stormlight_mod_abi::ids::{EventId, Slot};
 use stormlight_mod_abi::ui::{
-    Anchor, Flow, Layout, Length, ListBinding, OptionState, QuestSpan, Shown, Slice, StateStyle,
-    Style, SummonRequest, Sweep, SweepCountdown, SweepDirection, TalentText, TaskState, TextSource,
-    Tooltip, UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
+    AbilityText, Anchor, Flow, Layout, Length, ListBinding, OptionState, QuestSpan, Shown, Slice,
+    StateStyle, Style, SummonRequest, Sweep, SweepCountdown, SweepDirection, TalentText, TaskState,
+    TextSource, Tooltip, UiAction, ValueBinding, ValuePart, Widget, WidgetKind, WidgetState,
 };
 use stormlight_mod_abi::ui_anim::{
     Ease, Playback, Shape, UiKey, UiProperty, UiTrack, UiTransition, UiTrigger,
@@ -117,6 +117,14 @@ pub fn tier_options(tier: u8) -> Widget {
 #[must_use]
 pub fn talent_text(tier: u8, option: u8, field: TalentText) -> Widget {
     widget(WidgetKind::Text { text: TextSource::Talent { tier, option, field } })
+}
+
+/// The name, description or key of the ability bound in `slot` (server#116), off
+/// that ability's own card — what an ability socket's tooltip says, with the HUD
+/// naming no ability.
+#[must_use]
+pub fn ability_text(slot: Slot, field: AbilityText) -> Widget {
+    widget(WidgetKind::Text { text: TextSource::Ability { slot, field } })
 }
 
 /// The picture the talent offered at `(tier, option)` wears, falling back to

@@ -237,18 +237,24 @@ pub struct EffectVisualDescriptor {
 /// with nothing to mean. How it is *drawn* — its tint, its nine-slice, whether it
 /// flips — stays the interface's, declared once on the socket and applied to
 /// whatever picture lands in it.
+///
+/// **And what it is called and does** (stormlight/server#116). The picture alone let
+/// a slot be drawn and never described, so the card carries the same three things a
+/// [`TalentCard`] does, in the same [`CardInfo`] — the two families are spelled one
+/// way. A card with an empty name and description is a picture and nothing more,
+/// which is what an icon declared before words existed becomes.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AbilityIcon {
-    /// The ability this picture is for.
+pub struct AbilityCard {
+    /// The ability this card describes.
     pub ability: AbilityId,
-    /// The `mod://<id>/<path>` URL of the picture.
-    pub image: String,
+    /// What to show for it.
+    pub info: CardInfo,
 }
 
 /// The flat picture a unit wears in an interface (stormlight/server#145) — the
 /// portrait a roster row, a nameplate or a hero panel draws.
 ///
-/// Keyed by the unit's interned handle for the same reason [`AbilityIcon`] is keyed
+/// Keyed by the unit's interned handle for the same reason [`AbilityCard`] is keyed
 /// by the ability's, and it is the same separation: the mod that lays out a top bar
 /// is not the mod that authored the heroes. A roster row is instanced per *player*,
 /// so the interface cannot name the picture — it does not know who picked what, and
@@ -260,7 +266,7 @@ pub struct AbilityIcon {
 /// unit is *built in the world* — a mesh, a scale, a yaw — and there is no way to
 /// turn a model into a portrait without rendering it. A portrait is authored art.
 ///
-/// A bare `mod://<id>/<path>` URL, exactly like [`AbilityIcon`]'s, for exactly the
+/// A bare `mod://<id>/<path>` URL, exactly like [`AbilityCard`]'s, for exactly the
 /// same reason: it is a flat picture in a widget, and how it is *drawn* — tint,
 /// nine-slice, mask, whether it flips — stays the interface's, declared once on the
 /// socket and applied to whatever picture lands in it.
@@ -276,7 +282,7 @@ pub struct UnitIcon {
 /// (stormlight/server#95) — everything a panel offering a pending tier needs in
 /// order to say what the choice *means*.
 ///
-/// Keyed by the talent's interned handle for the same reason [`AbilityIcon`] is
+/// Keyed by the talent's interned handle for the same reason [`AbilityCard`] is
 /// keyed by the ability's, and it is the same separation one level along: the mod
 /// that lays out the talent panel is not the mod that authored the talents. A
 /// panel addresses a cell by **tier and option index** ([`UiAction::PickTalent`](crate::ui::UiAction::PickTalent)),
@@ -298,11 +304,12 @@ pub struct TalentCard {
     /// The talent this card describes.
     pub talent: TalentId,
     /// What to show for it.
-    pub info: TalentInfo,
+    pub info: CardInfo,
 }
 
-/// The presentation half of a [`TalentCard`] — what a talent is called, what it
-/// does in words, and what it looks like, with no handle attached.
+/// The presentation half of a card — what a talent or an ability is called, what it
+/// does in words, and what it looks like, with no handle attached (stormlight/server#95,
+/// stormlight/server#116).
 ///
 /// Carried on its own so that every table downstream is keyed by the id the *host*
 /// resolved the declaration to, and holds no copy of the local handle the mod
@@ -314,7 +321,7 @@ pub struct TalentCard {
 /// with no picture leaves the socket wearing whatever the interface declared for an
 /// empty one.
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
-pub struct TalentInfo {
+pub struct CardInfo {
     /// Its display name — what a cell's heading prints. Empty falls back to the
     /// identifier the gameplay mod interned it under.
     pub name: String,
@@ -365,10 +372,10 @@ pub struct ClientRegistration {
     /// The ability-feedback visuals this cosmetic mod declares (projectile /
     /// impact / cast indicator), keyed by ability + role.
     pub effects: Vec<EffectVisualDescriptor>,
-    /// The icons this cosmetic mod declares, one per ability it gives a picture
-    /// to (server#94). Read by an interface it knows nothing about: the icon
-    /// travels with the ability so a HUD can ask for it *by slot*.
-    pub icons: Vec<AbilityIcon>,
+    /// The cards this cosmetic mod declares, one per ability it pictures or
+    /// describes (server#94, server#116). Read by an interface it knows nothing
+    /// about: the card travels with the ability so a HUD can ask for it *by slot*.
+    pub ability_cards: Vec<AbilityCard>,
     /// The animations this cosmetic mod declares, one per unit it animates
     /// (stormlight/server#72). Independent of `visuals`: a mod may dress a unit
     /// without animating it, or animate a unit whose model another mod supplied.

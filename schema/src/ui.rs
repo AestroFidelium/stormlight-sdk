@@ -1236,6 +1236,33 @@ pub enum TextSource {
     /// HUD. The client resolves the index against the subject unit's own declared
     /// tree, and a coordinate that names nothing prints nothing at all.
     Talent { tier: u8, option: u8, field: TalentText },
+    /// The words of the ability bound in one slot of the subject's bar
+    /// (stormlight/server#116), off that ability's own
+    /// [`AbilityCard`](crate::visuals::AbilityCard).
+    ///
+    /// **A slot, not a handle**, for the reason a talent is addressed by coordinate:
+    /// an interface that named an ability would be authoring the gameplay mod's
+    /// content. The slot is what an ability bar already names, and the client crosses
+    /// from it to whatever ability is bound there right now — so a talent that swaps
+    /// the ability in a slot changes the words with it. A slot holding nothing, or an
+    /// ability carded with no words, prints nothing.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Ability { slot: Slot, field: AbilityText },
+}
+
+/// Which of an ability's strings a text reads (stormlight/server#116).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum AbilityText {
+    /// Its display name. An ability whose mod carded no name prints the identifier
+    /// its gameplay side interned it under.
+    #[default]
+    Name,
+    /// What it does, in the declaring mod's words.
+    Description,
+    /// The key that casts the slot, as this client binds it — not authored, for the
+    /// reason a talent's hotkey is not.
+    Hotkey,
 }
 
 /// What activating an interactive widget asks the server to do
@@ -2091,7 +2118,8 @@ impl RemapIds for TextSource {
             // Authored text is content; a list binding names no family, and a
             // talent coordinate is an index into the *unit's* tree — the same pure
             // mod convention `PickTalent` addresses a cell by (server#95).
-            Self::Literal(_) | Self::List(_) | Self::Talent { .. } => {}
+            // An ability is addressed by slot, which is not interned (server#116).
+            Self::Literal(_) | Self::List(_) | Self::Talent { .. } | Self::Ability { .. } => {}
             Self::Value { binding, .. } => binding.remap_ids(m)?,
         }
         Ok(())

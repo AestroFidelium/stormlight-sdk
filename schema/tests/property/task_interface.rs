@@ -49,10 +49,13 @@ impl Scenario {
     }
 
     fn state(&self) -> TaskState {
-        match self.state % 3 {
+        match self.state % 5 {
             0 => TaskState::Running,
             1 => TaskState::Underway,
-            _ => TaskState::Done,
+            2 => TaskState::Done,
+            // The shortcut's window (stormlight/server#185).
+            3 => TaskState::ShortcutOpen,
+            _ => TaskState::ShortcutWaiting,
         }
     }
 

@@ -37,6 +37,7 @@ use stormlight_mod_abi::visuals::{
 };
 
 use crate::context::table;
+use crate::effects;
 
 /// Accumulates a cosmetic mod's declared visuals and finalizes them into a
 /// [`ClientRegistration`]. Interns unit and ability names the same way
@@ -85,15 +86,16 @@ impl ClientContext {
     /// Declare a piece of the ability named `ability`'s feedback in `role` (the
     /// projectile body, the impact burst, or the cast indicator), returning the
     /// ability's interned handle. One ability can declare a visual per role.
+    ///
+    /// The short way: hung where the role hangs it and living the client's
+    /// default. [`declare_effect`](Self::declare_effect) says more.
     pub fn effect_visual(
         &mut self,
         ability: &str,
         role: EffectRole,
         model: VisualModel,
     ) -> AbilityId {
-        let id = self.ability_names.intern(ability);
-        self.effects.push(EffectVisualDescriptor { ability: id, role, model, attach: None });
-        id
+        self.declare_effect(effects::effect(ability, role, model))
     }
 
     /// Declare an effect visual hung on a point of the rig of the unit it belongs
@@ -110,12 +112,20 @@ impl ClientContext {
         model: VisualModel,
         attach: AttachPoint,
     ) -> AbilityId {
-        let id = self.ability_names.intern(ability);
+        self.declare_effect(effects::effect(ability, role, model).at(attach))
+    }
+
+    /// Declare a piece of an ability's feedback built with [`effects::effect`] —
+    /// where it hangs and how long it lives as well as how it looks
+    /// (stormlight/server#167) — returning the ability's interned handle.
+    pub fn declare_effect(&mut self, spec: effects::EffectSpec<'_>) -> AbilityId {
+        let id = self.ability_names.intern(spec.ability);
         self.effects.push(EffectVisualDescriptor {
             ability: id,
-            role,
-            model,
-            attach: Some(attach),
+            role: spec.role,
+            model: spec.model,
+            attach: spec.attach,
+            lifetime: spec.lifetime,
         });
         id
     }
@@ -247,7 +257,15 @@ impl ClientContext {
     /// within its container. Re-declaring a name overrides the earlier model at
     /// adoption (later wins).
     pub fn notify_effect(&mut self, name: &str, model: VisualModel) {
-        self.named_effects.push(NamedEffect { name: name.into(), model });
+        self.declare_notify_effect(effects::named_effect(name, model));
+    }
+
+    /// Declare a notify effect built with [`effects::named_effect`] — how long it
+    /// lives and what it does when its character goes, as well as how it looks
+    /// (stormlight/server#167). Re-declaring a name overrides the earlier one at
+    /// adoption (later wins).
+    pub fn declare_notify_effect(&mut self, effect: NamedEffect) {
+        self.named_effects.push(effect);
     }
 
     /// Intern a mod-defined event by name, returning the handle a

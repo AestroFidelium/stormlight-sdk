@@ -22,6 +22,7 @@ pub mod environment;
 pub mod ids;
 pub mod impacts;
 pub mod interner;
+pub mod lifetime;
 pub mod manifest;
 pub mod math;
 pub mod missiles;

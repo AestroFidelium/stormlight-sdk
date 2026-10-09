@@ -11,6 +11,7 @@ mod client_ability_card;
 mod client_animation;
 mod client_attach;
 mod client_context;
+mod client_effect_life;
 mod client_environment;
 mod client_icon;
 mod client_notify;

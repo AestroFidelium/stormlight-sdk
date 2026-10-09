@@ -24,6 +24,7 @@ use crate::attach::AttachPoint;
 use crate::descriptors::Names;
 use crate::environment::Environment;
 use crate::ids::{AbilityId, TalentId, UnitId};
+use crate::lifetime::{EffectLifetime, HostEnd};
 use crate::manifest::Version;
 use crate::scenery::{HeightField, SceneryPiece};
 use crate::ui::UiRoot;
@@ -120,14 +121,14 @@ pub enum VisualModel {
 /// most of the art in a cosmetic package — an effect container with no state machine
 /// and exactly one thing to do: appear, then keep going for as long as it lasts.
 ///
-/// Both fields name a clip **inside the same container** the model does, exactly
+/// Every field names a clip **inside the same container** the model does, exactly
 /// like a [`ClipRef`](crate::animation::ClipRef)'s `clip`. Empty means "nothing to
 /// play", which is the ordinary case for a unit's model and for a piece of art whose
-/// first frame is already the whole of it.
+/// first frame is already the whole of it. A name the container does not carry is
+/// the same as an empty one, and the client says so once.
 ///
-/// There is deliberately no "and then it goes away" clip yet: nothing in the engine
-/// defers a despawn to wait for one, and a field that reads well and never fires is
-/// worse than an absent one.
+/// The three are the whole of an effect's life: it opens, it holds, it closes
+/// (stormlight/server#167).
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub struct ModelClips {
     /// Played **once** as the model appears, then handing over to `live`. Empty:
@@ -136,6 +137,18 @@ pub struct ModelClips {
     /// Looped for as long as the model exists. Empty: whatever `birth` left behind
     /// is held, or the bind pose if there was no birth either.
     pub live: String,
+    /// Played **once** when the thing the model dresses is gone — a burst whose
+    /// life is up, a shot that struck, a cast that ended, a zone that expired, a
+    /// unit removed from this client's view — whatever ended it.
+    ///
+    /// The art outlives what it dressed until the clip has played: it closes
+    /// where it was, on whatever carried it if that is still there and in the world
+    /// otherwise, and is gone when the clip is. Empty: the art goes with what it
+    /// dressed, on the same frame, which is what every model did before this.
+    ///
+    /// **Appended, not inserted**: the field order is the wire layout.
+    #[serde(default)]
+    pub death: String,
 }
 
 /// The cosmetic descriptor a client mod attaches to a unit: how the client draws
@@ -217,6 +230,14 @@ pub struct EffectVisualDescriptor {
     /// such unit — a shot in flight, a burst on the ground, an area — ignores it,
     /// and the client says so when the mod loads.
     pub attach: Option<AttachPoint>,
+    /// How long the visual lives (stormlight/server#167).
+    ///
+    /// Read by the roles nothing else ends — the [`EffectRole::Impact`] and
+    /// [`EffectRole::Miss`] bursts. A shot, a cast indicator and a body live as
+    /// long as the thing they draw; for those it is ignored, and the client says so
+    /// when the mod loads.
+    #[serde(default)]
+    pub lifetime: EffectLifetime,
 }
 
 /// The picture an ability wears in an interface — the icon a HUD draws in
@@ -348,6 +369,16 @@ pub struct NamedEffect {
     pub name: String,
     /// How to draw it.
     pub model: VisualModel,
+    /// How long it lives where the notify that spawns it says nothing
+    /// (stormlight/server#167): a notify's own positive
+    /// [`lifetime`](crate::notify::NotifyAction::Effect) still wins, because the
+    /// same puff may be held longer on one swing than another.
+    #[serde(default)]
+    pub lifetime: EffectLifetime,
+    /// What it does when the character it is hung on goes down or is removed while
+    /// it still has life left (stormlight/server#167).
+    #[serde(default)]
+    pub on_host_end: HostEnd,
 }
 
 /// Everything a *client* (cosmetic) mod registers — the client-side parallel to

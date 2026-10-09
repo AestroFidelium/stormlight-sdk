@@ -31,7 +31,7 @@ fn build(s: &Scenario) -> Vec<SceneryPiece> {
         .map(|(n, animated, at)| SceneryPiece {
             asset: format!("mod://map/scenery/piece_{n}.glb"),
             clips: if *animated {
-                ModelClips { birth: String::new(), live: format!("idle_{n}") }
+                ModelClips { live: format!("idle_{n}"), ..ModelClips::default() }
             } else {
                 ModelClips::default()
             },

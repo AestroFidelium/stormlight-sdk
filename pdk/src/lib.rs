@@ -15,6 +15,7 @@ pub mod balance;
 pub mod bindings;
 pub mod client;
 pub mod context;
+pub mod effects;
 pub mod macros;
 pub mod runtime;
 pub mod tasks;

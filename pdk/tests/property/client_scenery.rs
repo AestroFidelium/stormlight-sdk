@@ -24,7 +24,7 @@ fn piece(i: usize, placements: usize, animated: bool) -> SceneryPiece {
     SceneryPiece {
         asset: format!("mod://map/scenery/p{i}.glb"),
         clips: if animated {
-            ModelClips { birth: String::new(), live: "idle".into() }
+            ModelClips { live: "idle".into(), ..ModelClips::default() }
         } else {
             ModelClips::default()
         },

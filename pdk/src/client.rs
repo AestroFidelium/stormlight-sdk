@@ -21,6 +21,7 @@
 use alloc::vec::Vec;
 
 use stormlight_mod_abi::animation::{AnimState, AnimationDescriptor};
+use stormlight_mod_abi::attach::AttachPoint;
 use stormlight_mod_abi::descriptors::Names;
 use stormlight_mod_abi::environment::Environment;
 use stormlight_mod_abi::ids::{
@@ -91,7 +92,31 @@ impl ClientContext {
         model: VisualModel,
     ) -> AbilityId {
         let id = self.ability_names.intern(ability);
-        self.effects.push(EffectVisualDescriptor { ability: id, role, model });
+        self.effects.push(EffectVisualDescriptor { ability: id, role, model, attach: None });
+        id
+    }
+
+    /// Declare an effect visual hung on a point of the rig of the unit it belongs
+    /// to (stormlight/server#160) — a cast's flare on the weapon rather than over
+    /// the caster's head — returning the ability's interned handle.
+    ///
+    /// The point is *asked for*: [`AttachPoint::fallback`] names one to use where a
+    /// rig lacks the first, and a rig with neither hangs the visual where the role
+    /// always has. Build one with [`crate::attach::point`].
+    pub fn effect_visual_at(
+        &mut self,
+        ability: &str,
+        role: EffectRole,
+        model: VisualModel,
+        attach: AttachPoint,
+    ) -> AbilityId {
+        let id = self.ability_names.intern(ability);
+        self.effects.push(EffectVisualDescriptor {
+            ability: id,
+            role,
+            model,
+            attach: Some(attach),
+        });
         id
     }
 

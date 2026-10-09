@@ -486,6 +486,17 @@ fn validate_notifies(layer: u16, state: u16, binding: &StateClip) -> Result<(), 
             {
                 return Err(AnimationError::EmptyNotifySocket { layer, state, notify });
             }
+            // A point asked for by a blank name, or offset by a non-finite one
+            // (server#160): refused here rather than hung on the character's origin,
+            // where the typo would read as the art being wrong.
+            if let NotifyAttach::Point(point) = attach {
+                if !point.offset.iter().all(|v| v.is_finite()) {
+                    return Err(AnimationError::NonFinite { layer });
+                }
+                if !point.is_usable() {
+                    return Err(AnimationError::EmptyNotifySocket { layer, state, notify });
+                }
+            }
         }
     }
     Ok(())

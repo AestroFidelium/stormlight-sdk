@@ -39,6 +39,7 @@ pub mod runtime;
 pub mod scenery;
 pub mod slot_ref;
 pub mod stats;
+pub mod status_visual;
 pub mod talent_tree;
 pub mod talents;
 pub mod tasks;

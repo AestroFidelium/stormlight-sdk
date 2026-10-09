@@ -25,11 +25,12 @@ use stormlight_mod_abi::attach::AttachPoint;
 use stormlight_mod_abi::descriptors::Names;
 use stormlight_mod_abi::environment::Environment;
 use stormlight_mod_abi::ids::{
-    AbilityId, AnimStateId, EventId, ResourceId, StackId, StatId, TalentId, UnitId,
+    AbilityId, AnimStateId, BuffId, EventId, ResourceId, StackId, StatId, TalentId, UnitId,
 };
 use stormlight_mod_abi::interner::Interner;
 use stormlight_mod_abi::manifest::{ABI_VERSION, Version};
 use stormlight_mod_abi::scenery::{HeightField, SceneryPiece};
+use stormlight_mod_abi::status_visual::{StatusLook, StatusVisual};
 use stormlight_mod_abi::ui::{RootVisibility, Strip, SummonGate, UiRoot, UiSubject, Widget};
 use stormlight_mod_abi::visuals::{
     AbilityCard, CardInfo, ClientRegistration, EffectRole, EffectVisualDescriptor, NamedEffect,
@@ -38,6 +39,7 @@ use stormlight_mod_abi::visuals::{
 
 use crate::context::table;
 use crate::effects;
+use crate::status;
 
 /// Accumulates a cosmetic mod's declared visuals and finalizes them into a
 /// [`ClientRegistration`]. Interns unit and ability names the same way
@@ -53,6 +55,7 @@ pub struct ClientContext {
     stat_names: Interner<StatId>,
     resource_names: Interner<ResourceId>,
     stack_names: Interner<StackId>,
+    buff_names: Interner<BuffId>,
 
     visuals: Vec<VisualDescriptor>,
     effects: Vec<EffectVisualDescriptor>,
@@ -65,6 +68,7 @@ pub struct ClientContext {
     scenery: Vec<SceneryPiece>,
     ground: Option<HeightField>,
     environment: Option<Environment>,
+    status_visuals: Vec<StatusVisual>,
 }
 
 impl ClientContext {
@@ -126,6 +130,28 @@ impl ClientContext {
             model: spec.model,
             attach: spec.attach,
             lifetime: spec.lifetime,
+        });
+        id
+    }
+
+    /// Declare how the status the buff named `buff` grants is drawn on the unit
+    /// carrying it (stormlight/server#171) — `model`, seen by everyone, at the
+    /// unit's origin — returning the buff's interned handle.
+    ///
+    /// Keyed by the buff's **name**, like an ability's feedback: the gameplay mod
+    /// that authored the buff need not be this one. [`declare_status`](Self::declare_status)
+    /// says more.
+    pub fn status_visual(&mut self, buff: &str, model: VisualModel) -> BuffId {
+        self.declare_status(status::status(buff, model))
+    }
+
+    /// Declare a status visual built with [`status::status`] — per-viewer looks
+    /// and a point to hang on as well — returning the buff's interned handle.
+    pub fn declare_status(&mut self, spec: status::StatusSpec<'_>) -> BuffId {
+        let id = self.buff_names.intern(spec.buff);
+        self.status_visuals.push(StatusVisual {
+            buff: id,
+            look: StatusLook { own: spec.own, others: spec.others, attach: spec.attach },
         });
         id
     }
@@ -397,6 +423,7 @@ impl ClientContext {
                 stats: table(&self.stat_names),
                 resources: table(&self.resource_names),
                 stacks: table(&self.stack_names),
+                buffs: table(&self.buff_names),
                 ..Names::default()
             },
             visuals: self.visuals,
@@ -410,6 +437,7 @@ impl ClientContext {
             scenery: self.scenery,
             ground: self.ground,
             environment: self.environment,
+            status_visuals: self.status_visuals,
         }
     }
 }

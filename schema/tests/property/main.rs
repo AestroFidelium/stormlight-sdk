@@ -39,6 +39,7 @@ mod shot_sockets;
 mod slot_bind;
 mod slot_ref;
 mod stats;
+mod status_visual;
 mod tags;
 mod talent_card;
 mod talent_focus;

@@ -37,6 +37,7 @@ pub mod respawn;
 pub mod roles;
 pub mod runtime;
 pub mod scenery;
+pub mod shadow;
 pub mod slot_ref;
 pub mod stats;
 pub mod status_visual;

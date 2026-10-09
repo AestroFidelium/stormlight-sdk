@@ -27,6 +27,7 @@ use crate::ids::{AbilityId, TalentId, UnitId};
 use crate::lifetime::{EffectLifetime, HostEnd};
 use crate::manifest::Version;
 use crate::scenery::{HeightField, SceneryPiece};
+use crate::shadow::ModelShadow;
 use crate::status_visual::StatusVisual;
 use crate::ui::UiRoot;
 
@@ -109,6 +110,11 @@ pub enum VisualModel {
         clips: ModelClips,
         #[serde(default)]
         offset: [f32; 3],
+        /// How it sits on the ground when it draws a unit (stormlight/server#179):
+        /// a contact shadow sized to it by default, one of a declared size, or none
+        /// at all. Read only for a unit's drawing — an effect's art never casts.
+        #[serde(default)]
+        shadow: ModelShadow,
     },
     /// A flat, billboarded sprite from a `mod://` asset, sized in world units.
     Sprite { asset: String, size: [f32; 2] },

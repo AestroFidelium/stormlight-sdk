@@ -22,6 +22,7 @@ use stormlight_mod_abi::ids::{
 use stormlight_mod_abi::lifetime::{EffectLifetime, HostEnd};
 use stormlight_mod_abi::manifest::Version;
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
+use stormlight_mod_abi::shadow::ModelShadow;
 use stormlight_mod_abi::visuals::{
     ClientRegistration, EffectRole, EffectVisualDescriptor, ModelClips, NamedEffect,
     PrimitiveShape, VisualDescriptor, VisualModel,
@@ -269,6 +270,12 @@ impl Gen<'_> {
                 // Generated non-zero as well, so the round trip covers art that
                 // expects to be held somewhere other than its own origin.
                 offset: [self.f32(), self.f32(), self.f32()],
+                // Every way a unit can sit on the ground (server#179).
+                shadow: match self.next() % 3 {
+                    0 => ModelShadow::Fit,
+                    1 => ModelShadow::Radius(self.f32()),
+                    _ => ModelShadow::None,
+                },
             },
             _ => VisualModel::Sprite { asset: self.string(), size: [self.f32(), self.f32()] },
         }

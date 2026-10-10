@@ -77,9 +77,13 @@ so a mod is a plain `no_std` cdylib that builds on **stable** Rust.
 
 - **Unstable (0.x).** The schema still grows with every engine milestone, and
   the host checks only the ABI major version.
-- **Verbose descriptors.** The main descriptors have no `Default`, so a mod
-  writes out every field. One upside: adding a field to the schema breaks a
-  mod at compile time instead of silently giving it a value.
+- **No `Default` on descriptors, by design.** Adding a field to the schema
+  breaks a hand-written descriptor at compile time instead of silently giving
+  it a value. The builders in `stormlight_mod_sdk::builders` are the short way
+  to write one: what a descriptor cannot do without goes in the constructor
+  (`unit(health)`, `ability(targeting)`, `missile(speed, range)`), everything
+  else is a chained refinement, and each default a builder applies is named on
+  it. The output is the same plain descriptor; the host never sees a builder.
 
 ## License
 

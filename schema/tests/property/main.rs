@@ -25,6 +25,7 @@ mod math;
 mod model_shadow;
 mod modifiers;
 mod navmesh;
+mod particles;
 mod passive_cast;
 mod placement;
 mod pool_ability_cost;

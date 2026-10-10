@@ -27,6 +27,7 @@ use crate::environment::Environment;
 use crate::ids::{AbilityId, TalentId, UnitId};
 use crate::lifetime::{EffectLifetime, HostEnd};
 use crate::manifest::Version;
+use crate::particles::ParticleEmitter;
 use crate::scenery::{HeightField, SceneryPiece};
 use crate::shadow::ModelShadow;
 use crate::sound::{SoundFalloff, SoundPlayback};
@@ -161,6 +162,11 @@ pub enum VisualModel {
     ///
     /// **Appended, not inserted**: the variant order is the wire tag.
     Layered(Vec<VisualModel>),
+    /// A particle emitter declared in full by the mod (stormlight/server#141), for
+    /// an effect with no model to carry one.
+    ///
+    /// **Appended, not inserted**: the variant order is the wire tag.
+    Particles(ParticleEmitter),
 }
 
 impl VisualModel {
@@ -181,6 +187,7 @@ impl VisualModel {
                 !asset.is_empty() && volume.is_finite() && *volume >= 0.0 && falloff.is_valid()
             }
             Self::Layered(layers) => !layers.is_empty() && layers.iter().all(Self::is_drawable),
+            Self::Particles(emitter) => emitter.is_valid(),
             Self::Primitive { .. } | Self::Sprite { .. } => true,
         }
     }

@@ -19,6 +19,7 @@ pub mod context;
 pub mod effects;
 pub mod macros;
 pub mod marks;
+pub mod particles;
 pub mod runtime;
 pub mod sounds;
 pub mod status;

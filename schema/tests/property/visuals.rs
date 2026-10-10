@@ -22,6 +22,9 @@ use stormlight_mod_abi::ids::{
 };
 use stormlight_mod_abi::lifetime::{EffectLifetime, HostEnd};
 use stormlight_mod_abi::manifest::Version;
+use stormlight_mod_abi::particles::{
+    ColorKey, EmitterShape, ParticleBlend, ParticleEmission, ParticleEmitter, ParticleSpray,
+};
 use stormlight_mod_abi::remap::{IdMap, RemapIds};
 use stormlight_mod_abi::shadow::ModelShadow;
 use stormlight_mod_abi::sound::{SoundFalloff, SoundPlayback};
@@ -249,7 +252,7 @@ impl Gen<'_> {
     }
     /// A model, nesting layers at most two deep so a generated tree stays small.
     fn model_at(&mut self, depth: u8) -> VisualModel {
-        let kinds = if depth < 2 { 6 } else { 5 };
+        let kinds = if depth < 2 { 7 } else { 6 };
         match self.next() % kinds {
             0 => VisualModel::Primitive {
                 shape: match self.next() % 3 {
@@ -297,7 +300,46 @@ impl Gen<'_> {
                 falloff: SoundFalloff { near: self.f32(), far: self.f32() },
             },
             // Several drawings at one place (server#176), themselves possibly layered.
-            5 => {
+            // A declared emitter (server#141), from a few shapes and emissions.
+            4 => VisualModel::Particles(ParticleEmitter {
+                shape: match self.next() % 3 {
+                    0 => EmitterShape::Point,
+                    1 => EmitterShape::Sphere { radius: self.f32(), hollow: self.f32() },
+                    _ => EmitterShape::Box { size: [self.f32(), self.f32(), self.f32()] },
+                },
+                emission: match self.next() % 3 {
+                    0 => ParticleEmission::Stream { rate: self.f32() },
+                    1 => {
+                        ParticleEmission::Burst { count: u32::from(self.next()), delay: self.f32() }
+                    }
+                    _ => ParticleEmission::Window {
+                        rate: self.f32(),
+                        delay: self.f32(),
+                        duration: self.f32(),
+                    },
+                },
+                lifetime: [self.f32(), self.f32()],
+                speed: [self.f32(), self.f32()],
+                spray: if self.next().is_multiple_of(2) {
+                    ParticleSpray::Radial
+                } else {
+                    ParticleSpray::Cone { spread: self.f32() }
+                },
+                gravity: self.f32(),
+                drag: self.f32(),
+                size: (0..self.count(3)).map(|_| [self.f32(), self.f32()]).collect(),
+                color: (0..self.count(3))
+                    .map(|_| ColorKey {
+                        at: self.f32(),
+                        rgba: [self.f32(), self.f32(), self.f32(), self.f32()],
+                    })
+                    .collect(),
+                texture: self.next().is_multiple_of(2).then(|| self.string()),
+                blend: ParticleBlend::Add,
+                world_space: self.next().is_multiple_of(2),
+                capacity: u32::from(self.next()),
+            }),
+            6 => {
                 let n = self.count(3);
                 VisualModel::Layered((0..n).map(|_| self.model_at(depth + 1)).collect())
             }

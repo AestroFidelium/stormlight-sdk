@@ -31,6 +31,7 @@ pub mod motion;
 pub mod navmesh;
 pub mod notify;
 pub mod params;
+pub mod particles;
 pub mod placement;
 pub mod progression;
 pub mod remap;

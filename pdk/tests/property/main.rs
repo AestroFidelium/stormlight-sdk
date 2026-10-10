@@ -7,6 +7,7 @@
 mod aim_params;
 mod balance;
 mod bridge;
+mod builders;
 mod client_ability_card;
 mod client_animation;
 mod client_attach;

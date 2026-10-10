@@ -233,7 +233,8 @@ impl ModContext {
     // returned handle indexes the descriptor, so callers can reference it. ---
 
     /// Define an ability under `name`; its `id` is set to the minted handle.
-    pub fn ability(&mut self, name: &str, mut desc: AbilityDescriptor) -> AbilityId {
+    pub fn ability(&mut self, name: &str, desc: impl Into<AbilityDescriptor>) -> AbilityId {
+        let mut desc = desc.into();
         let id = self.ability_names.intern(name);
         // Declaring two abilities under one name is a content mistake worth
         // catching, and it is caught by *finding* the handle already spoken for
@@ -280,7 +281,8 @@ impl ModContext {
         id
     }
     /// Define a buff under `name`; its `id` is set to the minted handle.
-    pub fn buff(&mut self, name: &str, mut spec: BuffSpec) -> BuffId {
+    pub fn buff(&mut self, name: &str, spec: impl Into<BuffSpec>) -> BuffId {
+        let mut spec = spec.into();
         let id = self.buff_names.intern(name);
         debug_assert_eq!(id.raw() as usize, self.buffs.len(), "buff name reused");
         spec.id = id;
@@ -295,7 +297,8 @@ impl ModContext {
         id
     }
     /// Define a spawnable unit under `name`; its `id` is set to the minted handle.
-    pub fn unit(&mut self, name: &str, mut desc: UnitDescriptor) -> UnitId {
+    pub fn unit(&mut self, name: &str, desc: impl Into<UnitDescriptor>) -> UnitId {
+        let mut desc = desc.into();
         let id = self.unit_names.intern(name);
         debug_assert_eq!(id.raw() as usize, self.units.len(), "unit name reused");
         desc.id = id;

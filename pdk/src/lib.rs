@@ -13,6 +13,7 @@ pub use stormlight_mod_abi as abi;
 pub mod attach;
 pub mod balance;
 pub mod bindings;
+pub mod builders;
 pub mod client;
 pub mod context;
 pub mod effects;
